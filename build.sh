@@ -2,7 +2,7 @@
 
 # ============================================
 #  Zeus Plugins Build Script
-#  Supports: ZeusProtocolJava, ZeusGateway, ZeusPhysicsLab, ZeusFabric
+#  Supports: ZeusProtocolJava, ZeusGateway, ZeusFabric
 # ============================================
 
 set -e
@@ -13,71 +13,47 @@ set -e
 
 echo "============================================"
 echo " Zeus Plugins Build Script"
-echo " Supports: ZeusProtocolJava, ZeusGateway, ZeusPhysicsLab, ZeusFabric"
+echo " Supports: ZeusProtocolJava, ZeusGateway, ZeusFabric"
 echo "============================================"
-echo ""
 
 echo "[1/4] Checking Java version..."
 java -version
-echo ""
 
 echo "[gate] Checking generated support matrix..."
 python3 scripts/render_support_matrix.py
 python3 scripts/render_support_readiness.py
 echo "[OK] Support matrix documentation is current."
-echo ""
 
 echo "[gate] Checking support claims and build metadata..."
 python3 scripts/verify_support_matrix.py
 echo "[OK] Support claims match available verification evidence."
-echo ""
 
 echo "============================================"
-echo " Building Maven modules (ZeusProtocolJava + ZeusGatewayLegacy + ZeusGateway + ZeusPhysicsLab)"
+echo " Building Maven modules (ZeusProtocolJava + ZeusGatewayLegacy + ZeusGateway)"
 echo "============================================"
-echo ""
 
 mvn -v
-echo ""
 
 if ! mvn clean install -pl ZeusProtocolJava -am; then
-    echo ""
     echo "[ERROR] ZeusProtocolJava build failed!"
     exit 1
 fi
-echo ""
 echo "[OK] ZeusProtocolJava built successfully."
-echo ""
 
 if ! mvn clean package -pl ZeusGateway -am; then
-    echo ""
     echo "[ERROR] ZeusGateway build failed!"
     exit 1
 fi
-echo ""
 echo "[OK] ZeusGateway-modern built successfully."
-echo ""
 if ! mvn clean package -pl ZeusGatewayLegacy -am; then
-    echo ""
     echo "[ERROR] ZeusGatewayLegacy build failed!"
     exit 1
 fi
-echo ""
 echo "[OK] ZeusGateway-legacy built successfully."
-echo ""
-if ! mvn clean package -pl ZeusPhysicsLab -am; then
-    echo ""
-    echo "[ERROR] ZeusPhysicsLab build failed!"
-    exit 1
-fi
-echo ""
-echo "[OK] ZeusPhysicsLab built successfully."
-echo ""
 
 echo "============================================"
 echo " Building Gradle module (ZeusFabric)"
 echo "============================================"
-echo ""
 
 mapfile -t FABRIC_TARGETS < <(python3 scripts/list_fabric_build_targets.py)
 
@@ -105,11 +81,9 @@ else
     echo "         mvn install -pl ZeusProtocolJava"
 fi
 
-echo ""
 echo "============================================"
 echo " Build Summary"
 echo "============================================"
-echo ""
 
 if [ -f "ZeusProtocolJava/target/ZeusProtocolJava-1.0-SNAPSHOT.jar" ]; then
     echo "[OK] ZeusProtocolJava : ZeusProtocolJava/target/ZeusProtocolJava-1.0-SNAPSHOT.jar"
@@ -129,11 +103,6 @@ else
     echo "[--] ZeusGatewayLegacy: not found"
 fi
 
-if [ -f "ZeusPhysicsLab/target/zeus_physics_lab-1.0-SNAPSHOT.jar" ]; then
-    echo "[OK] ZeusPhysicsLab  : ZeusPhysicsLab/target/zeus_physics_lab-1.0-SNAPSHOT.jar"
-else
-    echo "[--] ZeusPhysicsLab  : not found"
-fi
 
 for target in "${FABRIC_TARGETS[@]}"; do
     if [ -f "ZeusFabric/build/libs/ZeusFabric-${target}-1.0-SNAPSHOT.jar" ]; then
@@ -143,7 +112,6 @@ for target in "${FABRIC_TARGETS[@]}"; do
     fi
 done
 
-echo ""
 echo "============================================"
 echo " Verification Surface:"
 echo "   ZeusGateway-modern -> build/unit verification; consult support-matrix.json"
@@ -151,6 +119,4 @@ echo "   ZeusGateway-legacy -> Java 8 build verification; consult support-matrix
 for target in "${FABRIC_TARGETS[@]}"; do
     echo "   ZeusFabric-${target} -> exact target build; consult support-matrix.json"
 done
-echo "   ZeusPhysicsLab  -> Paper lab generator for replay physics coverage"
 echo "============================================"
-echo ""

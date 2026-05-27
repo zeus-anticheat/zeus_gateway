@@ -9,6 +9,5 @@
         <module>ZeusProtocolJava</module>
         <module>ZeusGatewayLegacy</module>
         <module>ZeusGateway</module>
-        <module>ZeusPhysicsLab</module>
     </modules>
 </project>
