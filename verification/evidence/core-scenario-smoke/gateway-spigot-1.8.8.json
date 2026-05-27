@@ -1,0 +1,1674 @@
+{
+  "artifact": "ZeusGatewayLegacy/target/ZeusGateway-legacy-1.0-SNAPSHOT.jar",
+  "artifactSha256": "d8931b47ea550f1f9d55be18b50b0e4268673fbe6161e4b384d79dc1d6335fd0",
+  "captureSeconds": 60.0,
+  "command": [
+    "/usr/lib/jvm/java-8-openjdk/jre/bin/java",
+    "-Xmx768M",
+    "-jar",
+    "server.jar",
+    "nogui"
+  ],
+  "configPath": "/tmp/zeus-smoke/spigot-1.8.8/plugins/ZeusGateway/config.yml",
+  "deployedArtifact": "/tmp/zeus-smoke/spigot-1.8.8/plugins/ZeusGateway-legacy-1.0-SNAPSHOT.jar",
+  "dryRun": false,
+  "durationSeconds": 99.206,
+  "exitCode": 0,
+  "failurePatterns": [
+    "Error occurred while enabling ZeusGateway",
+    "Error occurred while enabling ZeusGatewayLegacy",
+    "Could not load 'plugins/.*ZeusGateway.*\\.jar'",
+    "net\\.fabricmc\\.loader\\.impl\\.FormattedException",
+    "Mixin apply failed",
+    "Failed to start the minecraft server",
+    "java\\.lang\\.NoClassDefFoundError",
+    "java\\.lang\\.NoSuchMethodError",
+    "java\\.lang\\.UnsupportedClassVersionError",
+    "Exception in thread \\\"main\\\""
+  ],
+  "gate": "core-scenario-smoke",
+  "kind": "gateway",
+  "logTail": [
+    "Loading libraries, please wait...",
+    "[17:57:45 INFO]: Starting minecraft server version 1.8.8",
+    "[17:57:45 INFO]: Loading properties",
+    "[17:57:45 INFO]: Default game type: SURVIVAL",
+    "[17:57:45 INFO]: This server is running CraftBukkit version git-Spigot-db6de12-18fbb24 (MC: 1.8.8) (Implementing API version 1.8.8-R0.1-SNAPSHOT)",
+    "[17:57:45 INFO]: Server Ping Player Sample Count: 12",
+    "[17:57:45 INFO]: Using 4 threads for Netty based IO",
+    "[17:57:45 INFO]: Debug logging is disabled",
+    "[17:57:45 INFO]: Generating keypair",
+    "[17:57:45 INFO]: Starting Minecraft server on *:25565",
+    "[17:57:45 INFO]: Using epoll channel type",
+    "[17:57:45 INFO]: Set PluginClassLoader as parallel capable",
+    "[17:57:45 INFO]: [ZeusGateway] Loading ZeusGateway v1.0-SNAPSHOT",
+    "[17:57:45 WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!",
+    "[17:57:45 WARN]: The server will make no attempt to authenticate usernames. Beware.",
+    "[17:57:45 WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.",
+    "[17:57:45 WARN]: To change this, set \"online-mode\" to \"true\" in the server.properties file.",
+    "[17:57:45 INFO]: **** Beginning UUID conversion, this may take A LONG time ****",
+    "[17:57:45 INFO]: Preparing level \"world\"",
+    "[17:57:45 INFO]: -------- World Settings For [world] --------",
+    "[17:57:45 INFO]: Nerfing mobs spawned from spawners: false",
+    "[17:57:45 INFO]: Anti X-Ray: true",
+    "[17:57:45 INFO]: \tEngine Mode: 1",
+    "[17:57:45 INFO]: \tHidden Blocks: [14, 15, 16, 21, 48, 49, 54, 56, 73, 74, 82, 129, 130]",
+    "[17:57:45 INFO]: \tReplace Blocks: [1, 5]",
+    "[17:57:45 INFO]: Mob Spawn Range: 4",
+    "[17:57:45 INFO]: Cactus Growth Modifier: 100%",
+    "[17:57:45 INFO]: Cane Growth Modifier: 100%",
+    "[17:57:45 INFO]: Melon Growth Modifier: 100%",
+    "[17:57:45 INFO]: Mushroom Growth Modifier: 100%",
+    "[17:57:45 INFO]: Pumpkin Growth Modifier: 100%",
+    "[17:57:45 INFO]: Sapling Growth Modifier: 100%",
+    "[17:57:45 INFO]: Wheat Growth Modifier: 100%",
+    "[17:57:45 INFO]: NetherWart Growth Modifier: 100%",
+    "[17:57:45 INFO]: Entity Activation Range: An 32 / Mo 32 / Mi 16",
+    "[17:57:45 INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Other 64",
+    "[17:57:45 INFO]: Hopper Transfer: 8 Hopper Check: 8 Hopper Amount: 1",
+    "[17:57:45 INFO]: Random Lighting Updates: false",
+    "[17:57:45 INFO]: Structure Info Saving: true",
+    "[17:57:45 INFO]: Sending up to 10 chunks per packet",
+    "[17:57:45 INFO]: Max Entity Collisions: 8",
+    "[17:57:45 INFO]: Custom Map Seeds:  Village: 10387312 Feature: 14357617",
+    "[17:57:45 INFO]: Max TNT Explosions: 100",
+    "[17:57:45 INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms",
+    "[17:57:45 INFO]: View Distance: 10",
+    "[17:57:45 INFO]: Item Merge Radius: 2.5",
+    "[17:57:45 INFO]: Item Despawn Rate: 6000",
+    "[17:57:45 INFO]: Arrow Despawn Rate: 1200",
+    "[17:57:45 INFO]: Allow Zombie Pigmen to spawn from portal blocks: true",
+    "[17:57:45 INFO]: Zombie Aggressive Towards Villager: true",
+    "[17:57:45 INFO]: Chunks to Grow per Tick: 650",
+    "[17:57:45 INFO]: Clear tick list: false",
+    "[17:57:45 INFO]: Experience Merge Radius: 3.0",
+    "[17:57:46 INFO]: -------- World Settings For [world_nether] --------",
+    "[17:57:46 INFO]: Nerfing mobs spawned from spawners: false",
+    "[17:57:46 INFO]: Anti X-Ray: true",
+    "[17:57:46 INFO]: \tEngine Mode: 1",
+    "[17:57:46 INFO]: \tHidden Blocks: [14, 15, 16, 21, 48, 49, 54, 56, 73, 74, 82, 129, 130]",
+    "[17:57:46 INFO]: \tReplace Blocks: [1, 5]",
+    "[17:57:46 INFO]: Mob Spawn Range: 4",
+    "[17:57:46 INFO]: Cactus Growth Modifier: 100%",
+    "[17:57:46 INFO]: Cane Growth Modifier: 100%",
+    "[17:57:46 INFO]: Melon Growth Modifier: 100%",
+    "[17:57:46 INFO]: Mushroom Growth Modifier: 100%",
+    "[17:57:46 INFO]: Pumpkin Growth Modifier: 100%",
+    "[17:57:46 INFO]: Sapling Growth Modifier: 100%",
+    "[17:57:46 INFO]: Wheat Growth Modifier: 100%",
+    "[17:57:46 INFO]: NetherWart Growth Modifier: 100%",
+    "[17:57:46 INFO]: Entity Activation Range: An 32 / Mo 32 / Mi 16",
+    "[17:57:46 INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Other 64",
+    "[17:57:46 INFO]: Hopper Transfer: 8 Hopper Check: 8 Hopper Amount: 1",
+    "[17:57:46 INFO]: Random Lighting Updates: false",
+    "[17:57:46 INFO]: Structure Info Saving: true",
+    "[17:57:46 INFO]: Sending up to 10 chunks per packet",
+    "[17:57:46 INFO]: Max Entity Collisions: 8",
+    "[17:57:46 INFO]: Custom Map Seeds:  Village: 10387312 Feature: 14357617",
+    "[17:57:46 INFO]: Max TNT Explosions: 100",
+    "[17:57:46 INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms",
+    "[17:57:46 INFO]: View Distance: 10",
+    "[17:57:46 INFO]: Item Merge Radius: 2.5",
+    "[17:57:46 INFO]: Item Despawn Rate: 6000",
+    "[17:57:46 INFO]: Arrow Despawn Rate: 1200",
+    "[17:57:46 INFO]: Allow Zombie Pigmen to spawn from portal blocks: true",
+    "[17:57:46 INFO]: Zombie Aggressive Towards Villager: true",
+    "[17:57:46 INFO]: Chunks to Grow per Tick: 650",
+    "[17:57:46 INFO]: Clear tick list: false",
+    "[17:57:46 INFO]: Experience Merge Radius: 3.0",
+    "[17:57:46 INFO]: -------- World Settings For [world_the_end] --------",
+    "[17:57:46 INFO]: Nerfing mobs spawned from spawners: false",
+    "[17:57:46 INFO]: Anti X-Ray: true",
+    "[17:57:46 INFO]: \tEngine Mode: 1",
+    "[17:57:46 INFO]: \tHidden Blocks: [14, 15, 16, 21, 48, 49, 54, 56, 73, 74, 82, 129, 130]",
+    "[17:57:46 INFO]: \tReplace Blocks: [1, 5]",
+    "[17:57:46 INFO]: Mob Spawn Range: 4",
+    "[17:57:46 INFO]: Cactus Growth Modifier: 100%",
+    "[17:57:46 INFO]: Cane Growth Modifier: 100%",
+    "[17:57:46 INFO]: Melon Growth Modifier: 100%",
+    "[17:57:46 INFO]: Mushroom Growth Modifier: 100%",
+    "[17:57:46 INFO]: Pumpkin Growth Modifier: 100%",
+    "[17:57:46 INFO]: Sapling Growth Modifier: 100%",
+    "[17:57:46 INFO]: Wheat Growth Modifier: 100%",
+    "[17:57:46 INFO]: NetherWart Growth Modifier: 100%",
+    "[17:57:46 INFO]: Entity Activation Range: An 32 / Mo 32 / Mi 16",
+    "[17:57:46 INFO]: Entity Tracking Range: Pl 48 / An 48 / Mo 48 / Mi 32 / Other 64",
+    "[17:57:46 INFO]: Hopper Transfer: 8 Hopper Check: 8 Hopper Amount: 1",
+    "[17:57:46 INFO]: Random Lighting Updates: false",
+    "[17:57:46 INFO]: Structure Info Saving: true",
+    "[17:57:46 INFO]: Sending up to 10 chunks per packet",
+    "[17:57:46 INFO]: Max Entity Collisions: 8",
+    "[17:57:46 INFO]: Custom Map Seeds:  Village: 10387312 Feature: 14357617",
+    "[17:57:46 INFO]: Max TNT Explosions: 100",
+    "[17:57:46 INFO]: Tile Max Tick Time: 50ms Entity max Tick Time: 50ms",
+    "[17:57:46 INFO]: View Distance: 10",
+    "[17:57:46 INFO]: Item Merge Radius: 2.5",
+    "[17:57:46 INFO]: Item Despawn Rate: 6000",
+    "[17:57:46 INFO]: Arrow Despawn Rate: 1200",
+    "[17:57:46 INFO]: Allow Zombie Pigmen to spawn from portal blocks: true",
+    "[17:57:46 INFO]: Zombie Aggressive Towards Villager: true",
+    "[17:57:46 INFO]: Chunks to Grow per Tick: 650",
+    "[17:57:46 INFO]: Clear tick list: false",
+    "[17:57:46 INFO]: Experience Merge Radius: 3.0",
+    "[17:57:46 INFO]: Preparing start region for level 0 (Seed: 4693521667576177911)",
+    "[17:57:46 INFO]: Preparing start region for level 1 (Seed: 4693521667576177911)",
+    "[17:57:46 INFO]: Preparing start region for level 2 (Seed: 4693521667576177911)",
+    "[17:57:46 INFO]: [ZeusGateway] Enabling ZeusGateway v1.0-SNAPSHOT",
+    "[17:57:46 INFO]: [ZeusGatewayLegacy] ProxyClient initialized, sending to 127.0.0.1:59485",
+    "[17:57:46 INFO]: [ZeusGateway] [ZeusGatewayLegacy] Plugin enabled; Java 8 legacy artifact foundation active.",
+    "[17:57:46 INFO]: Server permissions file permissions.yml is empty, ignoring it",
+    "[17:57:46 INFO]: Done (0.980s)! For help, type \"help\" or \"?\"",
+    "[17:57:46 INFO]: Opped ZeusSmokeBot",
+    "[17:57:49 INFO]: UUID of player ZeusSmokeBot is b6b0d199-94cf-328f-9577-acb71d6ca2cd",
+    "[17:57:49 INFO]: ZeusSmokeBot[/127.0.0.1:33722] logged in with entity id 118 at ([world]-185.5, 66.0, -226.06976845642652)",
+    "[17:57:56 INFO]: ZeusSmokeBot issued server command: /summon Zombie ~ ~ ~",
+    "[17:57:56 INFO]: [ZeusSmokeBot: Object successfully summoned]",
+    "[17:57:57 INFO]: ZeusSmokeBot issued server command: /summon Zombie ~ ~ ~",
+    "[17:57:57 INFO]: [ZeusSmokeBot: Object successfully summoned]",
+    "[17:57:57 INFO]: ZeusSmokeBot issued server command: /summon zombie ~ ~ ~",
+    "[17:57:57 WARN]: Skipping Entity with id zombie",
+    "[17:57:57 INFO]: [ZeusSmokeBot: Unable to summon object]",
+    "[17:58:02 INFO]: ZeusSmokeBot issued server command: /give @s minecraft:stone 64",
+    "[17:58:02 INFO]: [ZeusSmokeBot: That player cannot be found]",
+    "[17:58:03 INFO]: ZeusSmokeBot issued server command: /give @s minecraft:dirt 32",
+    "[17:58:03 INFO]: [ZeusSmokeBot: That player cannot be found]",
+    "[17:58:04 INFO]: ZeusSmokeBot issued server command: /setblock -178 61 -219 chest",
+    "[17:58:04 INFO]: [ZeusSmokeBot: Block placed]",
+    "[17:58:04 INFO]: ZeusSmokeBot issued server command: /tp @s -178 61 -220",
+    "[17:58:04 INFO]: [ZeusSmokeBot: The entity UUID provided is in an invalid format]",
+    "[17:58:08 INFO]: ZeusSmokeBot issued server command: /setblock -178 61 -219 air",
+    "[17:58:08 INFO]: [ZeusSmokeBot: The block couldn't be placed]",
+    "[17:58:09 INFO]: ZeusSmokeBot issued server command: /setblock -175 61 -221 piston 1",
+    "[17:58:09 INFO]: [ZeusSmokeBot: Block placed]",
+    "[17:58:10 INFO]: ZeusSmokeBot issued server command: /setblock -174 61 -221 redstone_block",
+    "[17:58:10 INFO]: [ZeusSmokeBot: Block placed]",
+    "[17:58:12 INFO]: ZeusSmokeBot issued server command: /setblock -175 61 -221 air",
+    "[17:58:12 INFO]: [ZeusSmokeBot: Block placed]",
+    "[17:58:12 INFO]: ZeusSmokeBot issued server command: /setblock -174 61 -221 air",
+    "[17:58:12 INFO]: [ZeusSmokeBot: Block placed]",
+    "[17:58:12 INFO]: ZeusSmokeBot issued server command: /summon PrimedTnt -172 61 -221 {Fuse:20}",
+    "[17:58:12 INFO]: [ZeusSmokeBot: Object successfully summoned]",
+    "[17:58:21 INFO]: ZeusSmokeBot lost connection: Disconnected",
+    "[17:58:21 INFO]: ZeusSmokeBot left the game.",
+    "[17:59:21 INFO]: Stopping the server",
+    "[17:59:21 INFO]: Stopping server",
+    "[17:59:21 INFO]: [ZeusGateway] Disabling ZeusGateway v1.0-SNAPSHOT",
+    "[17:59:21 INFO]: [ZeusGateway] [ZeusGatewayLegacy] Plugin disabled.",
+    "[17:59:21 INFO]: Saving players",
+    "[17:59:21 INFO]: Saving worlds",
+    "[17:59:21 INFO]: Saving chunks for level 'world'/Overworld",
+    "[17:59:22 INFO]: Saving chunks for level 'world_nether'/Nether",
+    "[17:59:22 INFO]: Saving chunks for level 'world_the_end'/The End"
+  ],
+  "missingPacketIds": [],
+  "observedPacketIds": [
+    "0x01",
+    "0x02",
+    "0x03",
+    "0x09",
+    "0x13",
+    "0x22",
+    "0x26",
+    "0x27"
+  ],
+  "packetCount": 1719,
+  "packetSamples": [
+    {
+      "from": "127.0.0.1:48308",
+      "length": 61,
+      "packetId": 1,
+      "packetIdHex": "0x01",
+      "sampleHex": "010000019e69156098002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156098002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156098002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691560bb002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691560bb002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691560e6002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691560e6002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156119002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156119002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915614b002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915614b002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915617c002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915617c002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691561af002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691561af002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691561e1002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691561e1002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156213002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156213002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156245002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156245002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156277002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156277002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691562a9002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691562a9002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691562db002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691562db002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915630d002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915630d002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915633e002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915633e002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156371002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156371002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691563a3002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691563a3002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691563d5002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691563d5002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156407002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156407002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156439002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156439002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915646b002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915646b002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915649c002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915649c002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691564cf002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691564cf002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156500002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156500002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156533002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156533002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156565002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156565002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156597002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156597002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691565c9002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691565c9002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691565fb002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691565fb002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915662d002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915662d002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915665f002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915665f002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156691002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156691002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691566c3002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691566c3002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691566f4002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691566f4002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156727002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156727002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156758002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156758002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915678b002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915678b002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691567bd002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691567bd002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691567ef002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691567ef002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156820002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156820002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156853002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156853002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156884002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156884002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691568b6002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 887,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691568b6002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691568b7002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 878,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691568b7002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691568e8002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 878,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691568e8002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691568e9002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 878,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691568e9002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915691a002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 878,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915691a002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915691b002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 878,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915691b002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915694c002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 878,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915694c002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915694d002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 894,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915694d002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915697e002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 894,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915697e002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e6915697f002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 894,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e6915697f002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691569b0002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 894,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691569b0002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691569b1002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 894,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691569b1002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691569e2002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 894,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691569e2002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e691569e3002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 894,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e691569e3002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156a14002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 894,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156a14002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156a15002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 885,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156a15002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156a46002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 885,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156a46002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156a47002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 885,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156a47002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156a78002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 885,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156a78002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156a79002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 899,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156a79002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156aaa002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 899,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156aaa002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156aab002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 899,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156aab002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156adc002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 899,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156adc002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156add002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 899,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156add002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156b0e002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 899,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156b0e002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156b0f002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 892,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156b0f002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156b40002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 892,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156b40002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156b41002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 892,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156b41002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156b72002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 892,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156b72002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156b73002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 892,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156b73002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156ba5002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 892,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156ba5002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156ba5002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 892,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156ba5002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156bd6002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 892,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156bd6002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156bd7002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 892,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156bd7002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156c08002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 892,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156c08002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156c09002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 879,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156c09002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156c3a002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 879,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156c3a002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156c3b002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 879,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156c3b002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156c6c002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 879,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156c6c002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156c6d002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 888,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156c6d002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156c9e002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 888,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156c9e002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156c9f002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 888,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156c9f002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156cd0002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 888,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156cd0002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156cd1002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 888,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156cd1002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156d02002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 888,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156d02002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156d03002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 888,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156d03002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156d34002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 888,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156d34002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156d35002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 883,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156d35002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156d66002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 883,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156d66002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156d67002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 883,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156d67002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156d98002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 883,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156d98002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156d99002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 883,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156d99002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156dca002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 883,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156dca002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156dcb002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 883,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156dcb002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156dfc002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 883,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156dfc002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156dfd002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 905,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156dfd002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156e2e002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 905,
+      "packetId": 19,
+      "packetIdHex": "0x13",
+      "sampleHex": "130000019e69156e2e002462366230643139392d393463662d333238662d3935"
+    },
+    {
+      "from": "127.0.0.1:48308",
+      "length": 123,
+      "packetId": 3,
+      "packetIdHex": "0x03",
+      "sampleHex": "030000019e69156e2f002462366230643139392d393463662d333238662d3935"
+    }
+  ],
+  "profiles": [
+    "compatibility-core"
+  ],
+  "proxyHost": "127.0.0.1",
+  "proxyPort": 59485,
+  "requiredPacketIds": [
+    "0x09",
+    "0x13",
+    "0x22",
+    "0x26",
+    "0x27"
+  ],
+  "result": "passed",
+  "scenarioCommand": [
+    "bash",
+    "scenarios/compatibility-core.sh",
+    "127.0.0.1",
+    "25565",
+    "1.8"
+  ],
+  "scenarioResult": {
+    "command": [
+      "bash",
+      "scenarios/compatibility-core.sh",
+      "127.0.0.1",
+      "25565",
+      "1.8"
+    ],
+    "cwd": "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins",
+    "durationSeconds": 32.951,
+    "exitCode": 0,
+    "outputTail": [
+      "[scenario] Bot spawned at (-185.5, 66, -226.06976845642652)",
+      "[scenario] Server version: 1.8.8 isLegacy=true",
+      "[scenario] Phase 1: Movement",
+      "[scenario] Phase 2: Attack",
+      "[scenario] Found entity: Zombie dist=3.65",
+      "[scenario] Completed attack burst",
+      "[scenario] Phase 3: Inventory",
+      "[scenario] Could not find chest block, trying player inventory clicks",
+      "[scenario] Phase 4: ExternalForce triggers",
+      "[scenario] Phase 5: Extra movement",
+      "[scenario] All phases complete",
+      "SCENARIO_PASSED"
+    ]
+  },
+  "schemaVersion": 1,
+  "serverDir": "/tmp/zeus-smoke/spigot-1.8.8",
+  "serverTargetPattern": "Implementing API version 1.8.8-R0.1-SNAPSHOT",
+  "serverTargetSeen": true,
+  "startedAt": "2026-05-27T10:57:43.513874+00:00",
+  "startupFailure": null,
+  "startupSeen": true,
+  "stopAction": "stopped",
+  "successPattern": "[ZeusGatewayLegacy] Plugin enabled",
+  "target": "spigot-1.8.8",
+  "tool": "scripts/run_core_scenario_smoke.py"
+}

@@ -1,0 +1,16 @@
+name: ZeusPhysicsLab
+version: '1.0-SNAPSHOT'
+main: org.vennv.zeusPhysicsLab.ZeusPhysicsLab
+api-version: '1.21.11'
+description: Generated Minecraft physics coverage lab for Zeus replay collection
+authors:
+  - VennDev
+commands:
+  zeuslab:
+    description: Generate and manage the Zeus physics coverage lab
+    usage: /zeuslab <generate|reset|list|tp|verify|manifest>
+    permission: zeusphysicslab.admin
+permissions:
+  zeusphysicslab.admin:
+    description: Allows generating and managing the Zeus physics lab
+    default: op

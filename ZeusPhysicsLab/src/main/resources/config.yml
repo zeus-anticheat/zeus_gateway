@@ -1,0 +1,8 @@
+# ZeusPhysicsLab generation origin.
+# Leave world empty to use the command sender's current world.
+world: ""
+origin:
+  explicit: false
+  x: 0
+  y: 80
+  z: 0

@@ -1,0 +1,49 @@
+package org.vennv.packets;
+
+import org.vennv.ByteBufferUtil;
+import org.vennv.PacketBaseInfo;
+import org.vennv.PacketId;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+public final class PacketPlayerVelocity extends PacketBaseInfo {
+
+    private final double x;
+    private final double y;
+    private final double z;
+
+    public PacketPlayerVelocity(long timestamp, String uid, String username, double x, double y, double z) {
+        super(timestamp, uid, username);
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+
+    @Override
+    public byte packetId() {
+        return PacketId.PACKET_PLAYER_VELOCITY;
+    }
+
+    @Override
+    public void encode(ByteArrayOutputStream out) throws IOException {
+        encodePlayerInfo(out);
+
+        // velocity (x, y, z)
+        ByteBufferUtil.putDouble(out, x);
+        ByteBufferUtil.putDouble(out, y);
+        ByteBufferUtil.putDouble(out, z);
+    }
+
+    public double getX() {
+        return x;
+    }
+
+    public double getY() {
+        return y;
+    }
+
+    public double getZ() {
+        return z;
+    }
+}

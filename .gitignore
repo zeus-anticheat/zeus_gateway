@@ -1,0 +1,50 @@
+# IDE / Editor
+.idea/
+.settings/
+.project
+*.iml
+.vscode/
+
+# Build Output
+target/
+build/
+bin/
+out/
+.gradle/
+*.class
+
+# Logs
+logs/
+*.log
+
+# Binaries / Dependencies / Server Runtime
+versions/
+libraries/
+mods/
+plugins/
+cache/
+java-*-openjdk/
+Fabric/
+Paper/
+.fabric/
+
+# World Data
+world/
+world_nether/
+world_the_end/
+*.mca
+*.dat
+*.dat_old
+*.lock
+
+# Config (Runtime)
+server.properties
+banned-ips.json
+banned-players.json
+ops.json
+whitelist.json
+usercache.json
+paper-world.yml
+
+# Others
+*.jar

@@ -1,0 +1,106 @@
+
+> Configure project :
+Fabric Loom: 1.9.2
+
+> Task :compileJava FAILED
+/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:80: error: cannot find symbol
+            case START_SNEAKING -> action = ServerBoundPlayerCommandActions.START_SNEAKING;
+                 ^
+  symbol:   variable START_SNEAKING
+  location: class ServerPlayNetworkHandlerMixin
+/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:81: error: cannot find symbol
+            case STOP_SNEAKING -> action = ServerBoundPlayerCommandActions.STOP_SNEAKING;
+                 ^
+  symbol:   variable STOP_SNEAKING
+  location: class ServerPlayNetworkHandlerMixin
+/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:84: error: cannot find symbol
+            case START_JUMP_WITH_HORSE -> action = ServerBoundPlayerCommandActions.START_JUMP_WITH_HORSE;
+                 ^
+  symbol:   variable START_JUMP_WITH_HORSE
+  location: class ServerPlayNetworkHandlerMixin
+/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:84: error: cannot find symbol
+            case START_JUMP_WITH_HORSE -> action = ServerBoundPlayerCommandActions.START_JUMP_WITH_HORSE;
+                                                                                  ^
+  symbol:   variable START_JUMP_WITH_HORSE
+  location: class ServerBoundPlayerCommandActions
+/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:85: error: cannot find symbol
+            case STOP_JUMP_WITH_HORSE -> action = ServerBoundPlayerCommandActions.STOP_JUMP_WITH_HORSE;
+                 ^
+  symbol:   variable STOP_JUMP_WITH_HORSE
+  location: class ServerPlayNetworkHandlerMixin
+/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:85: error: cannot find symbol
+            case STOP_JUMP_WITH_HORSE -> action = ServerBoundPlayerCommandActions.STOP_JUMP_WITH_HORSE;
+                                                                                 ^
+  symbol:   variable STOP_JUMP_WITH_HORSE
+  location: class ServerBoundPlayerCommandActions
+/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:116: error: cannot find symbol
+                if (mItem.hasCustomName()) customName = mItem.getName().getString();
+                         ^
+  symbol:   method hasCustomName()
+  location: variable mItem of type ItemStack
+/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:119: error: incompatible types: inference variable T has incompatible bounds
+                    Integer cmd = mItem.getComponents().get(net.minecraft.component.DataComponentTypes.CUSTOM_MODEL_DATA);
+                                                           ^
+    upper bounds: Integer,Object
+    lower bounds: CustomModelDataComponent
+  where T is a type-variable:
+    T extends Object declared in method <T>get(ComponentType<? extends T>)
+8 errors
+
+[Incubating] Problems report is available at: file:///home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava'.
+> Compilation failed; see the compiler output below.
+  /home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:119: error: incompatible types: inference variable T has incompatible bounds
+                      Integer cmd = mItem.getComponents().get(net.minecraft.component.DataComponentTypes.CUSTOM_MODEL_DATA);
+                                                             ^
+      upper bounds: Integer,Object
+      lower bounds: CustomModelDataComponent
+    where T is a type-variable:
+      T extends Object declared in method <T>get(ComponentType<? extends T>)
+  /home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:80: error: cannot find symbol
+              case START_SNEAKING -> action = ServerBoundPlayerCommandActions.START_SNEAKING;
+                   ^
+    symbol:   variable START_SNEAKING
+    location: class ServerPlayNetworkHandlerMixin
+  /home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:81: error: cannot find symbol
+              case STOP_SNEAKING -> action = ServerBoundPlayerCommandActions.STOP_SNEAKING;
+                   ^
+    symbol:   variable STOP_SNEAKING
+    location: class ServerPlayNetworkHandlerMixin
+  /home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:84: error: cannot find symbol
+              case START_JUMP_WITH_HORSE -> action = ServerBoundPlayerCommandActions.START_JUMP_WITH_HORSE;
+                   ^
+    symbol:   variable START_JUMP_WITH_HORSE
+    location: class ServerPlayNetworkHandlerMixin
+  /home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:84: error: cannot find symbol
+              case START_JUMP_WITH_HORSE -> action = ServerBoundPlayerCommandActions.START_JUMP_WITH_HORSE;
+                                                                                    ^
+    symbol:   variable START_JUMP_WITH_HORSE
+    location: class ServerBoundPlayerCommandActions
+  /home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:85: error: cannot find symbol
+              case STOP_JUMP_WITH_HORSE -> action = ServerBoundPlayerCommandActions.STOP_JUMP_WITH_HORSE;
+                   ^
+    symbol:   variable STOP_JUMP_WITH_HORSE
+    location: class ServerPlayNetworkHandlerMixin
+  /home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:85: error: cannot find symbol
+              case STOP_JUMP_WITH_HORSE -> action = ServerBoundPlayerCommandActions.STOP_JUMP_WITH_HORSE;
+                                                                                   ^
+    symbol:   variable STOP_JUMP_WITH_HORSE
+    location: class ServerBoundPlayerCommandActions
+  /home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java:116: error: cannot find symbol
+                  if (mItem.hasCustomName()) customName = mItem.getName().getString();
+                           ^
+    symbol:   method hasCustomName()
+    location: variable mItem of type ItemStack
+  8 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 2s
+1 actionable task: 1 executed

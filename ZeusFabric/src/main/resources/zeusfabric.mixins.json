@@ -1,0 +1,13 @@
+{
+    "required": true,
+    "package": "org.vennv.zeusFabric.mixins",
+    "compatibilityLevel": "JAVA_21",
+    "mixins": [
+        "ServerPlayNetworkHandlerMixin"
+    ],
+    "client": [
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

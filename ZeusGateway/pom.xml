@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.vennv</groupId>
+    <artifactId>zeus_gateway_modern</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>ZeusGateway Modern</name>
+    <description
+    >Zeus Anti-Cheat data collector plugin - supports Paper, Spigot, and Folia</description>
+
+    <properties>
+        <java.version>8</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <junit.version>5.11.4</junit.version>
+        <mockito.version>5.15.2</mockito.version>
+    </properties>
+
+    <build>
+        <defaultGoal>clean package</defaultGoal>
+        <finalName>ZeusGateway-modern-${project.version}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <release>${java.version}</release>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.3</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
+        </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+    </build>
+
+    <repositories>
+        <!-- Paper / Folia -->
+        <repository>
+            <id>papermc-repo</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+        <!-- Spigot -->
+        <repository>
+            <id>spigotmc-repo</id>
+            <url
+            >https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+        </repository>
+        <!-- ProtocolLib -->
+        <repository>
+            <id>dmulloy2-repo</id>
+            <url>https://repo.dmulloy2.net/repository/public/</url>
+        </repository>
+        <!-- Minecraft libraries (for NMS / auth-lib etc.) -->
+        <repository>
+            <id>minecraft-libraries</id>
+            <url>https://libraries.minecraft.net</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!--
+            Paper API – provided at runtime by Paper / Folia servers.
+            Also pulls in the full Bukkit + Spigot API transitively,
+            so a single dependency covers all three platforms at compile time.
+        -->
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>1.21.11-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--
+            Spigot API – kept as a secondary provided dependency so that
+            IDE resolution and javadoc work even when targeting pure-Spigot.
+            The version range is wide enough to cover 1.13 – 1.21+.
+        -->
+        <dependency>
+            <groupId>org.spigotmc</groupId>
+            <artifactId>spigot-api</artifactId>
+            <version>1.21.11-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--
+            ProtocolLib – OPTIONAL at runtime.
+            Marked as provided so it is NOT shaded into the final JAR.
+            The plugin detects its presence at runtime and degrades gracefully
+            when it is missing (Bukkit-event-only mode).
+        -->
+        <dependency>
+            <groupId>com.comphenix.protocol</groupId>
+            <artifactId>ProtocolLib</artifactId>
+            <version>5.3.0</version>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!--
+            Zeus Protocol Java – the shared packet / codec library.
+            This IS shaded into the final JAR so servers don't need it
+            as a separate plugin.
+        -->
+        <dependency>
+            <groupId>org.vennv</groupId>
+            <artifactId>ZeusProtocolJava</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

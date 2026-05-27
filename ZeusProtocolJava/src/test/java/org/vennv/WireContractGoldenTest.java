@@ -1,0 +1,112 @@
+package org.vennv;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
+import org.junit.jupiter.api.Test;
+import org.vennv.packets.PacketPlayerAttackEntity;
+import org.vennv.packets.PacketPlayerExternalForce;
+import org.vennv.packets.PacketPlayerInventoryTransaction;
+import org.vennv.packets.PacketPlayerSurroundingBlocks;
+import org.vennv.packets.PacketPlayerVelocity;
+import org.vennv.utils.ExternalForceFlags;
+import org.vennv.utils.ExternalForceType;
+import org.vennv.utils.ItemStack;
+import org.vennv.utils.RelativeBlock;
+
+/**
+ * Golden payloads for the packets consumed by the cross-platform physics path.
+ * A change here requires a coordinated Rust protocol migration.
+ */
+class WireContractGoldenTest {
+    private static final long TIMESTAMP = 0x0102030405060708L;
+    private static final String UID = "u";
+    private static final String USERNAME = "n";
+
+    @Test
+    void packetIdsRemainAssignedThroughExternalForce() {
+        assertEquals(0x09, PacketId.PACKET_PLAYER_ATTACK_ENTITY & 0xff);
+        assertEquals(0x13, PacketId.PACKET_PLAYER_SURROUNDING_BLOCKS & 0xff);
+        assertEquals(0x22, PacketId.PACKET_PLAYER_VELOCITY & 0xff);
+        assertEquals(0x26, PacketId.PACKET_PLAYER_INVENTORY_TRANSACTION & 0xff);
+        assertEquals(0x27, PacketId.PACKET_PLAYER_EXTERNAL_FORCE & 0xff);
+    }
+
+    @Test
+    void attackFixtureIsStable() throws Exception {
+        assertEquals(
+                "09010203040506070800017500016e000165401000000000000040140000000000004018000000000000"
+                        + "40e00000410000003fe666663f19999a3ff00000000000004000000000000000400800000000000001",
+                hex(new PacketPlayerAttackEntity(
+                        TIMESTAMP,
+                        UID,
+                        USERNAME,
+                        new EntityState("e", 1, 2, 3, 4, 5, 6, 7f, 8f, 1.8f, .6f, true))));
+    }
+
+    @Test
+    void velocityFixtureIsStable() throws Exception {
+        assertEquals(
+                "22010203040506070800017500016e3fd0000000000000bfe00000000000003ff0000000000000",
+                hex(new PacketPlayerVelocity(TIMESTAMP, UID, USERNAME, .25, -.5, 1)));
+    }
+
+    @Test
+    void surroundingBlocksFixtureIsStable() throws Exception {
+        assertEquals(
+                "13010203040506070800017500016e01ff0001000f6d696e6563726166743a73746f6e65",
+                hex(new PacketPlayerSurroundingBlocks(
+                        TIMESTAMP,
+                        UID,
+                        USERNAME,
+                        Arrays.asList(new RelativeBlock(-1, 0, 1, "minecraft:stone")))));
+    }
+
+    @Test
+    void inventoryTransactionFixtureIsStable() throws Exception {
+        assertEquals(
+                "26010203040506070800017500016e02000000030004050006000700106d696e6563726166743a"
+                        + "637572736f7200000008090001000a000f6d696e6563726166743a73746f6e650000000b0c",
+                hex(new PacketPlayerInventoryTransaction(
+                        TIMESTAMP,
+                        UID,
+                        USERNAME,
+                        (byte) 2,
+                        3,
+                        (short) 4,
+                        (byte) 5,
+                        (short) 6,
+                        (short) 7,
+                        new ItemStack("minecraft:cursor", 8, (byte) 9),
+                        Arrays.asList(new PacketPlayerInventoryTransaction.ChangedSlot(
+                                (short) 10,
+                                new ItemStack("minecraft:stone", 11, (byte) 12))))));
+    }
+
+    @Test
+    void externalForceFixtureIsStable() throws Exception {
+        assertEquals(
+                "27010203040506070800017500016e063ff000000000000040000000000000004008000000000000"
+                        + "401000000000000040140000000000004018000000000000401c0000000000004020000000000000"
+                        + "40220000000000004024000000000000000b00000041",
+                hex(new PacketPlayerExternalForce(
+                        TIMESTAMP,
+                        UID,
+                        USERNAME,
+                        ExternalForceType.SLIME_PISTON,
+                        1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                        (short) 11,
+                        ExternalForceFlags.HAS_SLIME | ExternalForceFlags.ENVIRONMENT_BACKED)));
+    }
+
+    private String hex(PacketEncode packet) throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        packet.encode(out);
+        StringBuilder result = new StringBuilder();
+        for (byte value : out.toByteArray()) {
+            result.append(String.format("%02x", value & 0xff));
+        }
+        return result.toString();
+    }
+}

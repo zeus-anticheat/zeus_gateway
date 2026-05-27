@@ -1,0 +1,29 @@
+{
+    "schemaVersion": 1,
+    "id": "zeusfabric",
+    "version": "${version}",
+    "name": "ZeusFabric",
+    "description": "Zeus Anti-Cheat data collector mod for Fabric servers",
+    "authors": [
+        "VennDev"
+    ],
+    "contact": {},
+    "license": "All-Rights-Reserved",
+    "icon": "",
+    "environment": "server",
+    "entrypoints": {
+        "server": [
+            "org.vennv.zeusFabric.ZeusFabricMod"
+        ]
+    },
+    "mixins": [
+        "zeusfabric.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=0.18.1",
+        "minecraft": "=${minecraft_target}",
+        "java": ">=21",
+        "fabric-api": "*"
+    },
+    "suggests": {}
+}

@@ -1,0 +1,12 @@
+proxy-ac:
+    host: 127.0.0.1
+    port: 9999
+
+packets:
+    batch-size: 100
+    position-snapshot-ticks: 1
+
+server-combat:
+    reach-override: 0
+    cooldown-override: 0
+    max-cps: 0

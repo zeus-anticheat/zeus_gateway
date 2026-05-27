@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "targets": [
+    {
+      "kind": "gateway",
+      "target": "paper-1.21.7",
+      "serverDir": "/srv/zeus-smoke/paper-1.21.7",
+      "commandLine": "java -Xmx1G -jar paper.jar nogui",
+      "acceptEula": true,
+      "startup": true,
+      "coreScenario": {
+        "profile": ["compatibility-core"],
+        "scenarioCommandLine": "/srv/zeus-smoke/scenarios/compatibility-core.sh",
+        "captureSeconds": 45
+      }
+    },
+    {
+      "kind": "gateway",
+      "target": "spigot-1.8.8",
+      "serverDir": "/srv/zeus-smoke/spigot-1.8.8",
+      "commandLine": "java -Xmx1G -jar spigot.jar nogui",
+      "acceptEula": true,
+      "startup": true,
+      "coreScenario": {
+        "profile": ["compatibility-core"],
+        "scenarioCommandLine": "/srv/zeus-smoke/scenarios/compatibility-core-legacy.sh",
+        "captureSeconds": 45
+      }
+    },
+    {
+      "kind": "fabric",
+      "target": "1.21.4",
+      "serverDir": "/srv/zeus-smoke/fabric-1.21.4",
+      "commandLine": "java -Xmx1G -jar fabric-server-launch.jar nogui",
+      "acceptEula": true,
+      "startup": true,
+      "coreScenario": {
+        "profile": ["compatibility-core"],
+        "scenarioCommandLine": "/srv/zeus-smoke/scenarios/compatibility-core-fabric.sh",
+        "captureSeconds": 45
+      }
+    },
+    {
+      "kind": "fabric",
+      "target": "1.21.11",
+      "serverDir": "/srv/zeus-smoke/fabric-1.21.11",
+      "commandLine": "java -Xmx1G -jar fabric-server-launch.jar nogui",
+      "acceptEula": true,
+      "startup": true,
+      "coreScenario": {
+        "profile": ["compatibility-core"],
+        "scenarioCommandLine": "/srv/zeus-smoke/scenarios/compatibility-core-fabric.sh",
+        "captureSeconds": 45
+      }
+    }
+  ]
+}

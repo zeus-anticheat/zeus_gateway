@@ -1,0 +1,34 @@
+host: 0.0.0.0
+port: 9999
+latency:
+  ping_interval_ms: 1000
+  timeout_ms: 5000
+  max_samples: 100
+  spike_threshold_ms: 200
+runtime:
+  worker_threads: 4
+  shard_count: 4
+  network_receivers: 2
+ml:
+  enabled: false
+  max_timesteps: 500
+  diagnostic_log_interval: 500
+  training:
+    epochs: 50
+    batch_size: 32
+    learning_rate: 0.001
+    min_samples: 5000
+  movement:
+    enabled: false
+    models: []
+    required_consecutive: 5
+    warning_ratio: 2.0
+    kick_ratio: 5.0
+    ban_ratio: 10.0
+  combat:
+    enabled: false
+    models: []
+    required_consecutive: 5
+    warning_ratio: 2.0
+    kick_ratio: 5.0
+    ban_ratio: 10.0

@@ -1,0 +1,257 @@
+{
+  "schemaVersion": 1,
+  "wireContract": "zeus-udp-v1-packet-ids-0x01-through-0x27",
+  "publicationGate": [
+    "artifact-build",
+    "protocol-golden-fixtures",
+    "server-startup-smoke",
+    "core-scenario-smoke"
+  ],
+  "gateway": {
+    "artifacts": [
+      {
+        "id": "ZeusGateway-legacy",
+        "java": "8",
+        "platforms": "Paper/Spigot",
+        "range": "1.8-1.13.x",
+        "status": "build-verifiable",
+        "note": "All declared targets supported; per-target evidence in support-matrix.targets."
+      },
+      {
+        "id": "ZeusGateway-modern",
+        "java": "8+",
+        "platforms": "Paper/Spigot/Folia",
+        "range": "No released supported targets yet",
+        "status": "build-verifiable",
+        "note": "All declared targets supported; per-target evidence in support-matrix.targets."
+      }
+    ],
+    "targets": [
+      {
+        "id": "spigot-1.8.8",
+        "artifact": "ZeusGateway-legacy",
+        "platform": "Spigot",
+        "minecraft": "1.8.8",
+        "startupLogPattern": "Implementing API version 1.8.8-R0.1-SNAPSHOT",
+        "status": "supported",
+        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/gateway-spigot-1.8.8.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/gateway-spigot-1.8.8.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/gateway-spigot-1.8.8.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/gateway-spigot-1.8.8.json"
+        }
+      },
+      {
+        "id": "spigot-1.13.2",
+        "artifact": "ZeusGateway-legacy",
+        "platform": "Spigot",
+        "minecraft": "1.13.2",
+        "startupLogPattern": "Starting minecraft server version 1.13.2",
+        "status": "supported",
+        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/gateway-spigot-1.13.2.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/gateway-spigot-1.13.2.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/gateway-spigot-1.13.2.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/gateway-spigot-1.13.2.json"
+        }
+      },
+      {
+        "id": "spigot-1.14.4",
+        "artifact": "ZeusGateway-modern",
+        "platform": "Spigot",
+        "minecraft": "1.14.4",
+        "startupLogPattern": "Starting minecraft server version 1.14.4",
+        "status": "supported",
+        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/gateway-spigot-1.14.4.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/gateway-spigot-1.14.4.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/gateway-spigot-1.14.4.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/gateway-spigot-1.14.4.json"
+        }
+      },
+      {
+        "id": "paper-1.21.7",
+        "artifact": "ZeusGateway-modern",
+        "platform": "Paper",
+        "minecraft": "1.21.7",
+        "startupLogPattern": "Loading Paper 1.21.7-",
+        "status": "supported",
+        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/gateway-paper-1.21.7.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/gateway-paper-1.21.7.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/gateway-paper-1.21.7.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/gateway-paper-1.21.7.json"
+        }
+      }
+    ]
+  },
+  "fabric": {
+    "defaultTarget": "1.21.11",
+    "targets": [
+      {
+        "minecraft": "1.21",
+        "status": "adapter-required",
+        "note": "Multiple API breaks: ActionResult class\u2192interface, BlockPos.iterate(Box) overload, EntityAttributes.ENTITY_INTERACTION_RANGE absent, ServerPlayNetworkHandler mixin signature differs. Per-version source set required."
+      },
+      {
+        "minecraft": "1.21.1",
+        "status": "adapter-required",
+        "note": "Multiple API breaks: ActionResult class\u2192interface, BlockPos.iterate(Box) overload, EntityAttributes.ENTITY_INTERACTION_RANGE absent, ServerPlayNetworkHandler mixin signature differs. Per-version source set required."
+      },
+      {
+        "minecraft": "1.21.2",
+        "status": "supported",
+        "note": "All publication gates pass.",
+        "minecraftDependency": "1.21.2",
+        "loader": "0.18.1",
+        "yarn": "1.21.2+build.1",
+        "fabricApi": "0.106.1+1.21.2",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/fabric-1.21.2.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.2.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/fabric-1.21.2.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/fabric-1.21.2.json"
+        }
+      },
+      {
+        "minecraft": "1.21.3",
+        "status": "supported",
+        "note": "All publication gates pass.",
+        "minecraftDependency": "1.21.3",
+        "loader": "0.18.1",
+        "yarn": "1.21.3+build.2",
+        "fabricApi": "0.114.1+1.21.3",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/fabric-1.21.3.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.3.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/fabric-1.21.3.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/fabric-1.21.3.json"
+        }
+      },
+      {
+        "minecraft": "1.21.4",
+        "minecraftDependency": "1.21.4",
+        "loader": "0.18.1",
+        "yarn": "1.21.4+build.8",
+        "fabricApi": "0.112.2+1.21.4",
+        "status": "supported",
+        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/fabric-1.21.4.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.4.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/fabric-1.21.4.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/fabric-1.21.4.json"
+        }
+      },
+      {
+        "minecraft": "1.21.5",
+        "status": "supported",
+        "note": "All publication gates pass.",
+        "minecraftDependency": "1.21.5",
+        "loader": "0.18.1",
+        "yarn": "1.21.5+build.1",
+        "fabricApi": "0.128.2+1.21.5",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/fabric-1.21.5.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.5.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/fabric-1.21.5.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/fabric-1.21.5.json"
+        }
+      },
+      {
+        "minecraft": "1.21.6",
+        "status": "supported",
+        "note": "All publication gates pass.",
+        "minecraftDependency": "1.21.6",
+        "loader": "0.18.1",
+        "yarn": "1.21.6+build.1",
+        "fabricApi": "0.128.2+1.21.6",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/fabric-1.21.6.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.6.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/fabric-1.21.6.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/fabric-1.21.6.json"
+        }
+      },
+      {
+        "minecraft": "1.21.7",
+        "status": "supported",
+        "note": "All publication gates pass.",
+        "minecraftDependency": "1.21.7",
+        "loader": "0.18.1",
+        "yarn": "1.21.7+build.8",
+        "fabricApi": "0.129.0+1.21.7",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/fabric-1.21.7.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.7.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/fabric-1.21.7.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/fabric-1.21.7.json"
+        }
+      },
+      {
+        "minecraft": "1.21.8",
+        "status": "supported",
+        "note": "All publication gates pass.",
+        "minecraftDependency": "1.21.8",
+        "loader": "0.18.1",
+        "yarn": "1.21.8+build.1",
+        "fabricApi": "0.136.1+1.21.8",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/fabric-1.21.8.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.8.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/fabric-1.21.8.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/fabric-1.21.8.json"
+        }
+      },
+      {
+        "minecraft": "1.21.9",
+        "status": "supported",
+        "minecraftDependency": "1.21.9",
+        "loader": "0.18.1",
+        "yarn": "1.21.9+build.1",
+        "fabricApi": "0.134.1+1.21.9",
+        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/fabric-1.21.9.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.9.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/fabric-1.21.9.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/fabric-1.21.9.json"
+        }
+      },
+      {
+        "minecraft": "1.21.10",
+        "status": "supported",
+        "minecraftDependency": "1.21.10",
+        "loader": "0.18.1",
+        "yarn": "1.21.10+build.3",
+        "fabricApi": "0.138.4+1.21.10",
+        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/fabric-1.21.10.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.10.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/fabric-1.21.10.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/fabric-1.21.10.json"
+        }
+      },
+      {
+        "minecraft": "1.21.11",
+        "minecraftDependency": "1.21.11",
+        "loader": "0.18.1",
+        "yarn": "1.21.11+build.1",
+        "fabricApi": "0.141.4+1.21.11",
+        "status": "supported",
+        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "evidence": {
+          "artifact-build": "verification/evidence/artifact-build/fabric-1.21.11.json",
+          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.11.json",
+          "server-startup-smoke": "verification/evidence/startup-smoke/fabric-1.21.11.json",
+          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/fabric-1.21.11.json"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,81 @@
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'fabric-loom' version '1.15.5'
+    id 'maven-publish'
+    id 'java'
+}
+
+version = '1.0-SNAPSHOT'
+group = 'org.vennv'
+
+def supportMatrix = new JsonSlurper().parse(file('../support-matrix.json'))
+def minecraftTarget = findProperty('mcTarget') ?: supportMatrix.fabric.defaultTarget
+def target = supportMatrix.fabric.targets.find { it.minecraft == minecraftTarget }
+if (target == null || !(target.status in ['build-verifiable', 'supported'])) {
+    throw new GradleException("No buildable ZeusFabric adapter for Minecraft ${minecraftTarget}; see support-matrix.json")
+}
+
+base {
+    archivesName = "ZeusFabric-${minecraftTarget}"
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'FabricMC'
+        url = 'https://maven.fabricmc.net/'
+    }
+    mavenLocal()
+}
+
+dependencies {
+    // Fabric
+    minecraft "com.mojang:minecraft:${target.minecraftDependency}"
+    mappings "net.fabricmc:yarn:${target.yarn}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${target.loader}"
+
+    // Fabric API
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${target.fabricApi}"
+
+    // Zeus Protocol Java (shared packet codec library)
+    implementation "org.vennv:ZeusProtocolJava:1.0-SNAPSHOT"
+    include "org.vennv:ZeusProtocolJava:1.0-SNAPSHOT"
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraftTarget", minecraftTarget
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version, "minecraft_target": minecraftTarget
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}
+
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            artifactId = project.base.archivesName.get()
+            from components.java
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
+}

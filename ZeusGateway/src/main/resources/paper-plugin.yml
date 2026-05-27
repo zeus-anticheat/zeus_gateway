@@ -1,0 +1,12 @@
+name: ZeusGateway
+version: "1.0-SNAPSHOT"
+main: org.vennv.zeusGateway.ZeusGateway
+api-version: "1.21.11"
+description: Zeus Anti-Cheat data collector plugin - modern Gateway artifact
+authors:
+    - VennDev
+dependencies:
+    server:
+        ProtocolLib:
+            load: BEFORE
+            required: false

@@ -1,0 +1,20 @@
+proxy-ac:
+    host: 127.0.0.1
+    port: 9999
+
+packets:
+    batch-size: 100
+
+# Server combat settings for Zeus adaptive detection.
+# These values are auto-detected by default based on the Minecraft version.
+# Override only if your server uses a custom reach or cooldown plugin.
+server-combat:
+    # Base melee reach in blocks. 0 = auto-detect (default 3.0 for all versions).
+    # Override if your server uses a custom reach plugin.
+    reach-override: 0
+    # Attack cooldown in ticks. Negative = auto-detect from MC version.
+    # 1.9+ = 10.0 ticks, 1.8 = 0.0 (no cooldown).
+    # Override if your server modifies cooldown via plugin.
+    cooldown-override: -1
+    # Max CPS enforced by another plugin. 0 = unlimited (no enforcement).
+    max-cps: 0

@@ -1,0 +1,13 @@
+{
+  "artifact": "ZeusGatewayLegacy/target/ZeusGateway-legacy-1.0-SNAPSHOT.jar",
+  "artifactSha256": "01c58bb600f3c2ae694086e44d4d82178531763d765d25796ed0822c03db3643",
+  "artifactSizeBytes": 81390,
+  "createdAt": "2026-05-27T09:22:12.682806+00:00",
+  "dryRun": false,
+  "gate": "artifact-build",
+  "kind": "gateway",
+  "result": "passed",
+  "schemaVersion": 1,
+  "target": "ZeusGateway-legacy",
+  "tool": "scripts/write_release_evidence.py"
+}

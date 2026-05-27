@@ -1,0 +1,13 @@
+{
+  "artifact": "ZeusGateway/target/ZeusGateway-modern-1.0-SNAPSHOT.jar",
+  "artifactSha256": "acffb967c50423f2df74699431cdb4aa416ea244a0613be26f67aaae63e2cc4d",
+  "artifactSizeBytes": 213323,
+  "createdAt": "2026-05-27T09:22:12.682806+00:00",
+  "dryRun": false,
+  "gate": "artifact-build",
+  "kind": "gateway",
+  "result": "passed",
+  "schemaVersion": 1,
+  "target": "ZeusGateway-modern",
+  "tool": "scripts/write_release_evidence.py"
+}

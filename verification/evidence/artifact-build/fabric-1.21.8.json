@@ -1,0 +1,13 @@
+{
+  "artifact": "ZeusFabric/build/libs/ZeusFabric-1.21.8-1.0-SNAPSHOT.jar",
+  "artifactSha256": "ac901375bb38f5e4645c1688113876e6606284007625629d63124971d6daf7c7",
+  "artifactSizeBytes": 113395,
+  "createdAt": "2026-05-27T13:15:22.413274+00:00",
+  "dryRun": false,
+  "gate": "artifact-build",
+  "kind": "fabric",
+  "result": "passed",
+  "schemaVersion": 1,
+  "target": "1.21.8",
+  "tool": "scripts/write_release_evidence.py"
+}
