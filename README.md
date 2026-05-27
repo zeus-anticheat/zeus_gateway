@@ -1,4 +1,4 @@
-# Zeus Plugins
+# Zeus Gateway 
 
 Zeus Anti-Cheat data collector plugins for Minecraft servers. These plugins capture player behavior data and stream it via UDP to the Zeus anti-cheat analysis server.
 
