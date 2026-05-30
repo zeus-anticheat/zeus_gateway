@@ -2,7 +2,7 @@
 
 # ============================================
 #  Zeus Plugins Build Script
-#  Supports: ZeusProtocolJava, ZeusGateway, ZeusFabric
+#  Supports: ZeusProtocolJava, ZeusGateway, ZeusPhysicsLab, ZeusFabric
 # ============================================
 
 set -e
@@ -13,7 +13,7 @@ set -e
 
 echo "============================================"
 echo " Zeus Plugins Build Script"
-echo " Supports: ZeusProtocolJava, ZeusGateway, ZeusFabric"
+echo " Supports: ZeusProtocolJava, ZeusGateway, ZeusPhysicsLab, ZeusFabric"
 echo "============================================"
 
 echo "[1/4] Checking Java version..."
@@ -50,6 +50,12 @@ if ! mvn clean package -pl ZeusGatewayLegacy -am; then
     exit 1
 fi
 echo "[OK] ZeusGateway-legacy built successfully."
+
+if ! mvn clean package -f ZeusPhysicsLab/pom.xml; then
+    echo "[ERROR] ZeusPhysicsLab build failed!"
+    exit 1
+fi
+echo "[OK] ZeusPhysicsLab built successfully."
 
 echo "============================================"
 echo " Building Gradle module (ZeusFabric)"
@@ -103,6 +109,12 @@ else
     echo "[--] ZeusGatewayLegacy: not found"
 fi
 
+if [ -f "ZeusPhysicsLab/target/zeus_physics_lab-1.0-SNAPSHOT.jar" ]; then
+    echo "[OK] ZeusPhysicsLab    : ZeusPhysicsLab/target/zeus_physics_lab-1.0-SNAPSHOT.jar"
+else
+    echo "[--] ZeusPhysicsLab    : not found"
+fi
+
 
 for target in "${FABRIC_TARGETS[@]}"; do
     if [ -f "ZeusFabric/build/libs/ZeusFabric-${target}-1.0-SNAPSHOT.jar" ]; then
@@ -116,6 +128,7 @@ echo "============================================"
 echo " Verification Surface:"
 echo "   ZeusGateway-modern -> build/unit verification; consult support-matrix.json"
 echo "   ZeusGateway-legacy -> Java 8 build verification; consult support-matrix.json"
+echo "   ZeusPhysicsLab     -> physics coverage lab; standalone Maven build"
 for target in "${FABRIC_TARGETS[@]}"; do
     echo "   ZeusFabric-${target} -> exact target build; consult support-matrix.json"
 done
