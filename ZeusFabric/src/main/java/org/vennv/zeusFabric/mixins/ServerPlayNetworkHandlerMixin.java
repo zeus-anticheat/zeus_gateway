@@ -65,7 +65,7 @@ public abstract class ServerPlayNetworkHandlerMixin {
         );
         PacketQueue.push(packetPP);
 
-        List<RelativeBlock> blocks = BlockUtil.getRelativeBlocks(this.player);
+        List<RelativeBlock> blocks = BlockUtil.getRelativeBlocks(this.player, packetPos);
         PacketPlayerSurroundingBlocks packetPSB = new PacketPlayerSurroundingBlocks(
             timestamp, uid, name, blocks
         );

@@ -22,7 +22,8 @@ public class BlockUtil {
         final double playerWidth = player.getWidth();
 
         double footY = pos.getY() - epsilon;
-        int blockY = MathHelper.floor(footY);
+        int minBlockY = MathHelper.floor(pos.getY() - 0.5001);
+        int maxBlockY = MathHelper.floor(pos.getY() + 0.5001);
 
         double minX = pos.getX() - (playerWidth / 2);
         double maxX = pos.getX() + (playerWidth / 2);
@@ -35,24 +36,26 @@ public class BlockUtil {
         int maxBlockZ = MathHelper.floor(maxZ);
 
         for (int x = minBlockX; x <= maxBlockX; x++) {
-            for (int z = minBlockZ; z <= maxBlockZ; z++) {
-                BlockPos blockPos = new BlockPos(x, blockY, z);
-                BlockState state = world.getBlockState(blockPos);
+            for (int y = minBlockY; y <= maxBlockY; y++) {
+                for (int z = minBlockZ; z <= maxBlockZ; z++) {
+                    BlockPos blockPos = new BlockPos(x, y, z);
+                    BlockState state = world.getBlockState(blockPos);
 
-                if (state.isAir() || !state.getFluidState().isEmpty()) {
-                    continue;
-                }
+                    if (state.isAir() || !state.getFluidState().isEmpty()) {
+                        continue;
+                    }
 
-                VoxelShape shape = state.getCollisionShape(world, blockPos);
-                if (shape.isEmpty()) {
-                    continue;
-                }
+                    VoxelShape shape = state.getCollisionShape(world, blockPos);
+                    if (shape.isEmpty()) {
+                        continue;
+                    }
 
-                Box box = shape.getBoundingBox().offset(blockPos);
+                    Box box = shape.getBoundingBox().offset(blockPos);
 
-                if (footY >= box.minY - epsilon && footY <= box.maxY + epsilon) {
-                    if (boxesOverlapXZ(minX, maxX, minZ, maxZ, box)) {
-                        return true;
+                    if (footY >= box.minY - epsilon && footY <= box.maxY + epsilon) {
+                        if (boxesOverlapXZ(minX, maxX, minZ, maxZ, box)) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -70,15 +73,14 @@ public class BlockUtil {
                 playerMinZ <= blockBox.maxZ + 0.0001;
     }
 
-    public static List<RelativeBlock> getRelativeBlocks(ServerPlayerEntity player) {
+    public static List<RelativeBlock> getRelativeBlocks(ServerPlayerEntity player, Vec3d pos) {
         List<RelativeBlock> blocks = new ArrayList<>();
 
-        BlockPos loc = player.getBlockPos();
         World world = MinecraftCompat.entityWorld(player);
 
-        int baseX = loc.getX();
-        int baseY = MathHelper.floor(player.getY());
-        int baseZ = loc.getZ();
+        int baseX = MathHelper.floor(pos.getX());
+        int baseY = MathHelper.floor(pos.getY());
+        int baseZ = MathHelper.floor(pos.getZ());
 
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -2; dy <= 2; dy++) {
@@ -100,5 +102,9 @@ public class BlockUtil {
             }
         }
         return blocks;
+    }
+
+    public static List<RelativeBlock> getRelativeBlocks(ServerPlayerEntity player) {
+        return getRelativeBlocks(player, new Vec3d(player.getX(), player.getY(), player.getZ()));
     }
 }

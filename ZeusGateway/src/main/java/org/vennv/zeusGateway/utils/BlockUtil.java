@@ -20,7 +20,8 @@ public class BlockUtil {
         final double playerWidth = EntityCompat.getPlayerWidth(player);
 
         double footY = pos.getY() - epsilon;
-        int blockY = MathUtil.floor(footY);
+        int minBlockY = MathUtil.floor(pos.getY() - 0.5001);
+        int maxBlockY = MathUtil.floor(pos.getY() + 0.5001);
 
         double minX = pos.getX() - (playerWidth / 2);
         double maxX = pos.getX() + (playerWidth / 2);
@@ -33,23 +34,25 @@ public class BlockUtil {
         int maxBlockZ = MathUtil.floor(maxZ);
 
         for (int x = minBlockX; x <= maxBlockX; x++) {
-            for (int z = minBlockZ; z <= maxBlockZ; z++) {
-                Block block = world.getBlockAt(x, blockY, z);
+            for (int y = minBlockY; y <= maxBlockY; y++) {
+                for (int z = minBlockZ; z <= maxBlockZ; z++) {
+                    Block block = world.getBlockAt(x, y, z);
 
-                if (BlockCompat.isAir(block) || block.isLiquid()) {
-                    continue;
-                }
+                    if (BlockCompat.isAir(block) || block.isLiquid()) {
+                        continue;
+                    }
 
-                double[] bounds = BlockCompat.getBlockBoundsArray(block);
-                if (bounds == null) {
-                    continue;
-                }
+                    double[] bounds = BlockCompat.getBlockBoundsArray(block);
+                    if (bounds == null) {
+                        continue;
+                    }
 
-                // bounds = [minX, minY, minZ, maxX, maxY, maxZ]
-                if (footY >= bounds[1] - epsilon && footY <= bounds[4] + epsilon) {
-                    if (BoxUtil.boxesOverlapXZ(minX, maxX, minZ, maxZ,
-                            bounds[0], bounds[3], bounds[2], bounds[5])) {
-                        return true;
+                    // bounds = [minX, minY, minZ, maxX, maxY, maxZ]
+                    if (footY >= bounds[1] - epsilon && footY <= bounds[4] + epsilon) {
+                        if (BoxUtil.boxesOverlapXZ(minX, maxX, minZ, maxZ,
+                                bounds[0], bounds[3], bounds[2], bounds[5])) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -58,10 +61,8 @@ public class BlockUtil {
         return false;
     }
 
-    public static List<RelativeBlock> getRelativeBlocks(Player player) {
+    public static List<RelativeBlock> getRelativeBlocks(Player player, Location loc) {
         List<RelativeBlock> blocks = new ArrayList<>();
-
-        Location loc = player.getLocation();
         World world = loc.getWorld();
 
         int baseX = loc.getBlockX();
@@ -87,5 +88,9 @@ public class BlockUtil {
             }
         }
         return blocks;
+    }
+
+    public static List<RelativeBlock> getRelativeBlocks(Player player) {
+        return getRelativeBlocks(player, player.getLocation());
     }
 }

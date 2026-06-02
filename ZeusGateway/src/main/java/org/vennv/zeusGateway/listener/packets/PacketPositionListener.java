@@ -123,7 +123,8 @@ public class PacketPositionListener extends PacketAdapter {
                     packetPos.getX(), packetPos.getY(), packetPos.getZ(),
                     eyeX, eyeY, eyeZ, yaw, pitch, height, onGround));
 
-            List<RelativeBlock> blocks = BlockUtil.getRelativeBlocks(player);
+            org.bukkit.Location packetLoc = new org.bukkit.Location(player.getWorld(), packetPos.getX(), packetPos.getY(), packetPos.getZ());
+            List<RelativeBlock> blocks = BlockUtil.getRelativeBlocks(player, packetLoc);
             PacketQueue.push(new PacketPlayerSurroundingBlocks(timestamp, uid, name, blocks));
         } catch (Exception e) {
             plugin
