@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "gl": "^8.1.6",
+    "prismarine-viewer": "^1.33.0",
+    "puppeteer": "^25.1.0",
+    "puppeteer-stream": "^3.0.22"
+  }
+}

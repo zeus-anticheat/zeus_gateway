@@ -11,6 +11,9 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "mineflayer": "^4.37.1"
+    "canvas": "^3.2.3",
+    "gl": "^8.1.6",
+    "mineflayer": "^4.37.1",
+    "prismarine-viewer": "^1.33.0"
   }
 }

@@ -150,6 +150,8 @@ def write_server_files(server_dir, server_port, proxy_host, proxy_port, batch_si
                 "force-gamemode=false",
                 "view-distance=8",
                 "simulation-distance=6",
+                "level-type=flat",
+                "generator-settings={\"layers\":[{\"block\":\"minecraft:bedrock\",\"height\":1},{\"block\":\"minecraft:dirt\",\"height\":2},{\"block\":\"minecraft:grass_block\",\"height\":1}],\"biome\":\"minecraft:plains\"}",
                 "motd=Zeus Physics Lab Smoke",
                 "",
             ]
