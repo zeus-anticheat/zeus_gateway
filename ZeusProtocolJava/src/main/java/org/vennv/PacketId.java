@@ -8,8 +8,6 @@ public class PacketId {
     public static final byte PACKET_PLAYER_KEEP_ALIVE = 0x04;
     public static final byte PACKET_PLAYER_CHANGE_MODE = 0x05;
     public static final byte PACKET_PLAYER_SWING_HAND = 0x06;
-    public static final byte PACKET_PLAYER_PLACE_BLOCK = 0x07;
-    public static final byte PACKET_PLAYER_DIGGING_BLOCK = 0x08;
     public static final byte PACKET_PLAYER_ATTACK_ENTITY = 0x09;
     public static final byte PACKET_PLAYER_TELEPORT = 0x0A;
     public static final byte PACKET_PLAYER_EFFECT = 0x0B;
@@ -20,7 +18,6 @@ public class PacketId {
     public static final byte PACKET_PLAYER_ATTACKED_BY_ENTITY = 0x10;
     public static final byte PACKET_PLAYER_ENTITY_INTERACTION = 0x11;
     public static final byte PACKET_TPS_SERVER = 0x12;
-    public static final byte PACKET_PLAYER_SURROUNDING_BLOCKS = 0x13;
     public static final byte PACKET_PLAYER_HELD_ITEM = 0x14;
     public static final byte PACKET_PLAYER_ARMORS_EQUIPMENT = 0x15;
     public static final byte PACKET_PLAYER_CONFIRM_TRANSACTION = 0x16;
@@ -41,4 +38,10 @@ public class PacketId {
     public static final byte PACKET_SERVER_CONFIG = 0x25;
     public static final byte PACKET_PLAYER_INVENTORY_TRANSACTION = 0x26;
     public static final byte PACKET_PLAYER_EXTERNAL_FORCE = 0x27;
+    public static final byte PACKET_ENTITY_SPAWN = 0x28;
+    public static final byte PACKET_ENTITY_MOVE = 0x29;
+    public static final byte PACKET_ENTITY_DESTROY = 0x2A;
+    public static final byte PACKET_BLOCK_CHANGE_EVENT = 0x2B;
+    public static final byte PACKET_PLAYER_INPUT = 0x2C;
+    public static final byte PACKET_CHUNK_DATA = 0x2D;
 }

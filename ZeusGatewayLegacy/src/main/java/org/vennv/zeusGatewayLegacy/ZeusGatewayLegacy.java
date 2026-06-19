@@ -10,7 +10,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -36,11 +35,9 @@ import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerJoin;
 import org.vennv.packets.PacketPlayerLeave;
 import org.vennv.packets.PacketPlayerPosition;
-import org.vennv.packets.PacketPlayerSurroundingBlocks;
 import org.vennv.packets.PacketPlayerVelocity;
 import org.vennv.utils.ExternalForceFlags;
 import org.vennv.utils.ExternalForceType;
-import org.vennv.utils.RelativeBlock;
 
 public final class ZeusGatewayLegacy extends JavaPlugin implements Listener {
     private LegacyProxyClient proxyClient;
@@ -223,7 +220,6 @@ public final class ZeusGatewayLegacy extends JavaPlugin implements Listener {
                 location.getPitch(),
                 player.isSneaking() ? 1.5f : 1.8f,
                 player.isOnGround()));
-        push(new PacketPlayerSurroundingBlocks(timestamp, uid(player), player.getName(), surroundingBlocks(player)));
     }
 
     private PacketPlayerExternalForce externalForce(
@@ -276,20 +272,6 @@ public final class ZeusGatewayLegacy extends JavaPlugin implements Listener {
                 entity instanceof Player && ((Player) entity).isOnGround());
     }
 
-    private List<RelativeBlock> surroundingBlocks(Player player) {
-        List<RelativeBlock> blocks = new ArrayList<RelativeBlock>(45);
-        Location base = player.getLocation();
-        Block baseBlock = base.getBlock();
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 3; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    Block block = baseBlock.getRelative(dx, dy, dz);
-                    blocks.add(new RelativeBlock(dx, dy, dz, materialKey(block.getType())));
-                }
-            }
-        }
-        return blocks;
-    }
 
     private org.vennv.utils.ItemStack itemStack(org.bukkit.inventory.ItemStack stack) {
         if (stack == null || stack.getType() == Material.AIR || stack.getAmount() <= 0) {

@@ -12,6 +12,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -487,19 +488,20 @@ public class EventListener implements Listener {
 
         Location loc = event.getBlockPlaced().getLocation();
 
-        PacketPlayerPlaceBlock packet = new PacketPlayerPlaceBlock(
+        // Emit PacketBlockChangeEvent so CompensatedWorld tracks this block
+        String blockType = event.getBlockPlaced().getType().name();
+        PacketQueue.push(new PacketBlockChangeEvent(
                 timestamp,
                 uid,
                 name,
-                event.isCancelled(),
-                loc.getX(),
-                loc.getY(),
-                loc.getZ());
-        PacketQueue.push(packet);
+                (int) loc.getX(),
+                (int) loc.getY(),
+                (int) loc.getZ(),
+                blockType,
+                (byte) 0x00));
     }
 
     // ─────────────────── Block Break (Bukkit Event) ──────────────────
-
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onBlockBreak(BlockBreakEvent event) {
         if (!isFallbackEnabled(RawCaptureCapability.DIGGING_BLOCK)) {
@@ -513,15 +515,16 @@ public class EventListener implements Listener {
 
         Location loc = event.getBlock().getLocation();
 
-        PacketPlayerDiggingBlock packet = new PacketPlayerDiggingBlock(
+        // Emit PacketBlockChangeEvent with AIR (block was removed)
+        PacketQueue.push(new PacketBlockChangeEvent(
                 timestamp,
                 uid,
                 name,
-                event.isCancelled(),
-                loc.getX(),
-                loc.getY(),
-                loc.getZ());
-        PacketQueue.push(packet);
+                (int) loc.getX(),
+                (int) loc.getY(),
+                (int) loc.getZ(),
+                "AIR",
+                (byte) 0x00));
     }
 
     // ────────────────────────── Held Item ─────────────────────────────
@@ -1087,12 +1090,46 @@ public class EventListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPistonExtend(BlockPistonExtendEvent event) {
         emitPistonForces(event.getBlocks(), event.getDirection(), false);
+        emitPistonBlockChanges(event.getBlocks(), event.getDirection(), false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPistonRetract(BlockPistonRetractEvent event) {
         emitPistonForces(event.getBlocks(), event.getDirection(), true);
+        emitPistonBlockChanges(event.getBlocks(), event.getDirection(), true);
     }
+    // ─────────────────── Block Change Events (CompensatedWorld) ──────────────────
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockFromTo(BlockFromToEvent event) {
+        // Fluid flow (water/lava spreading)
+        long timestamp = System.currentTimeMillis();
+        org.bukkit.block.Block to = event.getToBlock();
+        String blockType = to.getType().name();
+        PacketQueue.push(new PacketBlockChangeEvent(
+                timestamp, "world", "world",
+                to.getX(), to.getY(), to.getZ(),
+                blockType,
+                (byte) 0x03));
+    }
+
+    // BlockRedstoneEvent is a Spigot-specific event for current/old current state
+    // We don't need to track this for CompensatedWorld - redstone component blocks
+    // (repeater/comparator) don't change actual block type, only signal state.
+    // Keep this commented handler as a placeholder in case we need to track later.
+    //
+    // @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    // public void onBlockRedstone(BlockRedstoneEvent event) {
+    //     // Redstone signal change: track for redstone-component blocks (repeater, comparator, etc.)
+    //     org.bukkit.block.Block block = event.getBlock();
+    //     long timestamp = System.currentTimeMillis();
+    //     PacketQueue.push(new PacketBlockChangeEvent(
+    //             timestamp, "world", "world",
+    //             block.getX(), block.getY(), block.getZ(),
+    //             block.getType().name(),
+    //             (byte) 0x04));
+    // }
+
 
     // ───────────────────── Block Face (Bukkit) ──────────────────────
 
@@ -1189,6 +1226,53 @@ public class EventListener implements Listener {
             }
         }
     }
+    /**
+     * Emit PacketBlockChangeEvent for each block moved by a piston.
+     * This updates the CompensatedWorld so the simulation knows the block
+     * has moved from its old position to its new position.
+     */
+    private void emitPistonBlockChanges(
+            java.util.List<Block> movedBlocks,
+            org.bukkit.block.BlockFace direction,
+            boolean retracting) {
+        if (movedBlocks == null || movedBlocks.isEmpty() || direction == null) {
+            return;
+        }
+
+        Vector dir = direction.getDirection();
+        int dx = dir.getBlockX();
+        int dy = dir.getBlockY();
+        int dz = dir.getBlockZ();
+
+        long timestamp = System.currentTimeMillis();
+
+        for (Block block : movedBlocks) {
+            int oldX = block.getX();
+            int oldY = block.getY();
+            int oldZ = block.getZ();
+
+            int newX = oldX + dx;
+            int newY = oldY + dy;
+            int newZ = oldZ + dz;
+
+            String blockName = block.getType().name();
+
+            // Old position becomes AIR
+            PacketQueue.push(new PacketBlockChangeEvent(
+                    timestamp, "world", "world",
+                    oldX, oldY, oldZ,
+                    "AIR",
+                    (byte) 0x01));
+
+            // New position gets the block
+            PacketQueue.push(new PacketBlockChangeEvent(
+                    timestamp, "world", "world",
+                    newX, newY, newZ,
+                    blockName,
+                    (byte) 0x01));
+        }
+    }
+
 
     private boolean overlaps(double[] first, double[] second) {
         return first[0] < second[3] && first[3] > second[0]

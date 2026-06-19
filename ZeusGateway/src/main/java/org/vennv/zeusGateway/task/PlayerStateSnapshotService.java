@@ -2,12 +2,13 @@ package org.vennv.zeusGateway.task;
 
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.util.Vector;
 import org.vennv.Effect;
+import org.vennv.packets.PacketBlockChangeEvent;
 import org.vennv.packets.PacketPlayerArmorsEquipment;
 import org.vennv.packets.PacketPlayerChangeMode;
 import org.vennv.packets.PacketPlayerEffect;
@@ -17,9 +18,9 @@ import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerJoin;
 import org.vennv.packets.PacketPlayerOpenWindow;
 import org.vennv.packets.PacketPlayerPosition;
-import org.vennv.packets.PacketPlayerSurroundingBlocks;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.packets.PacketServerConfig;
+import org.bukkit.event.inventory.InventoryType;
 import org.vennv.utils.Armor;
 import org.vennv.utils.Armors;
 import org.vennv.utils.EffectFlags;
@@ -27,7 +28,6 @@ import org.vennv.utils.EffectType;
 import org.vennv.utils.Enchantment;
 import org.vennv.utils.Item;
 import org.vennv.utils.ItemStack;
-import org.vennv.utils.RelativeBlock;
 import org.vennv.utils.ServerBoundPlayerCommandActions;
 import org.vennv.zeusGateway.compat.AttributeCompat;
 import org.vennv.zeusGateway.compat.EffectCompat;
@@ -136,7 +136,8 @@ public final class PlayerStateSnapshotService {
         String uid = player.getUniqueId().toString();
         String name = player.getName();
 
-        PacketQueue.push(new PacketPlayerJoin(timestamp, uid, name));
+        int protocolVersion = ServerVersion.isAtLeast(1, 21, 5) ? 770 : ServerVersion.isAtLeast(1, 21, 4) ? 769 : ServerVersion.isAtLeast(1, 21, 2) ? 768 : ServerVersion.isAtLeast(1, 21) ? 767 : ServerVersion.isAtLeast(1, 20, 5) ? 765 : ServerVersion.isAtLeast(1, 20) ? 763 : 0;
+        PacketQueue.push(new PacketPlayerJoin(timestamp, uid, name, protocolVersion));
         PacketQueue.push(serverConfig(timestamp, uid, name, player));
         PacketQueue.push(new PacketPlayerChangeMode(
                 timestamp,
@@ -167,13 +168,21 @@ public final class PlayerStateSnapshotService {
             reach = interactionRange.floatValue();
         }
 
+        // Read current movement speed attribute (includes Soul Speed, Speed potion, etc.)
+        float movementSpeed = 0.1f; // Vanilla default
+        Double speedAttr = AttributeCompat.getMovementSpeed(player);
+        if (speedAttr != null && speedAttr > 0.0) {
+            movementSpeed = speedAttr.floatValue();
+        }
+
         return new PacketServerConfig(
                 timestamp,
                 uid,
                 name,
                 reach,
                 cooldown,
-                ServerCombatSettings.getMaxCps());
+                ServerCombatSettings.getMaxCps(),
+                movementSpeed);
     }
 
     public static int gameModeToProtocolId(GameMode mode) {
@@ -212,11 +221,7 @@ public final class PlayerStateSnapshotService {
                 loc.getPitch(),
                 height,
                 onGround));
-
-        List<RelativeBlock> blocks = BlockUtil.getRelativeBlocks(player);
-        PacketQueue.push(new PacketPlayerSurroundingBlocks(timestamp, uid, name, blocks));
     }
-
     private static void sendHeldItem(
             long timestamp,
             String uid,

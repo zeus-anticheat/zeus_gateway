@@ -65,8 +65,6 @@ import org.vennv.zeusFabric.utils.MinecraftCompat;
  *   <li>PacketPlayerKeepAlive</li>
  *   <li>PacketPlayerChangeMode</li>
  *   <li>PacketPlayerSwingHand</li>
- *   <li>PacketPlayerPlaceBlock</li>
- *   <li>PacketPlayerDiggingBlock</li>
  *   <li>PacketPlayerAttackEntity</li>
  *   <li>PacketPlayerTeleport</li>
  *   <li>PacketPlayerEffect</li>
@@ -77,9 +75,7 @@ import org.vennv.zeusFabric.utils.MinecraftCompat;
  *   <li>PacketPlayerAttackedByEntity</li>
  *   <li>PacketPlayerEntityInteraction</li>
  *   <li>PacketTPSServer (handled in ZeusFabricMod tick callback)</li>
- *   <li>PacketPlayerSurroundingBlocks</li>
  *   <li>PacketPlayerHeldItem</li>
- *   <li>PacketPlayerArmorsEquipment</li>
  *   <li>PacketPlayerConfirmTransaction</li>
  *   <li>PacketPlayerOpenWindow</li>
  *   <li>PacketPlayerClickWindow</li>
@@ -374,19 +370,6 @@ public final class ZeusEventListeners {
                 String name = serverPlayer.getName().getString();
                 long timestamp = System.currentTimeMillis();
 
-                // PacketPlayerDiggingBlock
-                PacketQueue.push(
-                    new PacketPlayerDiggingBlock(
-                        timestamp,
-                        uid,
-                        name,
-                        false,
-                        pos.getX(),
-                        pos.getY(),
-                        pos.getZ()
-                    )
-                );
-
                 // PacketPlayerBlockFace
                 byte face = mapDirection(direction);
                 PacketQueue.push(
@@ -420,19 +403,6 @@ public final class ZeusEventListeners {
 
             BlockPos pos = hitResult.getBlockPos();
 
-            // PacketPlayerPlaceBlock
-            PacketQueue.push(
-                new PacketPlayerPlaceBlock(
-                    timestamp,
-                    uid,
-                    name,
-                    false,
-                    pos.getX(),
-                    pos.getY(),
-                    pos.getZ()
-                )
-            );
-
             // PacketPlayerBlockFace
             byte face = mapDirection(hitResult.getSide());
             PacketQueue.push(
@@ -460,6 +430,13 @@ public final class ZeusEventListeners {
             PacketQueue.push(
                 new PacketPlayerBlockChangeAck(timestamp, uid, name)
             );
+
+            // PacketBlockChangeEvent — track world state for CompensatedWorld
+            String blockType = world.getBlockState(pos).toString();
+            PacketQueue.push(new PacketBlockChangeEvent(
+                timestamp, uid, name,
+                pos.getX(), pos.getY(), pos.getZ(),
+                blockType, (byte) 0x00));
 
             return ActionResult.PASS;
         });
@@ -563,30 +540,12 @@ public final class ZeusEventListeners {
                 PacketQueue.push(
                     new PacketPlayerBlockChangeAck(timestamp, uid, name)
                 );
-            }
-        );
 
-        PlayerBlockBreakEvents.CANCELED.register(
-            (world, player, pos, state, blockEntity) -> {
-                if (!(player instanceof ServerPlayerEntity serverPlayer)) {
-                    return;
-                }
-
-                String uid = serverPlayer.getUuidAsString();
-                String name = serverPlayer.getName().getString();
-                long timestamp = System.currentTimeMillis();
-
-                PacketQueue.push(
-                    new PacketPlayerDiggingBlock(
-                        timestamp,
-                        uid,
-                        name,
-                        true,
-                        pos.getX(),
-                        pos.getY(),
-                        pos.getZ()
-                    )
-                );
+                // PacketBlockChangeEvent — block was removed (AIR)
+                PacketQueue.push(new PacketBlockChangeEvent(
+                    timestamp, uid, name,
+                    pos.getX(), pos.getY(), pos.getZ(),
+                    "AIR", (byte) 0x00));
             }
         );
     }
@@ -819,12 +778,6 @@ public final class ZeusEventListeners {
                 height,
                 onGround
             )
-        );
-
-        // Surrounding blocks
-        List<RelativeBlock> blocks = getSurroundingBlocks(player);
-        PacketQueue.push(
-            new PacketPlayerSurroundingBlocks(timestamp, uid, name, blocks)
         );
     }
 
@@ -1677,31 +1630,6 @@ public final class ZeusEventListeners {
                 31 * hash + (stack.isEmpty() ? 0 : ItemStack.hashCode(stack));
         }
         return hash;
-    }
-
-    /**
-     * Gets the surrounding blocks around a player (3x5x3 cube centred on the
-     * player's feet), matching the Bukkit implementation in ZeusGateway.
-     */
-    private static List<RelativeBlock> getSurroundingBlocks(
-        ServerPlayerEntity player
-    ) {
-        List<RelativeBlock> blocks = new ArrayList<>();
-
-        BlockPos basePos = player.getBlockPos();
-        World world = MinecraftCompat.entityWorld(player);
-
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -2; dy <= 2; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    BlockPos bp = basePos.add(dx, dy, dz);
-                    BlockState state = world.getBlockState(bp);
-                    blocks.add(new RelativeBlock(dx, dy, dz, state.toString()));
-                }
-            }
-        }
-
-        return blocks;
     }
 
     /**

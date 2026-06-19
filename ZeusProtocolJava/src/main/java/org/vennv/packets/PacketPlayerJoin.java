@@ -12,6 +12,10 @@ public final class PacketPlayerJoin extends PacketBaseInfo {
        super(timestamp, uid, username);
     }
 
+    public PacketPlayerJoin(long timestamp, String uid, String username, int protocolVersion) {
+       super(timestamp, uid, username, protocolVersion);
+    }
+
     @Override
     public byte packetId() {
         return PacketId.PACKET_PLAYER_JOIN; // 0x01

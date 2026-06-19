@@ -11,9 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 import org.vennv.packets.PacketPlayerPosition;
-import org.vennv.packets.PacketPlayerSurroundingBlocks;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
-import org.vennv.utils.RelativeBlock;
 import org.vennv.utils.ServerBoundPlayerCommandActions;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
@@ -123,9 +121,8 @@ public class PacketPositionListener extends PacketAdapter {
                     packetPos.getX(), packetPos.getY(), packetPos.getZ(),
                     eyeX, eyeY, eyeZ, yaw, pitch, height, onGround));
 
-            org.bukkit.Location packetLoc = new org.bukkit.Location(player.getWorld(), packetPos.getX(), packetPos.getY(), packetPos.getZ());
-            List<RelativeBlock> blocks = BlockUtil.getRelativeBlocks(player, packetLoc);
-            PacketQueue.push(new PacketPlayerSurroundingBlocks(timestamp, uid, name, blocks));
+            // SurroundingBlocks removed — CompensatedWorld handles block tracking
+            // via PacketBlockChangeEvent (place/break/piston/fluid events).
         } catch (Exception e) {
             plugin
                 .getLogger()

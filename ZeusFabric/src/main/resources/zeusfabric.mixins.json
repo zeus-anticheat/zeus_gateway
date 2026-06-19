@@ -3,7 +3,8 @@
     "package": "org.vennv.zeusFabric.mixins",
     "compatibilityLevel": "JAVA_21",
     "mixins": [
-        "ServerPlayNetworkHandlerMixin"
+        "ServerPlayNetworkHandlerMixin",
+        "EntityLifecycleMixin"
     ],
     "client": [
     ],

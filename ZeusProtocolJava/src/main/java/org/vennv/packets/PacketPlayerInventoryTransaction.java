@@ -83,7 +83,7 @@ public final class PacketPlayerInventoryTransaction extends PacketBaseInfo {
         ByteBufferUtil.putShort(out, transactionId);
         cursorStack.encode(out);
 
-        ByteBufferUtil.putShort(out, (short) changedSlots.size());
+        ByteBufferUtil.putInt(out, changedSlots.size());
         for (ChangedSlot changedSlot : changedSlots) {
             ByteBufferUtil.putShort(out, changedSlot.slot());
             changedSlot.itemStack().encode(out);

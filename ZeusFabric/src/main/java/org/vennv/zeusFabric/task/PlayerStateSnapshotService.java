@@ -20,7 +20,6 @@ import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerJoin;
 import org.vennv.packets.PacketPlayerOpenWindow;
 import org.vennv.packets.PacketPlayerPosition;
-import org.vennv.packets.PacketPlayerSurroundingBlocks;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.packets.PacketServerConfig;
 import org.vennv.utils.Armors;
@@ -28,7 +27,6 @@ import org.vennv.utils.EffectFlags;
 import org.vennv.utils.EffectType;
 import org.vennv.utils.Enchantment;
 import org.vennv.utils.Item;
-import org.vennv.utils.RelativeBlock;
 import org.vennv.utils.ServerBoundPlayerCommandActions;
 import org.vennv.zeusFabric.ServerCombatSettings;
 import org.vennv.zeusFabric.provider.PacketQueue;
@@ -224,9 +222,6 @@ public final class PlayerStateSnapshotService {
                 player.getPitch(),
                 player.getHeight(),
                 onGround));
-
-        List<RelativeBlock> blocks = BlockUtil.getRelativeBlocks(player);
-        PacketQueue.push(new PacketPlayerSurroundingBlocks(timestamp, uid, name, blocks));
     }
 
     private static void sendHeldItem(

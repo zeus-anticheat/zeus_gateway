@@ -30,7 +30,7 @@ public final class PacketPlayerEnchantments extends PacketBaseInfo {
         encodePlayerInfo(out);
         ByteBufferUtil.putFloat(out, entityInteractionRange);
         
-        ByteBufferUtil.putShort(out, (short) enchantments.size());
+        ByteBufferUtil.putInt(out, enchantments.size());
         for (Enchantment enchantment : enchantments) {
             ByteBufferUtil.putString(out, enchantment.getName());
             ByteBufferUtil.putByte(out, enchantment.getLevel());

@@ -22,6 +22,17 @@ public class AttributeCompat {
         return null;
     }
 
+    public static Double getMovementSpeed(Player player) {
+        try {
+            return readAttribute(player, "GENERIC_MOVEMENT_SPEED");
+        } catch (Exception ignored) {
+            try {
+                return readAttribute(player, "MOVEMENT_SPEED");
+            } catch (Exception ignored2) {}
+        }
+        return null;
+    }
+
     public static Double getInteractionRange(Player player) {
         if (!ServerVersion.HAS_ENTITY_INTERACTION_RANGE) return null;
         return readAttribute(player, "PLAYER_ENTITY_INTERACTION_RANGE");
@@ -45,7 +56,9 @@ public class AttributeCompat {
             Object attribute = Enum.valueOf((Class<Enum>) Class.forName("org.bukkit.attribute.Attribute"), name);
             Object attributeInstance = player.getClass().getMethod("getAttribute", Class.forName("org.bukkit.attribute.Attribute")).invoke(player, attribute);
             if (attributeInstance != null) {
-                return (Double) attributeInstance.getClass().getMethod("getValue").invoke(attributeInstance);
+                // Use getBaseValue() instead of getValue() to avoid double-counting active potion effects
+                // that are already simulated engine-side by Zeus.
+                return (Double) attributeInstance.getClass().getMethod("getBaseValue").invoke(attributeInstance);
             }
         } catch (Exception ignored) {}
         return null;

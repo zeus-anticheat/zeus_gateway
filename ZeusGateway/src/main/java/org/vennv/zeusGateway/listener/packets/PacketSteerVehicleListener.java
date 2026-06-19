@@ -5,6 +5,7 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.events.ListenerPriority;
 import com.comphenix.protocol.reflect.StructureModifier;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.vennv.packets.PacketPlayerSteerVehicle;
 import org.vennv.zeusGateway.ZeusGateway;
@@ -43,7 +44,6 @@ public class PacketSteerVehicleListener extends PacketAdapter {
                 unmount = booleans.read(1);
             }
         } catch (Exception ignored) {
-            // Fall through to the structured input reader below.
         }
 
         if ((sideway == null || forward == null || jump == null || unmount == null)
@@ -62,30 +62,47 @@ public class PacketSteerVehicleListener extends PacketAdapter {
                     unmount = booleans.read(5);
                 }
             } catch (Exception ignored) {
-                // Fall through to the unreadable guard below.
             }
         }
 
         if (sideway == null || forward == null || jump == null || unmount == null) {
             plugin.getLogger().fine(
-                    "Skipping STEER_VEHICLE: unreadable fields, floats="
-                            + event.getPacket().getFloat().size()
-                            + ", booleans=" + event.getPacket().getBooleans().size()
-                            + ", structures=" + event.getPacket().getStructures().size()
-                            + ", handle=" + event.getPacket().getHandle().getClass().getName()
+                    "Skipping STEER_VEHICLE: unreadable fields"
             );
             return;
         }
 
+        // Detect vehicle type from the player's current mount (server-side)
+        String vehicleType = "";
+        Entity vehicle = player.getVehicle();
+        if (vehicle != null) {
+            vehicleType = extractVehicleType(vehicle);
+        }
+
         PacketPlayerSteerVehicle packet = new PacketPlayerSteerVehicle(
-                timestamp,
-                uid,
-                name,
-                sideway,
-                forward,
-                jump,
-                unmount
-        );
+                timestamp, uid, name, sideway, forward, jump, unmount, vehicleType);
         PacketQueue.push(packet);
+    }
+
+    /**
+     * Maps a Bukkit entity to a simple vehicle type string.
+     * Matches the Rust VehicleType enum in vehicle_state.rs.
+     */
+    private static String extractVehicleType(Entity entity) {
+        String className = entity.getClass().getSimpleName().toUpperCase();
+        if (className.contains("BOAT")) return "boat";
+        if (className.contains("PIG")) return "pig";
+        if (className.contains("STRIDER")) return "strider";
+        if (className.contains("CAMEL")) return "camel";
+        if (className.contains("HAPPY_GHAST") || className.contains("HAPPYGHAST")) return "happy_ghast";
+        if (className.contains("NAUTILUS")) return "nautilus";
+        if (className.contains("MINECART")) return "minecart";
+        if (className.contains("HORSE")) return "horse";
+        if (className.contains("DONKEY")) return "donkey";
+        if (className.contains("MULE")) return "mule";
+        if (className.contains("SKELETONHORSE")) return "skeleton_horse";
+        if (className.contains("ZOMBIEHORSE")) return "zombie_horse";
+        if (className.contains("LLAMA")) return "llama";
+        return "unknown";
     }
 }

@@ -22,13 +22,16 @@ public final class PacketServerConfig extends PacketBaseInfo {
     private final float serverReach;
     private final float attackCooldownTicks;
     private final byte maxCps;
+    private final float movementSpeed;
 
     public PacketServerConfig(long timestamp, String uid, String username,
-                              float serverReach, float attackCooldownTicks, byte maxCps) {
+                              float serverReach, float attackCooldownTicks, byte maxCps,
+                              float movementSpeed) {
         super(timestamp, uid, username);
         this.serverReach = serverReach;
         this.attackCooldownTicks = attackCooldownTicks;
         this.maxCps = maxCps;
+        this.movementSpeed = movementSpeed;
     }
 
     @Override
@@ -42,6 +45,7 @@ public final class PacketServerConfig extends PacketBaseInfo {
         ByteBufferUtil.putFloat(out, serverReach);
         ByteBufferUtil.putFloat(out, attackCooldownTicks);
         ByteBufferUtil.putByte(out, maxCps);
+        ByteBufferUtil.putFloat(out, movementSpeed);
     }
 
     public float getServerReach() {
@@ -55,4 +59,9 @@ public final class PacketServerConfig extends PacketBaseInfo {
     public byte getMaxCps() {
         return maxCps;
     }
+
+    public float getMovementSpeed() {
+        return movementSpeed;
+    }
 }
+

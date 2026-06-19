@@ -94,6 +94,7 @@ class PacketDebugTest {
         assertEquals(1L, buf.getLong());
         assertEquals(TARGET_ID.toString(), readString(buf));
         assertEquals("Venn", readString(buf));
+        assertEquals(0, Byte.toUnsignedInt(buf.get())); // protocol_version: None
         assertEquals(4, Byte.toUnsignedInt(buf.get()));
         assertEquals(123, buf.getInt());
         assertEquals(9, buf.getShort());
@@ -103,7 +104,7 @@ class PacketDebugTest {
         assertEquals("", readString(buf));
         assertEquals(0, buf.getInt());
         assertEquals(0, Byte.toUnsignedInt(buf.get()));
-        assertEquals(2, Short.toUnsignedInt(buf.getShort()));
+        assertEquals(2,  buf.getInt());
         assertEquals(9, buf.getShort());
         assertEquals("minecraft:stone", readString(buf));
         assertEquals(0, buf.getInt());

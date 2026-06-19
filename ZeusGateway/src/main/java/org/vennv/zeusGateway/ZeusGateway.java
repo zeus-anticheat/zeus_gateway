@@ -1,6 +1,9 @@
 package org.vennv.zeusGateway;
 
 import java.util.logging.Level;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.permissions.Permission;
@@ -8,6 +11,7 @@ import org.bukkit.permissions.PermissionDefault;
 import org.vennv.zeusGateway.debug.PacketDebugService;
 import org.vennv.zeusGateway.debug.ZeusDebugCommand;
 import org.vennv.zeusGateway.init.ZeusLoader;
+import org.vennv.zeusGateway.listener.packets.PacketChunkListener;
 import org.vennv.zeusGateway.platform.PlatformDetector;
 import org.vennv.zeusGateway.platform.PlatformType;
 import org.vennv.zeusGateway.platform.SchedulerAdapter;
@@ -115,9 +119,37 @@ public final class ZeusGateway extends JavaPlugin {
         ZeusLoader loader = new ZeusLoader(this);
         loader.init();
 
+        // Backfill: send chunk data for players who were already online when the
+        // plugin enabled. The PacketChunkListener only fires on MAP_CHUNK outbound
+        // packets, which means already-online players never have terrain sent to
+        // the Rust backend — leaving `compensated_world.chunks` empty so movement
+        // simulation sees no ground. Delay 50 ticks (2.5s) so server worlds and
+        // chunks have time to be available after enable.
+        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+            getLogger().info(
+                "[ZeusGateway] Backfilling chunks for already-online player "
+                + onlinePlayer.getName());
+        }
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                if (!onlinePlayer.isOnline()) continue;
+                World world = onlinePlayer.getWorld();
+                if (world == null) continue;
+                int viewDistance = Bukkit.getViewDistance();
+                int playerChunkX = onlinePlayer.getLocation().getBlockX() >> 4;
+                int playerChunkZ = onlinePlayer.getLocation().getBlockZ() >> 4;
+                for (int dx = -viewDistance; dx <= viewDistance; dx++) {
+                    for (int dz = -viewDistance; dz <= viewDistance; dz++) {
+                        int chunkX = playerChunkX + dx;
+                        int chunkZ = playerChunkZ + dz;
+                        PacketChunkListener.sendChunkBlocks(this, onlinePlayer, chunkX, chunkZ);
+                    }
+                }
+            }
+        }, 50L);
+
         getLogger().info(
-            "[ZeusGateway] Plugin enabled successfully on " + platformType + "!"
-        );
+            "[ZeusGateway] Plugin enabled successfully on " + platformType + "!");
     }
 
     @Override

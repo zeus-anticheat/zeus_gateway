@@ -10,11 +10,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.vennv.packets.PacketPlayerPosition;
-import org.vennv.packets.PacketPlayerSurroundingBlocks;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.packets.PacketPlayerClickWindow;
 import org.vennv.packets.PacketPlayerInventoryTransaction;
-import org.vennv.utils.RelativeBlock;
 import org.vennv.utils.ServerBoundPlayerCommandActions;
 import org.vennv.zeusFabric.provider.PacketQueue;
 import org.vennv.zeusFabric.task.PlayerStateSnapshotService;
@@ -65,11 +63,6 @@ public abstract class ServerPlayNetworkHandlerMixin {
         );
         PacketQueue.push(packetPP);
 
-        List<RelativeBlock> blocks = BlockUtil.getRelativeBlocks(this.player, packetPos);
-        PacketPlayerSurroundingBlocks packetPSB = new PacketPlayerSurroundingBlocks(
-            timestamp, uid, name, blocks
-        );
-        PacketQueue.push(packetPSB);
     }
 
     @Inject(method = "onClientCommand", at = @At("HEAD"))

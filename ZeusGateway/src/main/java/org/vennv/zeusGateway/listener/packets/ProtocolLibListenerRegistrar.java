@@ -2,6 +2,7 @@ package org.vennv.zeusGateway.listener.packets;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.PacketType;
 import java.util.EnumSet;
 import java.util.function.Supplier;
 import org.vennv.zeusGateway.ZeusGateway;
@@ -40,12 +41,6 @@ public final class ProtocolLibListenerRegistrar {
                 RawCaptureCapability.ATTACK_ENTITY, capabilities);
         count += register(plugin, manager, "PacketKeepAliveListener",
                 () -> new PacketKeepAliveListener(plugin), null, capabilities);
-        count += register(plugin, manager, "PacketPlaceBlockListener",
-                () -> new PacketPlaceBlockListener(plugin),
-                RawCaptureCapability.PLACE_BLOCK, capabilities);
-        count += register(plugin, manager, "PacketDiggingBlockListener",
-                () -> new PacketDiggingBlockListener(plugin),
-                RawCaptureCapability.DIGGING_BLOCK, capabilities);
         count += register(plugin, manager, "PacketBlockFaceListener",
                 () -> new PacketBlockFaceListener(plugin),
                 RawCaptureCapability.BLOCK_FACE, capabilities);
@@ -60,13 +55,39 @@ public final class ProtocolLibListenerRegistrar {
                 RawCaptureCapability.USE_ITEM, capabilities);
         count += register(plugin, manager, "PacketSteerVehicleListener",
                 () -> new PacketSteerVehicleListener(plugin), null, capabilities);
+        // 1.21.2+ uses dedicated PLAYER_INPUT packet for per-tick key flags.
+        // Pre-1.21.2 falls back to STEER_VEHICLE (legacy format).
+        // Try PLAYER_INPUT first; if ProtocolLib version lacks the constant,
+        // PacketPlayerInputListener's constructor receives STEER_VEHICLE instead.
+        try {
+            java.lang.reflect.Field field = PacketType.Play.Client.class.getField("PLAYER_INPUT");
+            PacketType type = (PacketType) field.get(null);
+            count += register(plugin, manager, "PacketPlayerInputListener(PLAYER_INPUT)",
+                    () -> new PacketPlayerInputListener(plugin, type),
+                    null, capabilities);
+        } catch (Throwable t) {
+            plugin.getLogger().info("[ZeusGateway] PLAYER_INPUT packet not available, "
+                    + "falling back to STEER_VEHICLE for input capture.");
+            count += register(plugin, manager, "PacketPlayerInputListener(STEER_VEHICLE)",
+                    () -> new PacketPlayerInputListener(plugin, PacketType.Play.Client.STEER_VEHICLE),
+                    null, capabilities);
+        }
         count += register(plugin, manager, "PacketVehicleMoveListener",
                 () -> new PacketVehicleMoveListener(plugin),
                 RawCaptureCapability.VEHICLE_MOVE, capabilities);
         count += register(plugin, manager, "PacketPlayerCommandListener",
                 () -> new PacketPlayerCommandListener(plugin),
                 RawCaptureCapability.PLAYER_COMMAND, capabilities);
-
+        count += register(plugin, manager, "EntitySpawnListener",
+                () -> new EntitySpawnListener(plugin), null, capabilities);
+        count += register(plugin, manager, "EntityMoveListener",
+                () -> new EntityMoveListener(plugin), null, capabilities);
+        count += register(plugin, manager, "EntityDestroyListener",
+                () -> new EntityDestroyListener(plugin), null, capabilities);
+        count += register(plugin, manager, "PacketChunkListener",
+                () -> new PacketChunkListener(plugin), null, capabilities);
+        count += register(plugin, manager, "PacketBlockChangeListener",
+                () -> new PacketBlockChangeListener(plugin), null, capabilities);
         plugin.getLogger().info(
             "[ZeusGateway] Registered " + count + " ProtocolLib packet listeners."
         );

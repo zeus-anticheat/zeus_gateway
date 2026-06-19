@@ -93,12 +93,6 @@ public final class PacketDebugFormatter {
                     force.getVelocityX(), force.getVelocityY(), force.getVelocityZ(),
                     force.getStrength(), Short.toUnsignedInt(force.getDurationTicks()),
                     force.getFlags()));
-        } else if (packet instanceof PacketPlayerPlaceBlock) {
-            PacketPlayerPlaceBlock place = (PacketPlayerPlaceBlock) packet;
-            appendBlock(message, place.getX(), place.getY(), place.getZ(), place.isCancelled());
-        } else if (packet instanceof PacketPlayerDiggingBlock) {
-            PacketPlayerDiggingBlock dig = (PacketPlayerDiggingBlock) packet;
-            appendBlock(message, dig.getX(), dig.getY(), dig.getZ(), dig.isCancelled());
         } else if (packet instanceof PacketPlayerBlockFace) {
             PacketPlayerBlockFace face = (PacketPlayerBlockFace) packet;
             message.append(" face=").append(faceName(face.getFace()));
@@ -192,15 +186,9 @@ public final class PacketDebugFormatter {
             message.append(String.format(Locale.ROOT, " reach=%.2f cooldown=%.2f maxCps=%d",
                     config.getServerReach(), config.getAttackCooldownTicks(),
                     Byte.toUnsignedInt(config.getMaxCps())));
-        } else if (packet instanceof PacketPlayerSurroundingBlocks) {
-            PacketPlayerSurroundingBlocks blocks = (PacketPlayerSurroundingBlocks) packet;
-            message.append(" blocks=").append(blocks.getBlocks().size());
-            if (!blocks.getBlocks().isEmpty()) {
-                org.vennv.utils.RelativeBlock first = blocks.getBlocks().get(0);
-                message.append(" first=").append(first.dx).append('/')
-                        .append(first.dy).append('/').append(first.dz)
-                        .append(':').append(first.type);
-            }
+        } else if (packet instanceof PacketBlockChangeEvent) {
+            PacketBlockChangeEvent bc = (PacketBlockChangeEvent) packet;
+            message.append(" block_change=").append(bc.getBlockType());
         } else if (packet instanceof PacketPlayerCustomFeature) {
             PacketPlayerCustomFeature feature = (PacketPlayerCustomFeature) packet;
             message.append(" category=").append(feature.getCategoryId())

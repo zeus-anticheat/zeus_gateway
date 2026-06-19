@@ -16,8 +16,6 @@ public final class PacketDebugFilter {
             "armorsequipment",
             "clickwindow",
             "inventorytransaction",
-            "placeblock",
-            "diggingblock",
             "blockface",
             "useitem",
             "releaseuseitem",
@@ -35,7 +33,7 @@ public final class PacketDebugFilter {
 
     private static final Set<String> PACKET_NAMES = setOf(
             "join", "leave", "position", "keepalive", "changemode", "swinghand",
-            "placeblock", "diggingblock", "attackentity", "teleport", "effect",
+            "attackentity", "teleport", "effect",
             "gotdamage", "blockface", "blockraytrace", "blockchangeack",
             "attackedbyentity", "entityinteraction", "surroundingblocks", "helditem",
             "armorsequipment", "confirmtransaction", "openwindow", "clickwindow",
@@ -154,7 +152,6 @@ public final class PacketDebugFilter {
         aliases.put("armor", "armorsequipment");
         aliases.put("armors", "armorsequipment");
         aliases.put("command", "playercommand");
-        aliases.put("digblock", "diggingblock");
         aliases.put("inventorytx", "inventorytransaction");
         aliases.put("interactentity", "entityinteraction");
         aliases.put("releaseitem", "releaseuseitem");

@@ -14,9 +14,7 @@ import net.md_5.bungee.api.chat.TextComponent;
 import org.vennv.PacketBaseInfo;
 import org.vennv.PacketEncode;
 import org.vennv.packets.PacketPlayerBlockRayTrace;
-import org.vennv.packets.PacketPlayerDiggingBlock;
 import org.vennv.packets.PacketPlayerPosition;
-import org.vennv.packets.PacketPlayerPlaceBlock;
 import org.vennv.packets.PacketPlayerTeleport;
 import org.vennv.packets.PacketPlayerVehicleMove;
 import org.vennv.zeusGateway.ZeusGateway;
@@ -160,8 +158,6 @@ public final class PacketDebugService implements PacketTransmitObserver, Listene
         return !(packet instanceof PacketPlayerPosition
                 || packet instanceof PacketPlayerTeleport
                 || packet instanceof PacketPlayerVehicleMove
-                || packet instanceof PacketPlayerPlaceBlock
-                || packet instanceof PacketPlayerDiggingBlock
                 || packet instanceof PacketPlayerBlockRayTrace);
     }
 }
