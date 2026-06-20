@@ -88,6 +88,8 @@ public final class ProtocolLibListenerRegistrar {
                 () -> new PacketChunkListener(plugin), null, capabilities);
         count += register(plugin, manager, "PacketBlockChangeListener",
                 () -> new PacketBlockChangeListener(plugin), null, capabilities);
+        count += register(plugin, manager, "PacketUpdateAttributesListener",
+                () -> new PacketUpdateAttributesListener(plugin), null, capabilities);
         plugin.getLogger().info(
             "[ZeusGateway] Registered " + count + " ProtocolLib packet listeners."
         );
