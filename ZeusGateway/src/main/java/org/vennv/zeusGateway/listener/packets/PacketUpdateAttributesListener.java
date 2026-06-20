@@ -6,8 +6,8 @@ import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.WrappedAttribute;
 import org.bukkit.entity.Player;
 import org.vennv.packets.PacketUpdateAttributes;
+import org.vennv.zeusGateway.provider.PacketQueue;
 import org.vennv.zeusGateway.ZeusGateway;
-
 import java.util.List;
 
 public class PacketUpdateAttributesListener extends PacketAdapter {
@@ -44,7 +44,7 @@ public class PacketUpdateAttributesListener extends PacketAdapter {
                         player.getName(),
                         value
                 );
-                plugin.getProxyClient().send(packet);
+                PacketQueue.push(packet);
                 break; // Found movement speed
             }
         }
