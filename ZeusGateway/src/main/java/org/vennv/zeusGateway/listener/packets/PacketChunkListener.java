@@ -81,11 +81,10 @@ public class PacketChunkListener extends PacketAdapter {
                 // Collect ALL non-air blocks (including STONE/DIRT/BEDROCK/WATER/LAVA)
                 // so Rust backend has complete collision geometry. Split into batches
                 // of 800 blocks to stay well under the 65KB UDP payload limit
-                // (~23 bytes/block average → ~18.4KB per packet). Multiple batches for
-                // the same chunk coords are merged on the Rust side (HashMap insert);
-                // only the final batch carries isFullChunk=true.
+                // (~23 bytes/block average → ~18.4KB per packet).
                 List<BlockData> blocks = new ArrayList<>(800);
                 int blockCount = 0;
+                boolean resetChunk = true;
 
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
@@ -101,7 +100,8 @@ public class PacketChunkListener extends PacketAdapter {
                             if (blocks.size() >= 800) {
                                 PacketQueue.push(new PacketChunkData(
                                     timestamp, uid, name,
-                                    chunkX, chunkZ, false, blocks));
+                                    chunkX, chunkZ, resetChunk, blocks));
+                                resetChunk = false;
                                 blocks = new ArrayList<>(800);
                             }
                         }
@@ -116,7 +116,7 @@ public class PacketChunkListener extends PacketAdapter {
                 if (!blocks.isEmpty() || blockCount == 0) {
                     PacketQueue.push(new PacketChunkData(
                         timestamp, uid, name,
-                        chunkX, chunkZ, true, blocks));
+                        chunkX, chunkZ, resetChunk, blocks));
                 }
             } catch (Throwable e) {
                 plugin.getLogger().warning("[ZeusGateway] Failed to parse MapChunk: " + e.getMessage());
