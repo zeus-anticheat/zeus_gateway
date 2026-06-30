@@ -91,8 +91,8 @@ public class PacketChunkListener extends PacketAdapter {
                     for (int z = 0; z < 16; z++) {
                         for (int y = minY; y < maxY; y++) {
                             Block block = chunk.getBlock(x, y, z);
-                            String typeName = block.getType().name();
-                            if (typeName.equals("AIR") || typeName.equals("CAVE_AIR") || typeName.equals("VOID_AIR")) {
+                            String typeName = block.getBlockData().getAsString();
+                            if (typeName.equals("minecraft:air") || typeName.equals("minecraft:cave_air") || typeName.equals("minecraft:void_air")) {
                                 continue;
                             }
                             blocks.add(new BlockData((byte) x, y, (byte) z, typeName));
