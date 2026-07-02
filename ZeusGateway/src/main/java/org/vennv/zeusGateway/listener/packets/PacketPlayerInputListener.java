@@ -43,12 +43,14 @@ public class PacketPlayerInputListener extends PacketAdapter {
         long   ts     = System.currentTimeMillis();
 
         int flags = 0;
+        boolean decoded = false;
 
         try {
             StructureModifier<Boolean> booleans = event.getPacket().getBooleans();
 
             // ---- 1.21.2+ path: booleans[8] (forward/backward/left/right/jump/shift/sprint) ----
             if (booleans.size() >= 7) {
+                decoded = true;
                 if (booleans.read(0)) flags |= 0x01; // forward
                 if (booleans.read(1)) flags |= 0x02; // backward
                 if (booleans.read(2)) flags |= 0x04; // left
@@ -59,6 +61,7 @@ public class PacketPlayerInputListener extends PacketAdapter {
             }
             // ---- Pre-1.21.2 fallback: booleans[2] + floats[2] ----
             else if (booleans.size() >= 2) {
+                decoded = true;
                 StructureModifier<Float> floats = event.getPacket().getFloat();
                 float sideway = (floats.size() >= 1) ? floats.read(0) : 0f;
                 float forward = (floats.size() >= 2) ? floats.read(1) : 0f;
@@ -78,8 +81,9 @@ public class PacketPlayerInputListener extends PacketAdapter {
             return;
         }
 
-        if (flags == 0) {
-            // No keys held — still send so Rust side zeroes the input state
+        if (!decoded) {
+            plugin.getLogger().fine("[PacketPlayerInput] Unknown packet layout; keeping previous input state");
+            return;
         }
 
         PacketPlayerInput packet = new PacketPlayerInput(ts, uid, name, (byte) (flags & 0xFF));

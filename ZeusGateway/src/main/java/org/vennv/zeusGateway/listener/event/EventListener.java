@@ -41,6 +41,7 @@ import org.vennv.zeusGateway.listener.RawCaptureCapability;
 import org.vennv.zeusGateway.debug.PacketDebugEnvelope;
 import org.vennv.zeusGateway.platform.PlatformDetector;
 import org.vennv.zeusGateway.provider.PacketQueue;
+import org.vennv.zeusGateway.task.ChunkSyncTask;
 import org.vennv.zeusGateway.task.PlayerStateSnapshotService;
 import org.vennv.zeusGateway.utils.ItemUtil;
 
@@ -111,6 +112,7 @@ public class EventListener implements Listener {
         PacketPlayerLeave packet = new PacketPlayerLeave(timestamp, uid, name);
         PacketQueue.push(packet);
         PlayerStateSnapshotService.clear(player);
+        ChunkSyncTask.clearPlayer(player.getUniqueId());
         clearRawPositionState(player);
     }
 

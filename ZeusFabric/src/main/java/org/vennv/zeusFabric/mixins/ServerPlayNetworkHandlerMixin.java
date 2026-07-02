@@ -9,6 +9,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.vennv.packets.PacketPlayerInput;
 import org.vennv.packets.PacketPlayerPosition;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.packets.PacketPlayerClickWindow;
@@ -16,7 +17,6 @@ import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.utils.ServerBoundPlayerCommandActions;
 import org.vennv.zeusFabric.provider.PacketQueue;
 import org.vennv.zeusFabric.task.PlayerStateSnapshotService;
-import org.vennv.zeusFabric.utils.BlockUtil;
 import org.vennv.zeusFabric.utils.ItemUtil;
 import org.vennv.zeusFabric.utils.MinecraftCompat;
 
@@ -54,12 +54,11 @@ public abstract class ServerPlayNetworkHandlerMixin {
         float height = player.getHeight();
         boolean cancelled = false;
 
-        // Network handlers execute on the server thread; keep all world reads here.
-        boolean onGround = BlockUtil.isOnGround(this.player, packetPos);
+        boolean onGround = packet.isOnGround();
 
         PacketPlayerPosition packetPP = new PacketPlayerPosition(
             timestamp, uid, name, cancelled,
-            x, y, z, eyeX, eyeY, eyeZ, yaw, pitch, height, onGround
+            x, y, z, eyeX, eyeY, eyeZ, yaw, pitch, height, onGround, PacketPlayerPosition.SOURCE_RAW_CLIENT
         );
         PacketQueue.push(packetPP);
 
@@ -97,7 +96,18 @@ public abstract class ServerPlayNetworkHandlerMixin {
         String uid = player.getUuidAsString();
         String name = player.getName().getString();
         long timestamp = System.currentTimeMillis();
-        boolean sneaking = packet.input().sneak();
+        var input = packet.input();
+        int flags = 0;
+        if (input.forward()) flags |= 0x01;
+        if (input.backward()) flags |= 0x02;
+        if (input.left()) flags |= 0x04;
+        if (input.right()) flags |= 0x08;
+        if (input.jump()) flags |= 0x10;
+        if (input.sneak()) flags |= 0x20;
+        if (input.sprint()) flags |= 0x40;
+        PacketQueue.push(new PacketPlayerInput(timestamp, uid, name, (byte) (flags & 0xFF)));
+
+        boolean sneaking = input.sneak();
         Boolean previous = ZEUS_LAST_SNEAKING.put(uid, sneaking);
         if (previous != null && previous == sneaking) return;
 

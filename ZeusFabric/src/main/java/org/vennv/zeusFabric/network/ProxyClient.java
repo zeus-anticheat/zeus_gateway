@@ -1,6 +1,7 @@
 package org.vennv.zeusFabric.network;
 
 import org.vennv.PacketEncode;
+import org.vennv.zeusFabric.ZeusFabricMod;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -15,8 +16,18 @@ public final class ProxyClient {
     private volatile boolean closed = false;
 
     public ProxyClient(String host, int port) throws IOException {
-        this.socket = new DatagramSocket();
+        if (host == null || host.isEmpty()) {
+            throw new IOException("[ZeusFabric] Proxy host is null or empty. Check config/zeusfabric.properties.");
+        }
+        if ("0.0.0.0".equals(host)) {
+            ZeusFabricMod.LOGGER.warn("[ZeusFabric] proxy-host=0.0.0.0 is not a send destination; using 127.0.0.1 instead.");
+            host = "127.0.0.1";
+        }
         this.proxyAddress = new InetSocketAddress(host, port);
+        if (this.proxyAddress.isUnresolved()) {
+            throw new IOException("[ZeusFabric] Cannot resolve proxy host: " + host);
+        }
+        this.socket = new DatagramSocket();
     }
 
     public void send(PacketEncode packet) {

@@ -1,7 +1,7 @@
 package org.vennv.zeusFabric.mixins;
 
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
+import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.world.World;
@@ -32,7 +32,7 @@ public abstract class EntityLifecycleMixin {
         // Only track collidable entities (vehicles, large mobs, shulkers)
         if (!isCollidable(entity)) return;
 
-        String entityClass = entity.getType().getKey().toString();
+        String entityClass = Registries.ENTITY_TYPE.getId(entity.getType()).toString();
 
         // Notify all players in the same world about this entity
         for (ServerPlayerEntity player : serverWorld.getPlayers()) {
@@ -105,27 +105,20 @@ public abstract class EntityLifecycleMixin {
     }
 
     private static boolean isCollidable(Entity entity) {
-        EntityType<?> type = entity.getType();
-        // Boats, minecarts, horses, iron golems, shulkers, etc.
-        return type == EntityType.BOAT
-            || type == EntityType.CHEST_BOAT
-            || type == EntityType.MINECART
-            || type == EntityType.HOPPER_MINECART
-            || type == EntityType.CHEST_MINECART
-            || type == EntityType.FURNACE_MINECART
-            || type == EntityType.TNT_MINECART
-            || type == EntityType.COMMAND_BLOCK_MINECART
-            || type == EntityType.HORSE
-            || type == EntityType.DONKEY
-            || type == EntityType.MULE
-            || type == EntityType.SKELETON_HORSE
-            || type == EntityType.ZOMBIE_HORSE
-            || type == EntityType.CAMEL
-            || type == EntityType.PIG
-            || type == EntityType.STRIDER
-            || type == EntityType.IRON_GOLEM
-            || type == EntityType.RAVAGER
-            || type == EntityType.SHULKER
-            || type == EntityType.SNIFFER;
+        String type = Registries.ENTITY_TYPE.getId(entity.getType()).getPath();
+        return type.contains("boat")
+            || type.contains("minecart")
+            || type.equals("horse")
+            || type.equals("donkey")
+            || type.equals("mule")
+            || type.equals("skeleton_horse")
+            || type.equals("zombie_horse")
+            || type.equals("camel")
+            || type.equals("pig")
+            || type.equals("strider")
+            || type.equals("iron_golem")
+            || type.equals("ravager")
+            || type.equals("shulker")
+            || type.equals("sniffer");
     }
 }

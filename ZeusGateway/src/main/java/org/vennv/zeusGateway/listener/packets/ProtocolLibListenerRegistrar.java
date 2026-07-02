@@ -84,8 +84,6 @@ public final class ProtocolLibListenerRegistrar {
                 () -> new EntityMoveListener(plugin), null, capabilities);
         count += register(plugin, manager, "EntityDestroyListener",
                 () -> new EntityDestroyListener(plugin), null, capabilities);
-        count += register(plugin, manager, "PacketChunkListener",
-                () -> new PacketChunkListener(plugin), null, capabilities);
         count += register(plugin, manager, "PacketBlockChangeListener",
                 () -> new PacketBlockChangeListener(plugin), null, capabilities);
         count += register(plugin, manager, "PacketUpdateAttributesListener",

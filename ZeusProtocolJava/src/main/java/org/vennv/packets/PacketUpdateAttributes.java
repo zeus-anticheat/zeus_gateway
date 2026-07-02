@@ -1,5 +1,6 @@
 package org.vennv.packets;
 
+import org.vennv.ByteBufferUtil;
 import org.vennv.PacketBaseInfo;
 import org.vennv.PacketId;
 
@@ -23,18 +24,10 @@ public final class PacketUpdateAttributes extends PacketBaseInfo {
     @Override
     public void encode(ByteArrayOutputStream out) throws IOException {
         encodePlayerInfo(out);
-        writeFloat(out, movementSpeed);
+        ByteBufferUtil.putFloat(out, movementSpeed);
     }
 
     public float getMovementSpeed() {
         return movementSpeed;
-    }
-
-    private static void writeFloat(ByteArrayOutputStream out, float v) throws IOException {
-        int bits = Float.floatToRawIntBits(v);
-        out.write(bits & 0xFF);
-        out.write((bits >> 8) & 0xFF);
-        out.write((bits >> 16) & 0xFF);
-        out.write((bits >> 24) & 0xFF);
     }
 }

@@ -220,7 +220,8 @@ public final class PlayerStateSnapshotService {
                 loc.getYaw(),
                 loc.getPitch(),
                 height,
-                onGround));
+                onGround,
+                PacketPlayerPosition.SOURCE_SNAPSHOT));
     }
     private static void sendHeldItem(
             long timestamp,

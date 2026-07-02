@@ -9,6 +9,10 @@ import java.io.IOException;
 
 public final class PacketPlayerPosition extends PacketBaseInfo {
 
+    public static final byte SOURCE_RAW_CLIENT = 0;
+    public static final byte SOURCE_SNAPSHOT = 1;
+    public static final byte SOURCE_RESYNC = 2;
+
     private final boolean cancelled;
     private final double x;
     private final double y;
@@ -20,11 +24,19 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
     private final float pitch;
     private final float height;
     private final boolean onGround;
+    private final byte source;
 
     public PacketPlayerPosition(long timestamp, String uid, String username, boolean cancelled,
                                 double x, double y, double z,
                                 double eyeX, double eyeY, double eyeZ,
                                 float yaw, float pitch, float height, boolean onGround) {
+        this(timestamp, uid, username, cancelled, x, y, z, eyeX, eyeY, eyeZ, yaw, pitch, height, onGround, SOURCE_RAW_CLIENT);
+    }
+
+    public PacketPlayerPosition(long timestamp, String uid, String username, boolean cancelled,
+                                double x, double y, double z,
+                                double eyeX, double eyeY, double eyeZ,
+                                float yaw, float pitch, float height, boolean onGround, byte source) {
         super(timestamp, uid, username);
         this.cancelled = cancelled;
         this.x = x;
@@ -37,6 +49,7 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
         this.pitch = pitch;
         this.height = height;
         this.onGround = onGround;
+        this.source = source;
     }
 
     @Override
@@ -70,6 +83,9 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
 
         // on_ground
         ByteBufferUtil.putByte(out, (byte) (onGround ? 1 : 0));
+
+        // source
+        ByteBufferUtil.putByte(out, source);
     }
 
     public boolean isCancelled() {
@@ -114,5 +130,9 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
 
     public boolean isOnGround() {
         return onGround;
+    }
+
+    public byte getSource() {
+        return source;
     }
 }

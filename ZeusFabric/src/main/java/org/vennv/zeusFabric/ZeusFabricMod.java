@@ -39,13 +39,14 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
     private Thread batchThread;
 
     // ── Config fields ──
-    private String proxyHost = "0.0.0.0";
+    private String proxyHost = "127.0.0.1";
     private int proxyPort = 9999;
     private int batchSize = 100;
 
     // ── TPS tracking ──
     private long lastTickNanos = 0;
     private double emaTps = 20.0;
+    private int chunkSyncTicks = 0;
 
     public static ZeusFabricMod getInstance() {
         return INSTANCE;
@@ -173,6 +174,14 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
         double tps = Math.max(5.0, Math.min(20.0, emaTps));
 
         PacketQueue.push(new org.vennv.packets.PacketTPSServer(tps));
+
+        chunkSyncTicks++;
+        if (chunkSyncTicks >= 60) {
+            chunkSyncTicks = 0;
+            for (var player : minecraftServer.getPlayerManager().getPlayerList()) {
+                PlayerStateSnapshotService.sendPositionAndBlocksSnapshot(player);
+            }
+        }
     }
 
     // ──────────────────────── Config loading ───────────────────────────
@@ -190,7 +199,7 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
                 // Write default config
                 String defaults = """
                         # Zeus Anti-Cheat Fabric Mod Configuration
-                        proxy-host=0.0.0.0
+                        proxy-host=127.0.0.1
                         proxy-port=9999
                         batch-size=100
                         """;
@@ -203,7 +212,7 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
                 props.load(in);
             }
 
-            proxyHost = props.getProperty("proxy-host", "0.0.0.0");
+            proxyHost = props.getProperty("proxy-host", "127.0.0.1");
             proxyPort = Integer.parseInt(props.getProperty("proxy-port", "9999"));
             batchSize = Integer.parseInt(props.getProperty("batch-size", "100"));
 

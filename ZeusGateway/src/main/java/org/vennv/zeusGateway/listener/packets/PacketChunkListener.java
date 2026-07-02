@@ -47,9 +47,6 @@ public class PacketChunkListener extends PacketAdapter {
         int chunkX = event.getPacket().getIntegers().read(0);
         int chunkZ = event.getPacket().getIntegers().read(1);
 
-        // Hop to main Bukkit thread synchronously to safely access Bukkit APIs.
-        // Using runTask (sync) ensures the chunk data is read on the main thread
-        // and is FULLY loaded before we sample it.
         sendChunkBlocks(plugin, player, chunkX, chunkZ);
     }
 

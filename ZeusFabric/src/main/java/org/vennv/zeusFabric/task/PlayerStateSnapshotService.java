@@ -10,7 +10,10 @@ import net.minecraft.registry.Registries;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import org.vennv.Effect;
+import org.vennv.packets.PacketChunkData;
+import org.vennv.packets.PacketChunkData.BlockData;
 import org.vennv.packets.PacketPlayerArmorsEquipment;
 import org.vennv.packets.PacketPlayerChangeMode;
 import org.vennv.packets.PacketPlayerEffect;
@@ -48,10 +51,14 @@ import java.util.stream.Collectors;
  * stay behaviorally aligned with ZeusGateway.
  */
 public final class PlayerStateSnapshotService {
+    private static final int CHUNK_RADIUS = 3;
+    private static final int Y_PADDING = 5;
+    private static final int CHUNK_BATCH_SIZE = 200;
     private static final Map<String, String> HELD_HASH = new ConcurrentHashMap<>();
     private static final Map<String, String> ARMOR_HASH = new ConcurrentHashMap<>();
     private static final Map<String, String> ENCHANT_HASH = new ConcurrentHashMap<>();
     private static final Map<String, String> INVENTORY_HASH = new ConcurrentHashMap<>();
+    private static final Map<String, Boolean> SENT_CHUNKS = new ConcurrentHashMap<>();
 
     private PlayerStateSnapshotService() {}
 
@@ -143,6 +150,7 @@ public final class PlayerStateSnapshotService {
         ARMOR_HASH.remove(uid);
         ENCHANT_HASH.remove(uid);
         INVENTORY_HASH.remove(uid);
+        SENT_CHUNKS.keySet().removeIf(key -> key.startsWith(uid + ":"));
     }
 
     private static void sendSnapshot(ServerPlayerEntity player, boolean forceStableState) {
@@ -189,13 +197,22 @@ public final class PlayerStateSnapshotService {
             }
         }
 
+        float movementSpeed = 0.1f;
+        if (player.getAttributes().hasAttribute(EntityAttributes.MOVEMENT_SPEED)) {
+            double value = player.getAttributeValue(EntityAttributes.MOVEMENT_SPEED);
+            if (value > 0.0) {
+                movementSpeed = (float) value;
+            }
+        }
+
         return new PacketServerConfig(
                 timestamp,
                 uid,
                 name,
                 reach,
                 cooldown,
-                ServerCombatSettings.getMaxCps());
+                ServerCombatSettings.getMaxCps(),
+                movementSpeed);
     }
 
     private static void sendPositionAndBlocks(
@@ -221,7 +238,58 @@ public final class PlayerStateSnapshotService {
                 player.getYaw(),
                 player.getPitch(),
                 player.getHeight(),
-                onGround));
+                onGround,
+                PacketPlayerPosition.SOURCE_SNAPSHOT));
+        sendChunkData(timestamp, uid, name, player, pos);
+    }
+
+    private static void sendChunkData(
+            long timestamp,
+            String uid,
+            String name,
+            ServerPlayerEntity player,
+            Vec3d pos) {
+        World world = MinecraftCompat.entityWorld(player);
+        int centerChunkX = (int) Math.floor(pos.x) >> 4;
+        int centerChunkZ = (int) Math.floor(pos.z) >> 4;
+        int baseY = (int) Math.floor(pos.y);
+        int minY = Math.max(world.getBottomY(), baseY - Y_PADDING);
+        int maxY = Math.min(world.getBottomY() + world.getHeight(), baseY + Y_PADDING + 1);
+
+        for (int dx = -CHUNK_RADIUS; dx <= CHUNK_RADIUS; dx++) {
+            for (int dz = -CHUNK_RADIUS; dz <= CHUNK_RADIUS; dz++) {
+                int chunkX = centerChunkX + dx;
+                int chunkZ = centerChunkZ + dz;
+                String key = uid + ":" + chunkX + ":" + chunkZ + ":" + minY + ":" + maxY;
+                if (SENT_CHUNKS.putIfAbsent(key, Boolean.TRUE) != null) {
+                    continue;
+                }
+                if (!world.isChunkLoaded(chunkX, chunkZ)) {
+                    continue;
+                }
+                List<BlockData> blocks = new ArrayList<>(CHUNK_BATCH_SIZE);
+                int blockCount = 0;
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        for (int y = minY; y < maxY; y++) {
+                            var state = world.getBlockState(new net.minecraft.util.math.BlockPos((chunkX << 4) + x, y, (chunkZ << 4) + z));
+                            if (state.isAir()) {
+                                continue;
+                            }
+                            blocks.add(new BlockData((byte) x, y, (byte) z, state.toString()));
+                            blockCount++;
+                            if (blocks.size() >= CHUNK_BATCH_SIZE) {
+                                PacketQueue.push(new PacketChunkData(timestamp, uid, name, chunkX, chunkZ, false, blocks));
+                                blocks = new ArrayList<>(CHUNK_BATCH_SIZE);
+                            }
+                        }
+                    }
+                }
+                if (!blocks.isEmpty() || blockCount == 0) {
+                    PacketQueue.push(new PacketChunkData(timestamp, uid, name, chunkX, chunkZ, false, blocks));
+                }
+            }
+        }
     }
 
     private static void sendHeldItem(

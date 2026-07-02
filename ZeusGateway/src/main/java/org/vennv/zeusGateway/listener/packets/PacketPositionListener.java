@@ -17,7 +17,6 @@ import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
 import org.vennv.zeusGateway.compat.EntityCompat;
 import org.vennv.zeusGateway.platform.ServerVersion;
-import org.vennv.zeusGateway.utils.BlockUtil;
 
 public class PacketPositionListener extends PacketAdapter {
 
@@ -41,7 +40,7 @@ public class PacketPositionListener extends PacketAdapter {
     }
 
     /**
-     * Remove a player's tracked pose state (call on quit).
+     * Remove a player's tracked state (call on quit).
      */
     public static void removePlayer(UUID uuid) {
         swimmingPoseState.remove(uuid);
@@ -66,13 +65,25 @@ public class PacketPositionListener extends PacketAdapter {
         }
 
         boolean cancelled = event.isCancelled();
+        boolean packetOnGround = readPacketOnGround(event);
         if (plugin.getSchedulerAdapter() == null) {
             return;
         }
         Float packetYaw = yaw;
         Float packetPitch = pitch;
         plugin.getSchedulerAdapter().runEntityTask(plugin, player, () -> emitPosition(
-                player, timestamp, packetPos, packetYaw, packetPitch, cancelled));
+                player, timestamp, packetPos, packetYaw, packetPitch, cancelled, packetOnGround));
+    }
+
+    private boolean readPacketOnGround(PacketEvent event) {
+        try {
+            StructureModifier<Boolean> booleans = event.getPacket().getBooleans();
+            if (booleans.size() > 0) {
+                return booleans.read(0);
+            }
+        } catch (RuntimeException ignored) {
+        }
+        return event.getPlayer().isOnGround();
     }
 
     private void emitPosition(
@@ -81,7 +92,8 @@ public class PacketPositionListener extends PacketAdapter {
             Vector packetPos,
             Float packetYaw,
             Float packetPitch,
-            boolean cancelled) {
+            boolean cancelled,
+            boolean packetOnGround) {
         if (!player.isOnline()) {
             return;
         }
@@ -115,14 +127,10 @@ public class PacketPositionListener extends PacketAdapter {
         }
 
         try {
-            boolean onGround = BlockUtil.isOnGround(player, packetPos);
             PacketQueue.push(new PacketPlayerPosition(
                     timestamp, uid, name, cancelled,
                     packetPos.getX(), packetPos.getY(), packetPos.getZ(),
-                    eyeX, eyeY, eyeZ, yaw, pitch, height, onGround));
-
-            // SurroundingBlocks removed — CompensatedWorld handles block tracking
-            // via PacketBlockChangeEvent (place/break/piston/fluid events).
+                    eyeX, eyeY, eyeZ, yaw, pitch, height, packetOnGround, PacketPlayerPosition.SOURCE_RAW_CLIENT));
         } catch (Exception e) {
             plugin
                 .getLogger()
