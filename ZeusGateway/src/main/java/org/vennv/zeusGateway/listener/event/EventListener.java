@@ -35,6 +35,7 @@ import org.vennv.EntityState;
 import org.vennv.packets.*;
 import org.vennv.utils.*;
 import org.vennv.zeusGateway.ZeusGateway;
+import org.vennv.zeusGateway.compat.BlockCompat;
 import org.vennv.zeusGateway.compat.EntityCompat;
 import org.vennv.zeusGateway.compat.EffectCompat;
 import org.vennv.zeusGateway.listener.RawCaptureCapability;
@@ -491,7 +492,7 @@ public class EventListener implements Listener {
         Location loc = event.getBlockPlaced().getLocation();
 
         // Emit PacketBlockChangeEvent so CompensatedWorld tracks this block
-        String blockType = event.getBlockPlaced().getType().name();
+        String blockType = BlockCompat.getBlockDataString(event.getBlockPlaced());
         PacketQueue.push(new PacketBlockChangeEvent(
                 timestamp,
                 uid,
@@ -1107,7 +1108,7 @@ public class EventListener implements Listener {
         // Fluid flow (water/lava spreading)
         long timestamp = System.currentTimeMillis();
         org.bukkit.block.Block to = event.getToBlock();
-        String blockType = to.getType().name();
+        String blockType = BlockCompat.getBlockDataString(to);
         PacketQueue.push(new PacketBlockChangeEvent(
                 timestamp, "world", "world",
                 to.getX(), to.getY(), to.getZ(),
@@ -1201,8 +1202,8 @@ public class EventListener implements Listener {
                     continue;
                 }
 
-                String blockName = block.getType().name();
-                int flags = ExternalForceFlags.DIRECT_INTERSECT | ExternalForceFlags.ENVIRONMENT_BACKED;
+        String blockName = BlockCompat.getBlockDataString(block);
+        int flags = ExternalForceFlags.DIRECT_INTERSECT | ExternalForceFlags.ENVIRONMENT_BACKED;
                 ExternalForceType type = ExternalForceType.PISTON;
                 if (blockName.equals("SLIME_BLOCK")) {
                     flags |= ExternalForceFlags.HAS_SLIME;
@@ -1257,7 +1258,7 @@ public class EventListener implements Listener {
             int newY = oldY + dy;
             int newZ = oldZ + dz;
 
-            String blockName = block.getType().name();
+            String blockName = BlockCompat.getBlockDataString(block);
 
             // Old position becomes AIR
             PacketQueue.push(new PacketBlockChangeEvent(

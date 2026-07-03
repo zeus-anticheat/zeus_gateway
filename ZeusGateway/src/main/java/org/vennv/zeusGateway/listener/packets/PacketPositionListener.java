@@ -8,6 +8,7 @@ import com.comphenix.protocol.reflect.StructureModifier;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 import org.vennv.packets.PacketPlayerPosition;
@@ -28,6 +29,7 @@ public class PacketPositionListener extends PacketAdapter {
      * rather than spamming every position packet.
      */
     private static final ConcurrentHashMap<UUID, Boolean> swimmingPoseState = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, AtomicLong> movementSequences = new ConcurrentHashMap<>();
 
     public PacketPositionListener(ZeusGateway plugin) {
         super(
@@ -44,6 +46,7 @@ public class PacketPositionListener extends PacketAdapter {
      */
     public static void removePlayer(UUID uuid) {
         swimmingPoseState.remove(uuid);
+        movementSequences.remove(uuid);
     }
 
     @Override
@@ -66,13 +69,16 @@ public class PacketPositionListener extends PacketAdapter {
 
         boolean cancelled = event.isCancelled();
         boolean packetOnGround = readPacketOnGround(event);
+        long movementSequence = movementSequences
+                .computeIfAbsent(player.getUniqueId(), ignored -> new AtomicLong())
+                .incrementAndGet();
         if (plugin.getSchedulerAdapter() == null) {
             return;
         }
         Float packetYaw = yaw;
         Float packetPitch = pitch;
         plugin.getSchedulerAdapter().runEntityTask(plugin, player, () -> emitPosition(
-                player, timestamp, packetPos, packetYaw, packetPitch, cancelled, packetOnGround));
+                player, timestamp, movementSequence, packetPos, packetYaw, packetPitch, cancelled, packetOnGround));
     }
 
     private boolean readPacketOnGround(PacketEvent event) {
@@ -89,6 +95,7 @@ public class PacketPositionListener extends PacketAdapter {
     private void emitPosition(
             Player player,
             long timestamp,
+            long movementSequence,
             Vector packetPos,
             Float packetYaw,
             Float packetPitch,
@@ -130,7 +137,8 @@ public class PacketPositionListener extends PacketAdapter {
             PacketQueue.push(new PacketPlayerPosition(
                     timestamp, uid, name, cancelled,
                     packetPos.getX(), packetPos.getY(), packetPos.getZ(),
-                    eyeX, eyeY, eyeZ, yaw, pitch, height, packetOnGround, PacketPlayerPosition.SOURCE_RAW_CLIENT));
+                    eyeX, eyeY, eyeZ, yaw, pitch, height, packetOnGround,
+                    PacketPlayerPosition.SOURCE_RAW_CLIENT, movementSequence));
         } catch (Exception e) {
             plugin
                 .getLogger()

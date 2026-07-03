@@ -31,7 +31,7 @@ class PacketConversionTest {
     }
 
     @Test
-    void packetQueueOrdersEqualPriorityPacketsByTimestamp() {
+    void packetQueueOrdersEqualPriorityPacketsByInsertionOrder() {
         while (PacketQueue.poll() != null) {
         }
         PacketPlayerPosition newer = positionAt(200);
@@ -40,8 +40,8 @@ class PacketConversionTest {
         PacketQueue.push(newer);
         PacketQueue.push(older);
 
-        assertSame(older, PacketQueue.poll());
         assertSame(newer, PacketQueue.poll());
+        assertSame(older, PacketQueue.poll());
         assertNull(PacketQueue.poll());
     }
 

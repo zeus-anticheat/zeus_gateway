@@ -25,18 +25,27 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
     private final float height;
     private final boolean onGround;
     private final byte source;
+    private final long movementSequence;
 
     public PacketPlayerPosition(long timestamp, String uid, String username, boolean cancelled,
                                 double x, double y, double z,
                                 double eyeX, double eyeY, double eyeZ,
                                 float yaw, float pitch, float height, boolean onGround) {
-        this(timestamp, uid, username, cancelled, x, y, z, eyeX, eyeY, eyeZ, yaw, pitch, height, onGround, SOURCE_RAW_CLIENT);
+        this(timestamp, uid, username, cancelled, x, y, z, eyeX, eyeY, eyeZ, yaw, pitch, height, onGround, SOURCE_RAW_CLIENT, 0L);
     }
 
     public PacketPlayerPosition(long timestamp, String uid, String username, boolean cancelled,
                                 double x, double y, double z,
                                 double eyeX, double eyeY, double eyeZ,
                                 float yaw, float pitch, float height, boolean onGround, byte source) {
+        this(timestamp, uid, username, cancelled, x, y, z, eyeX, eyeY, eyeZ, yaw, pitch, height, onGround, source, 0L);
+    }
+
+    public PacketPlayerPosition(long timestamp, String uid, String username, boolean cancelled,
+                                double x, double y, double z,
+                                double eyeX, double eyeY, double eyeZ,
+                                float yaw, float pitch, float height, boolean onGround, byte source,
+                                long movementSequence) {
         super(timestamp, uid, username);
         this.cancelled = cancelled;
         this.x = x;
@@ -50,6 +59,7 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
         this.height = height;
         this.onGround = onGround;
         this.source = source;
+        this.movementSequence = movementSequence;
     }
 
     @Override
@@ -86,6 +96,7 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
 
         // source
         ByteBufferUtil.putByte(out, source);
+        ByteBufferUtil.putLong(out, movementSequence);
     }
 
     public boolean isCancelled() {
@@ -134,5 +145,9 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
 
     public byte getSource() {
         return source;
+    }
+
+    public long getMovementSequence() {
+        return movementSequence;
     }
 }

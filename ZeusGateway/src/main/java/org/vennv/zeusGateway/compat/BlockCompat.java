@@ -183,7 +183,22 @@ public final class BlockCompat {
 
         // ── Snow layer ─────────────────────────────────────────────────
         if (name.equals("SNOW")) {
-            return new double[] {x, y, z, x + 1.0, y + 0.125, z + 1.0};
+            double height = 0.125;
+            if (ServerVersion.HAS_BLOCK_DATA) {
+                try {
+                    String data = block.getBlockData().getAsString();
+                    int marker = data.indexOf("layers=");
+                    if (marker >= 0) {
+                        int start = marker + "layers=".length();
+                        int end = data.indexOf(']', start);
+                        if (end < 0) {
+                            end = data.length();
+                        }
+                        height = Integer.parseInt(data.substring(start, end)) * 0.125;
+                    }
+                } catch (NoSuchMethodError | NoClassDefFoundError | NumberFormatException ignored) {}
+            }
+            return new double[] {x, y, z, x + 1.0, y + height, z + 1.0};
         }
 
         // ── Soul sand ──────────────────────────────────────────────────

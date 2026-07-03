@@ -1,7 +1,6 @@
 package org.vennv.zeusGateway.provider;
 
 import org.vennv.PacketBase;
-import org.vennv.PacketBaseInfo;
 import org.vennv.PacketEncode;
 import org.vennv.PacketId;
 
@@ -15,7 +14,7 @@ public final class PacketQueue {
             new PriorityBlockingQueue<>();
 
     public static void push(PacketEncode packet) {
-        QUEUE.add(new QueuedPacket(priority(packet), timestamp(packet), SEQUENCE.getAndIncrement(), packet));
+        QUEUE.add(new QueuedPacket(priority(packet), SEQUENCE.getAndIncrement(), packet));
     }
 
     public static PacketEncode poll() {
@@ -55,19 +54,13 @@ public final class PacketQueue {
         }
     }
 
-    private static long timestamp(PacketEncode packet) {
-        return packet instanceof PacketBaseInfo ? ((PacketBaseInfo) packet).getTimestamp() : Long.MAX_VALUE;
-    }
-
     private static final class QueuedPacket implements Comparable<QueuedPacket> {
         private final int priority;
-        private final long timestamp;
         private final long sequence;
         private final PacketEncode packet;
 
-        private QueuedPacket(int priority, long timestamp, long sequence, PacketEncode packet) {
+        private QueuedPacket(int priority, long sequence, PacketEncode packet) {
             this.priority = priority;
-            this.timestamp = timestamp;
             this.sequence = sequence;
             this.packet = packet;
         }
@@ -77,10 +70,6 @@ public final class PacketQueue {
             int priorityCompare = Integer.compare(priority, other.priority);
             if (priorityCompare != 0) {
                 return priorityCompare;
-            }
-            int timestampCompare = Long.compare(timestamp, other.timestamp);
-            if (timestampCompare != 0) {
-                return timestampCompare;
             }
             return Long.compare(sequence, other.sequence);
         }
