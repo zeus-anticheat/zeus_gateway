@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "wireContract": "zeus-udp-v1-packet-ids-0x01-through-0x27",
+  "wireContract": "zeus-udp-v1-packet-ids-0x01-through-0x2F",
   "publicationGate": [
     "artifact-build",
     "protocol-golden-fixtures",

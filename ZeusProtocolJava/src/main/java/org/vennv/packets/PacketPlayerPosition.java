@@ -26,6 +26,8 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
     private final boolean onGround;
     private final byte source;
     private final long movementSequence;
+    private final boolean hasPosition;
+    private final boolean hasLook;
 
     public PacketPlayerPosition(long timestamp, String uid, String username, boolean cancelled,
                                 double x, double y, double z,
@@ -46,6 +48,14 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
                                 double eyeX, double eyeY, double eyeZ,
                                 float yaw, float pitch, float height, boolean onGround, byte source,
                                 long movementSequence) {
+        this(timestamp, uid, username, cancelled, x, y, z, eyeX, eyeY, eyeZ, yaw, pitch, height, onGround, source, movementSequence, true, true);
+    }
+
+    public PacketPlayerPosition(long timestamp, String uid, String username, boolean cancelled,
+                                double x, double y, double z,
+                                double eyeX, double eyeY, double eyeZ,
+                                float yaw, float pitch, float height, boolean onGround, byte source,
+                                long movementSequence, boolean hasPosition, boolean hasLook) {
         super(timestamp, uid, username);
         this.cancelled = cancelled;
         this.x = x;
@@ -60,6 +70,8 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
         this.onGround = onGround;
         this.source = source;
         this.movementSequence = movementSequence;
+        this.hasPosition = hasPosition;
+        this.hasLook = hasLook;
     }
 
     @Override
@@ -97,6 +109,9 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
         // source
         ByteBufferUtil.putByte(out, source);
         ByteBufferUtil.putLong(out, movementSequence);
+        // hasPosition / hasLook (trailing, backward-compatible: Rust defaults if absent)
+        ByteBufferUtil.putByte(out, (byte) (hasPosition ? 1 : 0));
+        ByteBufferUtil.putByte(out, (byte) (hasLook ? 1 : 0));
     }
 
     public boolean isCancelled() {
@@ -149,5 +164,13 @@ public final class PacketPlayerPosition extends PacketBaseInfo {
 
     public long getMovementSequence() {
         return movementSequence;
+    }
+
+    public boolean hasPosition() {
+        return hasPosition;
+    }
+
+    public boolean hasLook() {
+        return hasLook;
     }
 }

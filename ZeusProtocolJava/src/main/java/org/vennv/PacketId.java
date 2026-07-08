@@ -45,4 +45,5 @@ public class PacketId {
     public static final byte PACKET_PLAYER_INPUT = 0x2C;
     public static final byte PACKET_CHUNK_DATA = 0x2D;
     public static final byte PACKET_UPDATE_ATTRIBUTES = 0x2E;
+    public static final byte PACKET_PHYSICS_CAPTURE_SAMPLE = 0x2F;
 }

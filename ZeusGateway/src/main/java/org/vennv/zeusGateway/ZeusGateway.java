@@ -118,6 +118,9 @@ public final class ZeusGateway extends JavaPlugin {
 
         getServer().getScheduler().runTaskTimer(this, new ChunkSyncTask(this), 60L, 60L);
 
+        // Start physics capture state poller
+        org.vennv.zeusGateway.listener.packets.PhysicsCaptureManager.start(this);
+
         getLogger().info(
             "[ZeusGateway] Plugin enabled successfully on " + platformType + "!");
     }

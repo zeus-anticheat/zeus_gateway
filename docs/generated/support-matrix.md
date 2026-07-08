@@ -40,6 +40,6 @@ A target is public **Supported** only when its manifest status is `supported`, a
 
 ## Current Publication State
 
-No target is currently marked `supported`. `build-verifiable` identifies source/build wiring only; it is not a server compatibility claim.
+Targets marked `supported` in the tables above have passed all publication gates (artifact-build, protocol-golden-fixtures, server-startup-smoke, core-scenario-smoke).
 
-The shared wire contract is `zeus-udp-v1-packet-ids-0x01-through-0x27`. Golden fixtures protect attack, velocity, surrounding-block, inventory-transaction and external-force payloads.
+The shared wire contract is `zeus-udp-v1-packet-ids-0x01-through-0x2F`. Golden fixtures protect attack, velocity, surrounding-block, inventory-transaction, external-force, update-attributes, and physics-capture-sample payloads.

@@ -8,7 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.vennv.packets.PacketPlayerAttackEntity;
 import org.vennv.packets.PacketPlayerExternalForce;
 import org.vennv.packets.PacketPlayerInventoryTransaction;
+import org.vennv.packets.PacketPhysicsCaptureSample;
 import org.vennv.packets.PacketPlayerVelocity;
+import org.vennv.packets.PacketPlayerPosition;
 import org.vennv.utils.ExternalForceFlags;
 import org.vennv.utils.ExternalForceType;
 import org.vennv.utils.ItemStack;
@@ -48,6 +50,53 @@ class WireContractGoldenTest {
                 hex(new PacketPlayerVelocity(TIMESTAMP, UID, USERNAME, .25, -.5, 1)));
     }
 
+    @Test
+    void positionFixtureIsStable() throws Exception {
+        assertEquals(
+                "03010203040506070800017500016e00003ff0000000000000400000000000000040080000000000003ff000000000000040000000000000004008000000000000000000000000000040000000010100000000000000020101",
+                hex(new PacketPlayerPosition(
+                        TIMESTAMP,
+                        UID,
+                        USERNAME,
+                        false,
+                        1.0, 2.0, 3.0,
+                        1.0, 2.0, 3.0,
+                        0f, 0f, 2.0f,
+                        true,
+                        (byte) 1,
+                        2L,
+                        true,
+                        true)));
+    }
+
+
+    @Test
+    void physicsCaptureFixtureHasNoPlayerBase() throws Exception {
+        assertEquals(
+                "2f0102030405060708010302030111223344556677883ff00000000000004050000000000000"
+                        + "40000000000000003dcccccd000000003e4ccccd3dcccccd000000003e4ccccd3dcccccd"
+                        + "0300010001000000320001",
+                hex(new PacketPhysicsCaptureSample(
+                        TIMESTAMP,
+                        770,
+                        769,
+                        0x1122334455667788L,
+                        1.0, 64.0, 2.0,
+                        0.1f, 0.0f, 0.2f,
+                        0.1f, 0.0f, 0.2f,
+                        0.1f,
+                        (byte) 0x03,
+                        1,
+                        1,
+                        (byte) 0,
+                        false,
+                        false,
+                        false,
+                        (byte) 0,
+                        (byte) 50,
+                        (byte) 0,
+                        (byte) 1)));
+    }
 
     @Test
     void inventoryTransactionFixtureIsStable() throws Exception {

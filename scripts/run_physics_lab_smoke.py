@@ -71,6 +71,7 @@ def reader_thread(process, output):
 
 def udp_thread(sock, stop_event, packets):
     sock.settimeout(0.25)
+    forward_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     while not stop_event.is_set():
         try:
             payload, address = sock.recvfrom(65535)
@@ -78,6 +79,10 @@ def udp_thread(sock, stop_event, packets):
             continue
         if not payload:
             continue
+        try:
+            forward_sock.sendto(payload, ("127.0.0.1", 9999))
+        except Exception:
+            pass
         packets.append(
             {
                 "packetId": payload[0],
