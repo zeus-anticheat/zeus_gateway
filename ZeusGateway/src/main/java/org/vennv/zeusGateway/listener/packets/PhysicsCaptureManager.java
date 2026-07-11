@@ -3,6 +3,8 @@ package org.vennv.zeusGateway.listener.packets;
 import org.vennv.packets.PacketPhysicsCaptureSample;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
+import org.vennv.zeusGateway.platform.ServerVersion;
+import org.bukkit.Bukkit;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -25,8 +27,10 @@ public class PhysicsCaptureManager {
     private static final long POLL_INTERVAL_MS = 5000;
 
     private static String backendHost = "127.0.0.1";
-    private static int backendPort = 8080;
+    private static int backendPort = 3000;
     private static final String runtimeHashSalt = Long.toHexString(new SecureRandom().nextLong());
+    private static final java.util.concurrent.ConcurrentHashMap<UUID, Long> lastSampleNanos =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     /** Start the capture state poller. Call once on plugin enable. */
     public static void start(ZeusGateway plugin) {
@@ -34,6 +38,11 @@ public class PhysicsCaptureManager {
         String envHost = System.getenv("ZEUS_DASHBOARD_HOST");
         if (envHost != null && !envHost.isEmpty()) {
             backendHost = envHost;
+        }
+        try {
+            backendPort = Integer.parseInt(System.getenv().getOrDefault("ZEUS_DASHBOARD_PORT", "3000"));
+        } catch (NumberFormatException ignored) {
+            backendPort = 3000;
         }
         // Start polling thread
         Thread poller = new Thread(() -> {
@@ -105,31 +114,224 @@ public class PhysicsCaptureManager {
             byte surfaceCategory,
             boolean bodyInWater, boolean eyeInWater, boolean inLava,
             byte effectLevels,
-            byte tickDurationMs,
+            float tickDurationMs,
             byte worldDimension,
             byte simErrorPct) {
+        sendSampleV2(
+                timestamp, timestamp, playerUuid, serverProtocol, clientProtocol,
+                posX, posY, posZ, prevDx, prevDy, prevDz,
+                velocityX, velocityY, velocityZ, velocityX, velocityY, velocityZ,
+                baseSpeed, inputFlags & 0xff, 0, inputFlags & 0xff,
+                supportBlockId, frictionBlockId, surfaceCategory,
+                "", "", "", "", Float.NaN, Float.NaN,
+                bodyInWater, eyeInWater, inLava, null, Float.NaN, Float.NaN,
+                Float.NaN, Float.NaN, Float.NaN, "", "", null, baseSpeed,
+                Float.NaN, (byte) 0, (byte) 0, false, "", 0L, 0,
+                false, "", Float.NaN, Float.NaN, Float.NaN, 0L, 0,
+                tickDurationMs, tickDurationMs, worldDimension, 0, simErrorPct,
+                true, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+        );
+    }
 
+    /**
+     * Full v2 capture entry point.  Adapters pass every value they can obtain;
+     * unavailable values remain NaN/empty and are marked in the packet mask.
+     */
+    public static void sendSampleV2(
+            long timestamp, long tickIndex, UUID playerUuid,
+            int serverProtocol, int clientProtocol,
+            double posX, double posY, double posZ,
+            float posDx, float posDy, float posDz,
+            float velocityBeforeX, float velocityBeforeY, float velocityBeforeZ,
+            float velocityAfterX, float velocityAfterY, float velocityAfterZ,
+            float baseSpeed, int inputFlags, int previousStateFlags, int stateFlags,
+            int supportBlockId, int frictionBlockId, byte surfaceCategory,
+            String blockId, String blockProperties, String blockStateId,
+            String supportShapeId, float friction, float velocityMultiplier,
+            boolean bodyInWater, boolean eyeInWater, boolean inLava,
+            String fluidKind, float fluidLevel, float fluidHeight,
+            float flowX, float flowY, float flowZ, String bodyFluid, String eyeFluid,
+            String effectLevels, float attributeBaseSpeed, float movementSpeedModifier,
+            byte jumpBoostLevel, byte slownessLevel,
+            boolean vehicleMounted, String vehicleType, long vehicleId, int vehicleStateFlags,
+            boolean externalForceActive, String externalForceKind,
+            float externalForceX, float externalForceY, float externalForceZ,
+            long externalForceSourceTick, int externalForceTimingTicks,
+            float tickDurationMs, float mspt, byte worldDimension, int resyncFlags,
+            byte simErrorPct, boolean positionIncluded, boolean lookIncluded,
+            float yaw, float pitch, float lookX, float lookY, float lookZ) {
         long playerHash = hashPlayer(playerUuid);
+        long unknownMask = 0L;
+        if (Float.isNaN(posDx) || Float.isNaN(posDy) || Float.isNaN(posDz)) unknownMask |= 1L << 1;
+        if (Float.isNaN(velocityBeforeX) || Float.isNaN(velocityBeforeY)
+                || Float.isNaN(velocityBeforeZ) || Float.isNaN(velocityAfterX)
+                || Float.isNaN(velocityAfterY) || Float.isNaN(velocityAfterZ)) {
+            unknownMask |= 1L << 2;
+        }
+        if (Float.isNaN(baseSpeed)) unknownMask |= 1L << 3;
+        if (blockId == null || blockId.isEmpty()) unknownMask |= 1L << 4;
+        if (supportShapeId == null || supportShapeId.isEmpty()) unknownMask |= 1L << 5;
+        if (Float.isNaN(friction) || Float.isNaN(velocityMultiplier)) unknownMask |= 1L << 6;
+        boolean fluidScalarUnavailable = fluidKind != null && !fluidKind.isEmpty()
+                && !"air".equalsIgnoreCase(fluidKind)
+                && (Float.isNaN(fluidLevel) || Float.isNaN(fluidHeight)
+                    || Float.isNaN(flowX) || Float.isNaN(flowY) || Float.isNaN(flowZ));
+        if (fluidKind == null || fluidKind.isEmpty() || fluidScalarUnavailable) unknownMask |= 1L << 7;
+        if (effectLevels == null) unknownMask |= 1L << 8;
+        if (vehicleMounted && (vehicleType == null || vehicleType.isEmpty())) unknownMask |= 1L << 9;
+        if (externalForceActive && (externalForceKind == null || externalForceKind.isEmpty())) unknownMask |= 1L << 10;
+        if (Float.isNaN(tickDurationMs) || Float.isNaN(mspt)) unknownMask |= 1L << 11;
 
         PacketPhysicsCaptureSample packet = new PacketPhysicsCaptureSample(
-                timestamp,
-                serverProtocol,
-                clientProtocol,
-                playerHash,
-                posX, posY, posZ,
-                prevDx, prevDy, prevDz,
-                velocityX, velocityY, velocityZ,
-                baseSpeed,
-                inputFlags,
+                timestamp, tickIndex,
+                serverProtocol == 0 ? PacketPhysicsCaptureSample.UNKNOWN_U16 : serverProtocol,
+                clientProtocol == 0 ? PacketPhysicsCaptureSample.UNKNOWN_U16 : clientProtocol,
+                serverVersion(), clientVersion(clientProtocol), serverBrand(), platform(),
+                physicsFingerprint(), physicsFingerprint(), captureSubjectId(playerUuid),
+                translationBehaviorFingerprint(playerUuid, clientProtocol), "gateway", playerHash,
+                posX, posY, posZ, posDx, posDy, posDz,
+                velocityBeforeX, velocityBeforeY, velocityBeforeZ,
+                velocityAfterX, velocityAfterY, velocityAfterZ, baseSpeed,
+                inputFlags, previousStateFlags, stateFlags,
                 supportBlockId, frictionBlockId, surfaceCategory,
-                bodyInWater, eyeInWater, inLava,
-                effectLevels,
-                tickDurationMs,
-                worldDimension,
-                simErrorPct
+                valueOrEmpty(blockId), valueOrEmpty(blockProperties), valueOrEmpty(blockStateId),
+                valueOrEmpty(supportShapeId), friction, velocityMultiplier,
+                bodyInWater, eyeInWater, inLava, valueOrEmpty(fluidKind), fluidLevel, fluidHeight,
+                flowX, flowY, flowZ, valueOrEmpty(bodyFluid), valueOrEmpty(eyeFluid),
+                valueOrEmpty(effectLevels), attributeBaseSpeed, movementSpeedModifier,
+                jumpBoostLevel, slownessLevel,
+                vehicleMounted, valueOrEmpty(vehicleType), vehicleId, vehicleStateFlags,
+                externalForceActive, valueOrEmpty(externalForceKind),
+                externalForceX, externalForceY, externalForceZ,
+                externalForceSourceTick, externalForceTimingTicks,
+                tickDurationMs, mspt, worldDimension, resyncFlags, unknownMask, simErrorPct,
+                positionIncluded, lookIncluded, yaw, pitch, lookX, lookY, lookZ
         );
-
         PacketQueue.push(packet);
+    }
+
+    private static String valueOrEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    /** Returns an observed inter-sample duration; first sample is unknown. */
+    public static float observedTickDurationMs(UUID playerUuid, long nowNanos) {
+        Long previous = lastSampleNanos.put(playerUuid, nowNanos);
+        if (previous == null || nowNanos <= previous) return Float.NaN;
+        return Math.min(10_000.0f, (nowNanos - previous) / 1_000_000.0f);
+    }
+
+    public static String serverVersion() {
+        return ServerVersion.major() + "." + ServerVersion.minor() + "." + ServerVersion.patch();
+    }
+
+    public static int serverProtocol() {
+        if (ServerVersion.major() == 1 && ServerVersion.minor() == 20) {
+            return ServerVersion.patch() >= 5 ? 766 : ServerVersion.patch() >= 3 ? 765 : 764;
+        }
+        if (ServerVersion.major() == 1 && ServerVersion.minor() == 21) {
+            if (ServerVersion.patch() >= 6) return 771;
+            if (ServerVersion.patch() >= 5) return 770;
+            if (ServerVersion.patch() >= 4) return 769;
+            if (ServerVersion.patch() >= 2) return 768;
+            return 767;
+        }
+        return 0;
+    }
+
+    public static int clientProtocol(org.bukkit.entity.Player player) {
+        int fallback;
+        try {
+            fallback = com.comphenix.protocol.ProtocolLibrary.getProtocolManager()
+                    .getProtocolVersion(player);
+        } catch (Throwable ignored) {
+            fallback = serverProtocol();
+        }
+        return clientProtocol(player.getUniqueId(), fallback);
+    }
+
+    public static String serverBrand() {
+        try {
+            return Bukkit.getName().toLowerCase(java.util.Locale.ROOT);
+        } catch (Throwable ignored) {
+            return "unknown";
+        }
+    }
+
+    public static String platform() {
+        String value = System.getenv("ZEUS_PLATFORM");
+        if (value != null && !value.isEmpty()) return value;
+        return serverBrand().contains("spigot") ? "spigot" : "paper";
+    }
+
+    public static String physicsFingerprint() {
+        String value = System.getenv("ZEUS_PHYSICS_FINGERPRINT");
+        return value == null || value.isEmpty() ? "vanilla" : value;
+    }
+
+    /**
+     * Opaque subject id used only for the live capture session.  The core may
+     * map it to an in-memory player binding, but it must never persist it in a
+     * candidate profile.
+     */
+    public static String captureSubjectId(UUID uuid) {
+        String salt = System.getenv().getOrDefault("ZEUS_CAPTURE_SUBJECT_SALT", "zeus-capture-subject-v1");
+        long hash = 0xcbf29ce484222325L;
+        byte[] bytes = (salt + ":" + uuid).getBytes(StandardCharsets.UTF_8);
+        for (byte value : bytes) {
+            hash ^= value & 0xffL;
+            hash *= 0x100000001b3L;
+        }
+        return "subject-" + String.format(java.util.Locale.ROOT, "%016x", hash);
+    }
+
+    /**
+     * A protocol number is metadata, not a physics identity.  An adapter may
+     * opt in to a translation behaviour fingerprint only when it has verified
+     * that the installed ViaVersion/configuration changes movement semantics.
+     */
+    public static String translationBehaviorFingerprint(UUID uuid, int clientProtocol) {
+        String configured = System.getenv("ZEUS_TRANSLATION_BEHAVIOR_FINGERPRINT");
+        if (configured == null || configured.isEmpty()) return "";
+        return configured;
+    }
+
+    /**
+     * Prefer ViaVersion's connection protocol when the optional plugin is
+     * installed.  ProtocolLib remains the compatibility fallback supplied by
+     * the position listener; neither value participates in a physics profile
+     * key without an explicit behaviour fingerprint.
+     */
+    public static int clientProtocol(UUID uuid, int fallback) {
+        try {
+            Class<?> via = Class.forName("com.viaversion.viaversion.api.Via");
+            Object api = via.getMethod("getAPI").invoke(null);
+            Object value = api.getClass().getMethod("getPlayerVersion", UUID.class)
+                    .invoke(api, uuid);
+            if (value instanceof Number && ((Number) value).intValue() > 0) {
+                return ((Number) value).intValue();
+            }
+        } catch (Throwable ignored) {
+            // ViaVersion is optional.  The caller's ProtocolLib/server value
+            // remains the diagnostic fallback.
+        }
+        return fallback;
+    }
+
+    public static String clientVersion(int clientProtocol) {
+        if (clientProtocol <= 0) return "unknown";
+        // Keep this mapping diagnostic-only.  It is never used as a profile
+        // key and unknown/future protocols remain visibly unknown.
+        switch (clientProtocol) {
+            case 763: return "1.20";
+            case 765: return "1.20.5";
+            case 767: return "1.21";
+            case 768: return "1.21.2";
+            case 769: return "1.21.4";
+            case 770: return "1.21.5";
+            case 771: return "1.21.6";
+            default: return "protocol-" + clientProtocol;
+        }
     }
 
     // ── Polling logic ──

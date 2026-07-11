@@ -23,6 +23,7 @@ import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerJoin;
 import org.vennv.packets.PacketPlayerOpenWindow;
 import org.vennv.packets.PacketPlayerPosition;
+import org.vennv.packets.PacketPhysicsCaptureSample;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.packets.PacketServerConfig;
 import org.vennv.utils.Armors;
@@ -212,7 +213,16 @@ public final class PlayerStateSnapshotService {
                 reach,
                 cooldown,
                 ServerCombatSettings.getMaxCps(),
-                movementSpeed);
+                movementSpeed,
+                PacketPhysicsCaptureSample.UNKNOWN_U16,
+                org.vennv.zeusFabric.ZeusFabricMod.getServer().getVersion(),
+                "fabric",
+                "fabric",
+                System.getProperty("zeus.physics.fingerprint", "vanilla"),
+                PacketPhysicsCaptureSample.UNKNOWN_U16,
+                "unknown",
+                System.getenv().getOrDefault("ZEUS_TRANSLATION_BEHAVIOR_FINGERPRINT", ""),
+                "fabric");
     }
 
     private static void sendPositionAndBlocks(

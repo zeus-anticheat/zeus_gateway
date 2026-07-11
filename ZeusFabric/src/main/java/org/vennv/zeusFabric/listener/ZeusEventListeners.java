@@ -7,6 +7,11 @@ import net.minecraft.util.Util;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.entity.event.v1.EntityElytraEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
@@ -90,6 +95,8 @@ import org.vennv.zeusFabric.utils.MinecraftCompat;
 public final class ZeusEventListeners {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("zeusfabric");
+    private static final AtomicBoolean CAPTURE_ACTIVE = new AtomicBoolean(false);
+    private static final AtomicBoolean CONTROL_PLANE_AVAILABLE = new AtomicBoolean(false);
 
     private ZeusEventListeners() {}
 
@@ -186,6 +193,8 @@ public final class ZeusEventListeners {
      */
     private static final java.util.Map<String, Vec3d> LAST_VELOCITY =
         new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<String, Long> LAST_CAPTURE_NANOS =
+        new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * Suppresses repeat piston force packets while the same moving block
@@ -252,6 +261,7 @@ public final class ZeusEventListeners {
      * Registers all Fabric event callbacks. Called once from the mod initialiser.
      */
     public static void registerAll() {
+        startCaptureControlPoller();
         registerJoinLeave();
         registerAttackEntity();
         registerAttackBlock();
@@ -292,6 +302,52 @@ public final class ZeusEventListeners {
 
             LOGGER.debug("[ZeusFabric] Player left: {}", name);
         });
+    }
+
+    private static boolean isCaptureActive() {
+        if (CONTROL_PLANE_AVAILABLE.get()) {
+            return CAPTURE_ACTIVE.get();
+        }
+        return Boolean.parseBoolean(System.getProperty("zeus.capture.active", "false"));
+    }
+
+    /** The dashboard is the control plane; the old property-only switch is
+     * retained only as a local opt-in fallback when no dashboard is running. */
+    private static void startCaptureControlPoller() {
+        Thread poller = new Thread(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    String host = System.getenv().getOrDefault("ZEUS_DASHBOARD_HOST", "127.0.0.1");
+                    String port = System.getenv().getOrDefault("ZEUS_DASHBOARD_PORT", "3000");
+                    URL url = new URL("http://" + host + ":" + port + "/api/physics-capture/status");
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    connection.setConnectTimeout(1500);
+                    connection.setReadTimeout(1500);
+                    connection.setRequestMethod("GET");
+                    if (connection.getResponseCode() == 200) {
+                        try (InputStream input = connection.getInputStream()) {
+                            String body = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+                            CAPTURE_ACTIVE.set(body.contains("\"active\":true") || body.contains("\"active\": true"));
+                            CONTROL_PLANE_AVAILABLE.set(true);
+                        }
+                    } else {
+                        CAPTURE_ACTIVE.set(false);
+                        CONTROL_PLANE_AVAILABLE.set(false);
+                    }
+                    connection.disconnect();
+                } catch (Exception ignored) {
+                    CAPTURE_ACTIVE.set(false);
+                    CONTROL_PLANE_AVAILABLE.set(false);
+                }
+                try {
+                    Thread.sleep(5000L);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }, "ZeusFabric-CaptureControl");
+        poller.setDaemon(true);
+        poller.start();
     }
 
     // ─────────────────────── World Change ────────────────────────────────
@@ -684,6 +740,9 @@ public final class ZeusEventListeners {
         // ── Keep Alive (piggyback on tick) ──
         tickKeepAlive(player, uid, name, timestamp);
 
+        // ── Schema-v3 physics capture (one shared Gateway/Fabric contract) ──
+        tickPhysicsCapture(player, uid, name, timestamp);
+
         // ── Held Item ──
         PlayerStateSnapshotService.sendHeldItemSnapshot(player, false);
 
@@ -779,6 +838,126 @@ public final class ZeusEventListeners {
                 onGround
             )
         );
+    }
+
+    private static void tickPhysicsCapture(
+        ServerPlayerEntity player,
+        String uid,
+        String name,
+        long timestamp
+    ) {
+        // Capture is opt-in.  Dashboard control wins whenever reachable; the
+        // legacy property is only a local fallback while the dashboard is
+        // unavailable.
+        if (!isCaptureActive()) {
+            return;
+        }
+        Vec3d pos = positionOf(player);
+        Vec3d previous = LAST_POSITION.get(uid);
+        Vec3d velocity = player.getVelocity();
+        Vec3d previousVelocity = LAST_VELOCITY.get(uid);
+        long now = System.nanoTime();
+        Long previousNanos = LAST_CAPTURE_NANOS.put(uid, now);
+        float tickDuration = previousNanos == null
+            ? Float.NaN
+            : (now - previousNanos) / 1_000_000.0f;
+        float baseSpeed;
+        try {
+            baseSpeed = (float) player.getAttributeValue(
+                net.minecraft.entity.attribute.EntityAttributes.MOVEMENT_SPEED);
+        } catch (Throwable ignored) {
+            baseSpeed = Float.NaN;
+        }
+
+        Vec3d delta = previous == null ? Vec3d.ZERO : pos.subtract(previous);
+        BlockState state = MinecraftCompat.entityWorld(player).getBlockState(player.getBlockPos());
+        String blockId = Registries.BLOCK.getId(state.getBlock()).toString();
+        String properties = state.toString();
+        String dimension = MinecraftCompat.entityWorld(player).getRegistryKey().getValue().toString();
+        boolean inWater = player.isTouchingWater();
+        boolean inLava = player.isInLava();
+        String effects = player.getStatusEffects().stream()
+            .map(effect -> Registries.STATUS_EFFECT.getId(effect.getEffectType().value()).toString()
+                + "=" + (effect.getAmplifier() + 1))
+            .sorted()
+            .collect(java.util.stream.Collectors.joining(","));
+        boolean mounted = player.hasVehicle();
+        Entity vehicle = player.getVehicle();
+        long vehicleId = vehicle == null ? 0L : vehicle.getId();
+        String vehicleType = vehicle == null ? "" : Registries.ENTITY_TYPE.getId(vehicle.getType()).toString();
+        int flags = 0;
+        if (player.isOnGround()) flags |= 0x0001;
+        if (player.isSprinting()) flags |= 0x0002;
+        if (player.isSneaking()) flags |= 0x0008;
+        if (player.isGliding()) flags |= 0x0020;
+        if (mounted) flags |= 0x1000;
+        long unknownMask = (1L << 5) | (1L << 6) | (1L << 7) | (1L << 8);
+        if (Float.isNaN(baseSpeed)) unknownMask |= 1L << 3;
+        if (previous == null) unknownMask |= 1L << 1;
+        if (previousVelocity == null) unknownMask |= 1L << 2;
+        if (Float.isNaN(tickDuration)) unknownMask |= 1L << 11;
+        int serverProtocol = serverProtocol(org.vennv.zeusFabric.ZeusFabricMod.getServer().getVersion());
+        String physicsFingerprint = System.getProperty("zeus.physics.fingerprint", "vanilla");
+        String bodyFluid = inWater ? "water" : inLava ? "lava" : "";
+        String eyeFluid = inWater && player.getEyeY() < MinecraftCompat.entityWorld(player).getSeaLevel()
+            ? "water" : "";
+
+        PacketQueue.push(new PacketPhysicsCaptureSample(
+            timestamp, player.age, serverProtocol, PacketPhysicsCaptureSample.UNKNOWN_U16,
+            org.vennv.zeusFabric.ZeusFabricMod.getServer().getVersion(), "unknown", "fabric", "fabric",
+            physicsFingerprint, physicsFingerprint,
+            captureSubjectId(player), translationBehaviorFingerprint(), "fabric",
+            hashPlayer(player),
+            pos.x, pos.y, pos.z,
+            (float) delta.x, (float) delta.y, (float) delta.z,
+            previousVelocity == null ? Float.NaN : (float) previousVelocity.x,
+            previousVelocity == null ? Float.NaN : (float) previousVelocity.y,
+            previousVelocity == null ? Float.NaN : (float) previousVelocity.z,
+            (float) velocity.x, (float) velocity.y, (float) velocity.z, baseSpeed,
+            flags, 0, flags,
+            0xffff, 0xffff, (byte) 0,
+            blockId, properties, state.toString(), "unknown", Float.NaN, Float.NaN,
+            inWater, false, inLava, inWater ? "water" : inLava ? "lava" : "air",
+            Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, bodyFluid, eyeFluid,
+            effects, baseSpeed, Float.NaN, (byte) 0, (byte) 0,
+            mounted, vehicleType, vehicleId, 0,
+            false, "", Float.NaN, Float.NaN, Float.NaN, 0L, 0,
+            tickDuration, Float.NaN, (byte) 0, 0, unknownMask, (byte) 0xff
+        ));
+    }
+
+    private static int serverProtocol(String version) {
+        if (version == null) return PacketPhysicsCaptureSample.UNKNOWN_U16;
+        if (version.contains("1.21.6")) return 771;
+        if (version.contains("1.21.5")) return 770;
+        if (version.contains("1.21.4")) return 769;
+        if (version.contains("1.21.2") || version.contains("1.21.3")) return 768;
+        if (version.contains("1.21")) return 767;
+        return PacketPhysicsCaptureSample.UNKNOWN_U16;
+    }
+
+    private static long hashPlayer(ServerPlayerEntity player) {
+        long hash = 0xcbf29ce484222325L;
+        for (byte value : player.getUuidAsString().getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+            hash ^= value & 0xff;
+            hash *= 0x100000001b3L;
+        }
+        return hash;
+    }
+
+    private static String captureSubjectId(ServerPlayerEntity player) {
+        String salt = System.getenv().getOrDefault("ZEUS_CAPTURE_SUBJECT_SALT", "zeus-capture-subject-v1");
+        long hash = 0xcbf29ce484222325L;
+        byte[] bytes = (salt + ":" + player.getUuidAsString()).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        for (byte value : bytes) {
+            hash ^= value & 0xffL;
+            hash *= 0x100000001b3L;
+        }
+        return "subject-" + String.format(java.util.Locale.ROOT, "%016x", hash);
+    }
+
+    private static String translationBehaviorFingerprint() {
+        return System.getenv().getOrDefault("ZEUS_TRANSLATION_BEHAVIOR_FINGERPRINT", "");
     }
 
     // ─────────────────────── Velocity ─────────────────────────────────────
@@ -1581,6 +1760,7 @@ public final class ZeusEventListeners {
         LAST_USING_RIPTIDE.remove(uid);
         LAST_SWIMMING.remove(uid);
         LAST_VELOCITY.remove(uid);
+        LAST_CAPTURE_NANOS.remove(uid);
         LAST_PISTON_SIGNATURE.remove(uid);
         LAST_WAITING_STATE.remove(uid);
         KA_SENT_TIME.remove(uid);

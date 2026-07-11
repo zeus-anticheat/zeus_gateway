@@ -11,12 +11,15 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.bukkit.entity.Player;
+import org.bukkit.block.Block;
+import org.bukkit.util.Vector;
 import org.vennv.packets.PacketPlayerPosition;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.utils.ServerBoundPlayerCommandActions;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
 import org.vennv.zeusGateway.compat.EntityCompat;
+import org.vennv.zeusGateway.compat.BlockCompat;
 import org.vennv.zeusGateway.platform.ServerVersion;
 
 public class PacketPositionListener extends PacketAdapter {
@@ -40,6 +43,7 @@ public class PacketPositionListener extends PacketAdapter {
     private static final ConcurrentHashMap<UUID, PlayerCache> playerCaches = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<UUID, Boolean> swimmingPoseState = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<UUID, AtomicLong> movementSequences = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, Vector> captureVelocities = new ConcurrentHashMap<>();
 
     private static final PacketType TYPE_POSITION = PacketType.Play.Client.POSITION;
     private static final PacketType TYPE_POSITION_LOOK = PacketType.Play.Client.POSITION_LOOK;
@@ -120,6 +124,7 @@ public class PacketPositionListener extends PacketAdapter {
     public static void removePlayer(UUID uuid) {
         swimmingPoseState.remove(uuid);
         movementSequences.remove(uuid);
+        captureVelocities.remove(uuid);
         playerCaches.remove(uuid);
     }
 
@@ -158,6 +163,7 @@ public class PacketPositionListener extends PacketAdapter {
         UUID uuid = player.getUniqueId();
         PlayerCache cache = playerCaches.computeIfAbsent(uuid, ignored -> new PlayerCache());
         boolean hadPreviousPosition = cache.hasPosition;
+        boolean previousOnGround = cache.onGround;
         double previousX = cache.lastX;
         double previousY = cache.lastY;
         double previousZ = cache.lastZ;
@@ -204,70 +210,124 @@ public class PacketPositionListener extends PacketAdapter {
                     hasPosition, hasLook));
 
             // ── Physics capture sample ──
-            if (hasPosition && hadPreviousPosition && PhysicsCaptureManager.isCaptureActive()) {
+            if (hadPreviousPosition && PhysicsCaptureManager.isCaptureActive()) {
                 try {
                     double prevDx = sendX - previousX;
                     double prevDy = sendY - previousY;
                     double prevDz = sendZ - previousZ;
 
-                    org.bukkit.util.Vector vel = player.getVelocity();
+                    Vector vel = player.getVelocity();
+                    Vector previousVel = captureVelocities.put(uuid, vel.clone());
 
                     byte flags = 0;
                     if (packetOnGround) flags |= 0x01;
                     if (player.isSprinting()) flags |= 0x02;
                     if (player.isSwimming()) flags |= 0x04;
                     if (player.isSneaking()) flags |= 0x08;
+                    if (playerBoolean(player, "isClimbing")) flags |= 0x10;
+                    if (playerBoolean(player, "isGliding")) flags |= 0x20;
 
                     // Determine block context from player location
                     int supportBlockId = 0;
                     int frictionBlockId = 0;
                     byte surfaceCategory = 0;
+                    String supportBlockName = "";
+                    String blockProperties = "";
+                    String supportShapeId = "";
+                    float blockFriction = Float.NaN;
+                    float velocityMultiplier = Float.NaN;
                     try {
                         org.bukkit.Location feetLoc = player.getLocation().clone();
                         org.bukkit.Location below = feetLoc.clone().add(0, -0.001, 0);
-                        org.bukkit.block.Block belowBlock = below.getBlock();
+                        Block belowBlock = below.getBlock();
                         if (belowBlock != null) {
                             supportBlockId = belowBlock.getType().ordinal();
                             frictionBlockId = supportBlockId;
                             String mat = belowBlock.getType().name();
+                            supportBlockName = "minecraft:" + mat.toLowerCase(java.util.Locale.ROOT);
+                            blockProperties = BlockCompat.getBlockDataString(belowBlock);
+                            double[] bounds = BlockCompat.getBlockBoundsArray(belowBlock);
+                            if (bounds != null) supportShapeId = java.util.Arrays.toString(bounds);
+                            blockFriction = reflectedBlockScalar(belowBlock, "getFriction");
+                            velocityMultiplier = reflectedBlockScalar(belowBlock, "getVelocityMultiplier");
                             if (mat.contains("ICE")) surfaceCategory = 1;
                             else if (mat.contains("SLIME")) surfaceCategory = 2;
                             else if (mat.contains("HONEY")) surfaceCategory = 3;
-                            else if (mat.contains("SOUL_SAND")) surfaceCategory = 4;
+                            else if (mat.contains("SOUL_SAND") || mat.contains("SOUL_SOIL")) surfaceCategory = 4;
+                            else if (mat.contains("WEB")) surfaceCategory = 5;
                         }
                     } catch (Exception ignored) {}
 
-                    boolean bodyInWater = player.getLocation().getBlock().isLiquid();
-                    boolean eyeInWater = player.getEyeLocation().getBlock().isLiquid();
-                    boolean inLava = player.getLocation().getBlock().getType().name().contains("LAVA");
+                    String bodyBlock = player.getLocation().getBlock().getType().name();
+                    String eyeBlock = player.getEyeLocation().getBlock().getType().name();
+                    boolean bodyInWater = bodyBlock.contains("WATER");
+                    boolean eyeInWater = eyeBlock.contains("WATER");
+                    boolean inLava = bodyBlock.contains("LAVA");
 
-                    byte effectLevels = 0;
+                    byte jumpBoostLevel = 0;
+                    byte slownessLevel = 0;
+                    String effectState = "";
                     try {
-                        org.bukkit.potion.PotionEffect speedEff = player.getPotionEffect(
-                            org.bukkit.potion.PotionEffectType.SPEED);
+                        effectState = player.getActivePotionEffects().stream()
+                            .map(effect -> effect.getType().getName().toLowerCase(java.util.Locale.ROOT)
+                                + "=" + (effect.getAmplifier() + 1))
+                            .sorted()
+                            .collect(java.util.stream.Collectors.joining(","));
                         org.bukkit.potion.PotionEffectType jumpType = potionEffectType("JUMP", "JUMP_BOOST");
                         org.bukkit.potion.PotionEffect jumpEff = jumpType == null ? null : player.getPotionEffect(jumpType);
-                        if (speedEff != null) effectLevels |= (speedEff.getAmplifier() + 1) << 4;
-                        if (jumpEff != null) effectLevels |= (jumpEff.getAmplifier() + 1);
+                        if (jumpEff != null) jumpBoostLevel = (byte) Math.min(255, jumpEff.getAmplifier() + 1);
+                        org.bukkit.potion.PotionEffectType slowType = potionEffectType("SLOW", "SLOWNESS");
+                        org.bukkit.potion.PotionEffect slowEff = slowType == null ? null : player.getPotionEffect(slowType);
+                        if (slowEff != null) slownessLevel = (byte) Math.min(255, slowEff.getAmplifier() + 1);
                     } catch (Exception ignored) {}
 
-                    byte tickDurationMs = 50; // approximate, could use MSPT tracker
+                    float tickDurationMs = PhysicsCaptureManager.observedTickDurationMs(uuid, System.nanoTime());
                     byte worldDim = (byte) player.getWorld().getEnvironment().ordinal();
+                    int previousFlags = previousOnGround ? 0x01 : 0;
+                    int currentFlags = flags & 0xff;
+                    org.bukkit.entity.Entity vehicle = player.getVehicle();
+                    boolean vehicleMounted = vehicle != null;
+                    String vehicleType = vehicleMounted
+                        ? "minecraft:" + vehicle.getType().name().toLowerCase(java.util.Locale.ROOT)
+                        : "";
+                    String fluidKind = bodyInWater ? "water" : inLava ? "lava" : "air";
+                    String bodyFluid = bodyInWater ? "water" : inLava ? "lava" : "";
+                    String eyeFluid = eyeInWater ? "water" : "";
+                    float previousVelocityX = previousVel == null ? Float.NaN : (float) previousVel.getX();
+                    float previousVelocityY = previousVel == null ? Float.NaN : (float) previousVel.getY();
+                    float previousVelocityZ = previousVel == null ? Float.NaN : (float) previousVel.getZ();
 
-                    PhysicsCaptureManager.sendSample(
+                    PhysicsCaptureManager.sendSampleV2(
                             timestamp,
+                            movementSequence,
                             uuid,
                             serverProtocol(), clientProtocol(player),
                             previousX, previousY, previousZ,
                             (float) prevDx, (float) prevDy, (float) prevDz,
+                            previousVelocityX, previousVelocityY, previousVelocityZ,
                             (float) vel.getX(), (float) vel.getY(), (float) vel.getZ(),
-                            0.1f, // base speed — approximated, real value from attributes
-                            flags,
+                            actualBaseSpeed(player),
+                            flags & 0xff, previousFlags, currentFlags,
                             supportBlockId, frictionBlockId, surfaceCategory,
+                            supportBlockName, blockProperties, blockProperties, supportShapeId,
+                            blockFriction, velocityMultiplier,
                             bodyInWater, eyeInWater, inLava,
-                            effectLevels,
-                            tickDurationMs, worldDim,
-                            (byte) 0 // sim error — unknown on Gateway side
+                            fluidKind, Float.NaN, Float.NaN,
+                            Float.NaN, Float.NaN, Float.NaN, bodyFluid, eyeFluid,
+                            effectState, actualBaseSpeed(player), Float.NaN,
+                            jumpBoostLevel, slownessLevel,
+                            vehicleMounted, vehicleType, vehicleMounted ? vehicle.getEntityId() : 0L, 0,
+                            false, "", Float.NaN, Float.NaN, Float.NaN, 0L, 0,
+                            tickDurationMs,
+                            // Gateway does not own server-tick MSPT; preserve unknown
+                            // instead of copying packet inter-arrival time.
+                            Float.NaN, worldDim, 0,
+                            (byte) 0xff, // prediction residual is not known on Gateway side
+                            hasPosition, hasLook,
+                            sendYaw, sendPitch,
+                            lookVectorX(sendYaw, sendPitch),
+                            lookVectorY(sendYaw, sendPitch),
+                            lookVectorZ(sendYaw, sendPitch)
                     );
                 } catch (Exception ignored) {}
             }
@@ -276,6 +336,59 @@ public class PacketPositionListener extends PacketAdapter {
                 .getLogger()
                 .warning("Error processing position packet for " + name + ": " + e.getMessage());
         }
+    }
+
+    private static boolean playerBoolean(org.bukkit.entity.Player player, String methodName) {
+        try {
+            Object value = player.getClass().getMethod(methodName).invoke(player);
+            return value instanceof Boolean && (Boolean) value;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static float reflectedBlockScalar(Block block, String methodName) {
+        try {
+            Object value = block.getClass().getMethod(methodName).invoke(block);
+            return value instanceof Number ? ((Number) value).floatValue() : Float.NaN;
+        } catch (Throwable ignored) {
+            return Float.NaN;
+        }
+    }
+
+    private static float actualBaseSpeed(org.bukkit.entity.Player player) {
+        try {
+            Class<?> attributeClass = Class.forName("org.bukkit.attribute.Attribute");
+            Object movement;
+            try {
+                movement = java.lang.Enum.valueOf((Class) attributeClass, "GENERIC_MOVEMENT_SPEED");
+            } catch (IllegalArgumentException ignored) {
+                movement = java.lang.Enum.valueOf((Class) attributeClass, "MOVEMENT_SPEED");
+            }
+            Object instance = player.getClass().getMethod("getAttribute", attributeClass)
+                    .invoke(player, movement);
+            if (instance == null) return Float.NaN;
+            Object value = instance.getClass().getMethod("getValue").invoke(instance);
+            return value instanceof Number ? ((Number) value).floatValue() : Float.NaN;
+        } catch (Throwable ignored) {
+            return Float.NaN;
+        }
+    }
+
+    private static float lookVectorX(float yaw, float pitch) {
+        double yawRadians = Math.toRadians(yaw);
+        double pitchRadians = Math.toRadians(pitch);
+        return (float) (-Math.sin(yawRadians) * Math.cos(pitchRadians));
+    }
+
+    private static float lookVectorY(float yaw, float pitch) {
+        return (float) (-Math.sin(Math.toRadians(pitch)));
+    }
+
+    private static float lookVectorZ(float yaw, float pitch) {
+        double yawRadians = Math.toRadians(yaw);
+        double pitchRadians = Math.toRadians(pitch);
+        return (float) (Math.cos(yawRadians) * Math.cos(pitchRadians));
     }
 
     private static org.bukkit.potion.PotionEffectType potionEffectType(String... names) {
@@ -305,11 +418,13 @@ public class PacketPositionListener extends PacketAdapter {
     }
 
     private static int clientProtocol(Player player) {
+        int fallback;
         try {
-            return com.comphenix.protocol.ProtocolLibrary.getProtocolManager().getProtocolVersion(player);
+            fallback = com.comphenix.protocol.ProtocolLibrary.getProtocolManager().getProtocolVersion(player);
         } catch (Throwable ignored) {
-            return serverProtocol();
+            fallback = serverProtocol();
         }
+        return PhysicsCaptureManager.clientProtocol(player.getUniqueId(), fallback);
     }
 
     private boolean readPacketOnGround(PacketEvent event) {

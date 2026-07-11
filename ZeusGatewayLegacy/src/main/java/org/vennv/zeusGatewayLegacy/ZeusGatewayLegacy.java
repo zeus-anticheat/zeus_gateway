@@ -63,6 +63,7 @@ public final class ZeusGatewayLegacy extends JavaPlugin implements Listener {
         }
 
         getServer().getPluginManager().registerEvents(this, this);
+        LegacyPhysicsCaptureManager.start(this);
         long period = Math.max(1L, getConfig().getLong("packets.position-snapshot-ticks", 1L));
         positionTask = getServer().getScheduler().runTaskTimer(this, new Runnable() {
             @Override
@@ -78,6 +79,7 @@ public final class ZeusGatewayLegacy extends JavaPlugin implements Listener {
         if (positionTask != null) {
             positionTask.cancel();
         }
+        LegacyPhysicsCaptureManager.stop();
         if (batchSender != null) {
             batchSender.shutdown();
         }
@@ -97,6 +99,7 @@ public final class ZeusGatewayLegacy extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
+        LegacyPhysicsCaptureManager.remove(player);
         push(new PacketPlayerLeave(now(), uid(player), player.getName()));
     }
 
@@ -220,6 +223,7 @@ public final class ZeusGatewayLegacy extends JavaPlugin implements Listener {
                 location.getPitch(),
                 player.isSneaking() ? 1.5f : 1.8f,
                 player.isOnGround()));
+        LegacyPhysicsCaptureManager.capture(player, timestamp);
     }
 
     private PacketPlayerExternalForce externalForce(

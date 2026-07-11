@@ -34,6 +34,7 @@ import org.vennv.zeusGateway.compat.EffectCompat;
 import org.vennv.zeusGateway.compat.EntityCompat;
 import org.vennv.zeusGateway.platform.ServerCombatSettings;
 import org.vennv.zeusGateway.platform.ServerVersion;
+import org.vennv.zeusGateway.listener.packets.PhysicsCaptureManager;
 import org.vennv.zeusGateway.provider.PacketQueue;
 import org.vennv.zeusGateway.utils.BlockUtil;
 import org.vennv.zeusGateway.utils.ItemUtil;
@@ -182,7 +183,18 @@ public final class PlayerStateSnapshotService {
                 reach,
                 cooldown,
                 ServerCombatSettings.getMaxCps(),
-                movementSpeed);
+                movementSpeed,
+                PhysicsCaptureManager.serverProtocol(),
+                PhysicsCaptureManager.serverVersion(),
+                PhysicsCaptureManager.serverBrand(),
+                PhysicsCaptureManager.platform(),
+                PhysicsCaptureManager.physicsFingerprint(),
+                PhysicsCaptureManager.clientProtocol(player),
+                PhysicsCaptureManager.clientVersion(PhysicsCaptureManager.clientProtocol(player)),
+                PhysicsCaptureManager.translationBehaviorFingerprint(
+                        player.getUniqueId(),
+                        PhysicsCaptureManager.clientProtocol(player)),
+                "gateway");
     }
 
     public static int gameModeToProtocolId(GameMode mode) {

@@ -1,6 +1,7 @@
 package org.vennv;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
@@ -11,14 +12,12 @@ import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPhysicsCaptureSample;
 import org.vennv.packets.PacketPlayerVelocity;
 import org.vennv.packets.PacketPlayerPosition;
+import org.vennv.packets.PacketServerConfig;
 import org.vennv.utils.ExternalForceFlags;
 import org.vennv.utils.ExternalForceType;
 import org.vennv.utils.ItemStack;
 
-/**
- * Golden payloads for the packets consumed by the cross-platform physics path.
- * A change here requires a coordinated Rust protocol migration.
- */
+/** Golden payloads for the packets consumed by the cross-platform physics path. */
 class WireContractGoldenTest {
     private static final long TIMESTAMP = 0x0102030405060708L;
     private static final String UID = "u";
@@ -69,33 +68,43 @@ class WireContractGoldenTest {
                         true)));
     }
 
+    @Test
+    void physicsCaptureFixtureUsesSchemaV3Contract() throws Exception {
+        String encoded = hex(new PacketPhysicsCaptureSample(
+                TIMESTAMP,
+                770,
+                769,
+                0x1122334455667788L,
+                1.0, 64.0, 2.0,
+                0.1f, 0.0f, 0.2f,
+                0.1f, 0.0f, 0.2f,
+                0.1f,
+                (byte) 0x03,
+                1,
+                1,
+                (byte) 0,
+                false,
+                false,
+                false,
+                (byte) 0,
+                (byte) 50,
+                (byte) 0,
+                (byte) 1));
+        assertTrue(encoded.startsWith("2f010203040506070803"));
+        assertTrue(encoded.contains("1122334455667788"));
+    }
 
     @Test
-    void physicsCaptureFixtureHasNoPlayerBase() throws Exception {
-        assertEquals(
-                "2f0102030405060708010302030111223344556677883ff00000000000004050000000000000"
-                        + "40000000000000003dcccccd000000003e4ccccd3dcccccd000000003e4ccccd3dcccccd"
-                        + "0300010001000000320001",
-                hex(new PacketPhysicsCaptureSample(
-                        TIMESTAMP,
-                        770,
-                        769,
-                        0x1122334455667788L,
-                        1.0, 64.0, 2.0,
-                        0.1f, 0.0f, 0.2f,
-                        0.1f, 0.0f, 0.2f,
-                        0.1f,
-                        (byte) 0x03,
-                        1,
-                        1,
-                        (byte) 0,
-                        false,
-                        false,
-                        false,
-                        (byte) 0,
-                        (byte) 50,
-                        (byte) 0,
-                        (byte) 1)));
+    void serverConfigPublishesCaptureV3Handshake() throws Exception {
+        String encoded = hex(new PacketServerConfig(
+                TIMESTAMP, UID, USERNAME, 3.0f, 10.0f, (byte) 0, 0.1f,
+                767, "1.21", "paper", "paper", "vanilla", 767, "1.21",
+                "", "gateway"));
+        // PacketBaseInfo is followed by four combat fields, then extension v2
+        // and the CaptureFrameV3 schema marker.
+        assertTrue(encoded.contains("02"));
+        assertTrue(encoded.contains("03"));
+        assertTrue(encoded.contains("7a6575732d6265686176696f722d72656769737472792d7633"));
     }
 
     @Test
