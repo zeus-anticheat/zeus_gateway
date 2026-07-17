@@ -25,8 +25,8 @@ every configured build-verifiable target and can fail when any buildable target
 is missing from the matrix.
 
 The
-support verifier requires the `compatibility-core` packet set (`0x09`, `0x13`,
-`0x22`, `0x26`, `0x27`) for `core-scenario-smoke`; a join-only scenario cannot
+support verifier requires the `compatibility-core` packet set (`0x09`, `0x22`,
+`0x26`, `0x27`) for `core-scenario-smoke`; a join-only scenario cannot
 promote a target to supported. Dry-run evidence is rejected.
 
 For `ZeusGateway-legacy`, the verifier also enforces a Java 8 and legacy API
@@ -38,9 +38,8 @@ Java 8 in the shaded artifact.
 
 | Artifact | Runtime | Purpose | Current State |
 |----------|---------|---------|---------------|
-| `ZeusGateway-legacy` | Java 8 | Intended Paper/Spigot adapter for `1.8`-`1.13.x` | `build-verifiable`; target smoke tests outstanding |
-| `ZeusGateway-modern` | Java 21 | Paper/Spigot/Folia adapter using current API surface | `build-verifiable`; target smoke tests outstanding |
-| `ZeusFabric-<mc>` | Java 21 | One Yarn/mixin adapter per exact Minecraft release | `1.21.4` and `1.21.11` are build-verifiable; smoke tests outstanding |
+| `ZeusGateway` | Java 8 | Unified Paper/Spigot/Folia adapter with legacy runtime module | `build-verifiable`; target smoke tests outstanding |
+| `ZeusFabric-<mc>` | Java 21 | One Yarn/mixin adapter per exact Minecraft release | `1.21.2`–`1.21.11` are build-verifiable; smoke tests outstanding |
 
 The shared `ZeusProtocolJava` codec is Java 8-compatible so a future legacy
 adapter can emit the same bytes. The modern Gateway module must not be deployed
@@ -54,7 +53,6 @@ semantics. In particular:
 | ID | Packet | Preserved Meaning |
 |----|--------|-------------------|
 | `0x09` | `PacketPlayerAttackEntity` | Captured attack target state |
-| `0x13` | `PacketPlayerSurroundingBlocks` | Dynamic nearby block snapshot |
 | `0x22` | `PacketPlayerVelocity` | Server velocity state |
 | `0x26` | `PacketPlayerInventoryTransaction` | Container state/cursor/changed slots |
 | `0x27` | `PacketPlayerExternalForce` | Classified force and flags |

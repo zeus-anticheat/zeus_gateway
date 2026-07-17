@@ -2,13 +2,10 @@ package org.vennv.zeusGateway.task;
 
 import org.bukkit.GameMode;
 import org.bukkit.Location;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
-import org.bukkit.util.Vector;
 import org.vennv.Effect;
-import org.vennv.packets.PacketBlockChangeEvent;
 import org.vennv.packets.PacketPlayerArmorsEquipment;
 import org.vennv.packets.PacketPlayerChangeMode;
 import org.vennv.packets.PacketPlayerEffect;
@@ -36,7 +33,6 @@ import org.vennv.zeusGateway.platform.ServerCombatSettings;
 import org.vennv.zeusGateway.platform.ServerVersion;
 import org.vennv.zeusGateway.listener.packets.PhysicsCaptureManager;
 import org.vennv.zeusGateway.provider.PacketQueue;
-import org.vennv.zeusGateway.utils.BlockUtil;
 import org.vennv.zeusGateway.utils.ItemUtil;
 
 import java.util.ArrayList;
@@ -137,8 +133,8 @@ public final class PlayerStateSnapshotService {
         String uid = player.getUniqueId().toString();
         String name = player.getName();
 
-        int protocolVersion = ServerVersion.isAtLeast(1, 21, 5) ? 770 : ServerVersion.isAtLeast(1, 21, 4) ? 769 : ServerVersion.isAtLeast(1, 21, 2) ? 768 : ServerVersion.isAtLeast(1, 21) ? 767 : ServerVersion.isAtLeast(1, 20, 5) ? 765 : ServerVersion.isAtLeast(1, 20) ? 763 : 0;
-        PacketQueue.push(new PacketPlayerJoin(timestamp, uid, name, protocolVersion));
+        PacketQueue.push(new PacketPlayerJoin(
+                timestamp, uid, name, PhysicsCaptureManager.serverProtocol()));
         PacketQueue.push(serverConfig(timestamp, uid, name, player));
         PacketQueue.push(new PacketPlayerChangeMode(
                 timestamp,
@@ -214,9 +210,8 @@ public final class PlayerStateSnapshotService {
     private static void sendPositionAndBlocks(long timestamp, String uid, String name, Player player) {
         Location loc = player.getLocation();
         Location eye = player.getEyeLocation();
-        Vector pos = loc.toVector();
         float height = EntityCompat.getPlayerHeight(player);
-        boolean onGround = BlockUtil.isOnGround(player, pos);
+        boolean onGround = player.isOnGround();
 
         PacketQueue.push(new PacketPlayerPosition(
                 timestamp,

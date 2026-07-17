@@ -52,22 +52,17 @@ Without ProtocolLib, the following changes apply:
 - **Death**: Captured via `PlayerDeathEvent`.
 - **AttackedByPlayer**: Captured via `EntityDamageByEntityEvent`.
 - **PlayerCommand**: Falls back to toggle sneak/sprint/flight events.
-- **AttackEntity**: Falls back to Paper pre-attack or Bukkit damage events,
-  which observe server handling rather than the initial raw intent.
+- **AttackEntity**: Falls back to Bukkit damage events, which observe server
+  handling rather than initial raw intent.
 
 ## ZeusGateway -- Paper vs Spigot
 
 | Feature                  | Paper                          | Spigot                       |
 |--------------------------|--------------------------------|------------------------------|
-| Attack detection         | PrePlayerAttackEntityEvent     | EntityDamageByEntityEvent    |
-| Armor change detection   | PlayerArmorChangeEvent         | Polled on slot change + inv close |
-| Event precision          | Some Paper events fire earlier | Standard Bukkit timing       |
-| Duplicate prevention     | EventListener skips attack on Paper | EventListener processes attack |
-| State Resynchronization  | ResyncTask runs every 200 ticks | N/A (continuous polling)    |
-
-On Paper, `EventListener.onEntityDamageByEntity()` returns early to avoid
-sending duplicate attack packets, because `PaperEventListener` already
-handles attacks via the Paper-specific event.
+| Attack detection         | PacketEvents, then EntityDamageByEntityEvent fallback | PacketEvents, then EntityDamageByEntityEvent fallback |
+| Armor change detection   | Slot change + inventory-close snapshot | Slot change + inventory-close snapshot |
+| Event precision          | Raw packet intent where available | Raw packet intent where available |
+| State Resynchronization  | ResyncTask runs every 200 ticks | ResyncTask runs every 200 ticks |
 
 ZeusGateway includes a `ResyncTask` that periodically (every 10 seconds)
 sends a full state snapshot (join, effects, gamemode, commands) for all 
@@ -112,26 +107,20 @@ Not all tick-polled data is sent every tick:
 | Enchantments  | Every tick       | Only if list or reach attribute changed     |
 
 
-### Teleport Detection (Fabric Only)
+### Teleport Detection
 
 Fabric does not have a dedicated teleport event. Instead, the tick-polling
 code detects teleports by checking if the squared distance between the
 current and previous positions exceeds 64 (i.e. 8 blocks). When detected,
 both a `PacketPlayerTeleport` and a `PacketPlayerPosition` are sent.
+ZeusGateway detects teleports via `PlayerTeleportEvent`. Both platforms
+emit `PacketCollisionWindow` (0x30) for terrain context.
 
-### Surrounding Blocks Source
+### World State Source
 
-- ZeusGateway: The surrounding blocks are sent from `PacketPositionListener`
-  (ProtocolLib), which calls `BlockUtil.getRelativeBlocks()`.
-- ZeusFabric: The block grid is computed in `tickPosition()` using
-  `getSurroundingBlocks()` which reads `world.getBlockState()`.
-
-Both implementations scan the same 3x5x3 grid, but the block state format
-differs slightly:
-- Bukkit: `Block.getBlockData().getAsString()` (e.g. `minecraft:stone`)
-- Fabric: `BlockState.toString()` (e.g. `Block{minecraft:stone}`)
-
-zeus_proxy should handle both formats or normalise them.
+ZeusGateway emits block deltas (`0x2B`), bounded chunk batches (`0x2D`),
+and collision terrain windows (`0x30`).
+`0x13` is reserved and has no producer or decoder.
 
 ### DamageCause Mapping Differences
 

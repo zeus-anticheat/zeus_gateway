@@ -15,10 +15,9 @@ EVIDENCE_ROOT = ROOT / "verification" / "evidence"
 WIRE_TEST = ROOT / "ZeusProtocolJava" / "src" / "test" / "java" / "org" / "vennv" / "WireContractGoldenTest.java"
 PROTOCOL_ARTIFACT = ROOT / "ZeusProtocolJava" / "target" / "ZeusProtocolJava-1.0-SNAPSHOT.jar"
 BUILDABLE_STATUSES = {"build-verifiable", "supported"}
-REQUIRED_PACKET_IDS = ["0x09", "0x13", "0x22", "0x26", "0x27"]
+REQUIRED_PACKET_IDS = ["0x09", "0x22", "0x26", "0x27"]
 REQUIRED_FIXTURE_TOKENS = [
     "PacketPlayerAttackEntity",
-    "PacketPlayerSurroundingBlocks",
     "PacketPlayerVelocity",
     "PacketPlayerInventoryTransaction",
     "PacketPlayerExternalForce",
@@ -66,11 +65,9 @@ def artifact_path(data, kind, target):
         )
         if entry is None:
             raise SystemExit("unknown gateway target: {0}".format(target))
-        if entry["artifact"] == "ZeusGateway-legacy":
-            return ROOT / "ZeusGatewayLegacy" / "target" / "ZeusGateway-legacy-1.0-SNAPSHOT.jar"
-        if entry["artifact"] == "ZeusGateway-modern":
-            return ROOT / "ZeusGateway" / "target" / "ZeusGateway-modern-1.0-SNAPSHOT.jar"
-        raise SystemExit("unknown gateway artifact: {0}".format(entry["artifact"]))
+        if entry["artifact"] != "ZeusGateway":
+            raise SystemExit("unknown gateway artifact: {0}".format(entry["artifact"]))
+        return ROOT / "ZeusGateway" / "target" / "ZeusGateway-1.0-SNAPSHOT.jar"
     return ROOT / "ZeusFabric" / "build" / "libs" / "ZeusFabric-{0}-1.0-SNAPSHOT.jar".format(target)
 
 
@@ -139,6 +136,11 @@ def main():
         action="store_true",
         help="print written evidence paths",
     )
+    parser.add_argument(
+        "--kind",
+        choices=("gateway", "fabric"),
+        help="write evidence only for one artifact kind",
+    )
     args = parser.parse_args()
 
     data = load_manifest()
@@ -146,6 +148,8 @@ def main():
     created_at = now()
     written = []
     for kind, target in buildable_targets(data):
+        if args.kind and kind != args.kind:
+            continue
         artifact = artifact_path(data, kind, target)
         artifact_data = artifact_build_evidence(kind, target, artifact, created_at)
         protocol_data = protocol_fixture_evidence(data, kind, target, created_at)

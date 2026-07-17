@@ -31,18 +31,18 @@ separately.
 
 ### ZeusGateway
 
-The `ZeusGateway-modern` Java 21 artifact auto-detects whether it is running
+The `ZeusGateway` Java 8 artifact auto-detects whether it is running
 on Paper, Spigot, or Folia at startup. Tested support is published only from
-`support-matrix.json`; the planned Java 8 legacy artifact is not yet available.
-The modern artifact registers:
+`support-matrix.json`; the Java 8 legacy runtime is bundled with the unified artifact.
+The modern runtime registers:
 
 1. **ProtocolLib packet listeners** (optional) -- intercepts raw client-bound
    and server-bound packets for high-precision data (position, keep-alive,
    swing hand, block digging, steer vehicle, etc.).
 2. **Bukkit event listeners** -- standard event handlers available on all
    Bukkit-derived servers.
-3. **Paper-exclusive event listeners** -- `PrePlayerAttackEntityEvent` and
-   `PlayerArmorChangeEvent`, registered only when the Paper API is detected.
+3. **Platform schedulers** -- Bukkit scheduling on Paper/Spigot and
+   region/entity-owned scheduling on Folia.
 
 When ProtocolLib is absent, the plugin degrades gracefully: some data sources
 switch from packet-level to event-level (lower precision but still functional).

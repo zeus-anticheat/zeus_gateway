@@ -11,6 +11,16 @@ MANIFEST = ROOT / "support-matrix.json"
 OUTPUT = ROOT / "docs" / "generated" / "support-matrix.md"
 
 
+def required_packet_ids(data, target):
+    profile = data["supportEvidenceProfiles"]["compatibility-core"]
+    packet_ids = set(profile["requiredPacketIds"])
+    capabilities = set(target.get("evidenceCapabilities") or [])
+    for capability, packet_id in profile.get("capabilityPacketIds", {}).items():
+        if capability in capabilities:
+            packet_ids.add(packet_id)
+    return ["0x{0:02X}".format(int(packet_id, 0)) for packet_id in sorted(packet_ids, key=lambda value: int(value, 0))]
+
+
 def render(data):
     lines = [
         "# Verified Support Matrix",
@@ -32,24 +42,29 @@ def render(data):
         "",
         "## Gateway Exact-Version Verification Targets",
         "",
-        "| Target | Artifact | Platform | Minecraft | Status |",
-        "|--------|----------|----------|-----------|--------|",
+        "| Target | Artifact | Platform | Minecraft | Required Simulation Profile | Status |",
+        "|--------|----------|----------|-----------|-----------------------------|--------|",
     ]
     for target in data["gateway"]["targets"]:
         lines.append(
-            "| {id} | {artifact} | {platform} | {minecraft} | `{status}` |".format(**target)
+            "| {id} | {artifact} | {platform} | {minecraft} | {required} | `{status}` |".format(
+                required=", ".join(required_packet_ids(data, target)),
+                **target
+            )
         )
 
     lines += [
         "",
         "## Fabric Exact-Version Artifacts",
         "",
-        "| Minecraft | Artifact | Status |",
-        "|-----------|----------|--------|",
+        "| Minecraft | Artifact | Evidence Capabilities | Status |",
+        "|-----------|----------|-----------------------|--------|",
     ]
     for target in data["fabric"]["targets"]:
         artifact = "ZeusFabric-{0}".format(target["minecraft"]) if target["status"] != "adapter-required" else "-"
-        lines.append("| {0} | {1} | `{2}` |".format(target["minecraft"], artifact, target["status"]))
+        capabilities = ", ".join(target.get("evidenceCapabilities") or []) or "-"
+        lines.append("| {0} | {1} | {2} | `{3}` |".format(
+            target["minecraft"], artifact, capabilities, target["status"]))
 
     lines += [
         "",
@@ -57,7 +72,7 @@ def render(data):
         "",
         "No target is currently marked `supported`. `build-verifiable` identifies source/build wiring only; it is not a server compatibility claim.",
         "",
-        "The shared wire contract is `{0}`. Golden fixtures protect attack, velocity, surrounding-block, inventory-transaction and external-force payloads.".format(data["wireContract"]),
+        "The shared wire contract is `{0}`. Golden fixtures protect attack, velocity, inventory-transaction and external-force payloads.".format(data["wireContract"]),
         "",
     ]
     return "\n".join(lines)

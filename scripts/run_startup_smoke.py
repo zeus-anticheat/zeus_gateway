@@ -56,25 +56,19 @@ def gateway_target(target):
 
 def default_gateway_target():
     for entry in load_manifest().get("gateway", {}).get("targets", []):
-        if entry.get("artifact") == "ZeusGateway-modern":
+        if entry.get("id") == "paper-1.21.11":
             return entry["id"]
-    raise SystemExit("support-matrix.json has no modern Gateway runtime target")
+    raise SystemExit("support-matrix.json has no paper-1.21.11 Gateway runtime target")
 
 
 def default_artifact(kind, target):
     if kind == "gateway":
-        artifact = gateway_target(target)["artifact"]
-        if artifact == "ZeusGateway-legacy":
-            return ROOT / "ZeusGatewayLegacy" / "target" / "ZeusGateway-legacy-1.0-SNAPSHOT.jar"
-        if artifact == "ZeusGateway-modern":
-            return ROOT / "ZeusGateway" / "target" / "ZeusGateway-modern-1.0-SNAPSHOT.jar"
-        raise SystemExit("unknown Gateway artifact in support-matrix.json: {0}".format(artifact))
+        gateway_target(target)
+        return ROOT / "ZeusGateway" / "target" / "ZeusGateway-1.0-SNAPSHOT.jar"
     return ROOT / "ZeusFabric" / "build" / "libs" / "ZeusFabric-{0}-1.0-SNAPSHOT.jar".format(target)
 
 
 def default_success_pattern(kind, target):
-    if kind == "gateway" and gateway_target(target)["artifact"] == "ZeusGateway-legacy":
-        return SUCCESS_PATTERNS["gateway-legacy"]
     return SUCCESS_PATTERNS[kind]
 
 
@@ -82,6 +76,12 @@ def server_target_pattern(kind, target):
     if kind != "gateway":
         return None
     return gateway_target(target).get("startupLogPattern")
+
+
+def external_dependency_pattern(kind):
+    if kind != "gateway":
+        return None
+    return load_manifest().get("gateway", {}).get("packetEvents", {}).get("startupLogPattern")
 
 
 def safe_name(value):
@@ -167,6 +167,7 @@ def run_smoke(args):
     command = command_from_args(args)
     success_pattern = args.success_pattern or default_success_pattern(args.kind, target)
     target_pattern = server_target_pattern(args.kind, target)
+    dependency_pattern = external_dependency_pattern(args.kind)
     failure_regexes = [re.compile(pattern) for pattern in FAILURE_PATTERNS + list(args.failure_pattern)]
 
     if not artifact.exists():
@@ -194,6 +195,7 @@ def run_smoke(args):
         "command": command,
         "successPattern": success_pattern,
         "serverTargetPattern": target_pattern,
+        "externalDependencyPattern": dependency_pattern,
         "failurePatterns": FAILURE_PATTERNS + list(args.failure_pattern),
     }
     if args.dry_run:
@@ -211,6 +213,7 @@ def run_smoke(args):
     lines = []
     success_seen = False
     server_target_seen = target_pattern is None
+    external_dependency_seen = dependency_pattern is None
     failure_seen = None
     stop_action = None
 
@@ -239,8 +242,11 @@ def run_smoke(args):
                 print(line)
             if target_pattern and target_pattern in line:
                 server_target_seen = True
+            if dependency_pattern and dependency_pattern in line:
+                external_dependency_seen = True
             if success_pattern in line:
                 success_seen = True
+            if success_seen and server_target_seen and external_dependency_seen:
                 time.sleep(args.idle_after_success)
                 stop_action = stop_process(process, args.stop_timeout)
                 break
@@ -262,13 +268,15 @@ def run_smoke(args):
 
     exit_code = process.poll()
     duration = round(time.monotonic() - start, 3)
-    passed = success_seen and server_target_seen and failure_seen is None and exit_code == 0
+    passed = (success_seen and server_target_seen and external_dependency_seen
+              and failure_seen is None and exit_code == 0)
     result = {
         **plan,
         "startedAt": started_at,
         "durationSeconds": duration,
         "successSeen": success_seen,
         "serverTargetSeen": server_target_seen,
+        "externalDependencySeen": external_dependency_seen,
         "failureSeen": failure_seen,
         "stopAction": stop_action,
         "exitCode": exit_code,

@@ -4,9 +4,15 @@ proxy-ac:
 
 packets:
     batch-size: 100
-    position-snapshot-ticks: 1
+
+physics-capture:
+    enabled: false
+
+identity:
+    platform: auto
+    physics-fingerprint: unattested
 
 server-combat:
     reach-override: 0
-    cooldown-override: 0
+    cooldown-override: -1
     max-cps: 0

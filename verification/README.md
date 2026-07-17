@@ -58,9 +58,9 @@ python3 scripts/run_core_scenario_smoke.py gateway \
   -- java -Xmx1G -jar paper.jar nogui
 ```
 
-The `compatibility-core` profile requires attack (`0x09`), surrounding blocks
-(`0x13`), velocity (`0x22`), inventory transaction (`0x26`), and external force
-(`0x27`). A join-only smoke is not enough for support evidence.
+The `compatibility-core` profile requires attack (`0x09`), velocity (`0x22`),
+inventory transaction (`0x26`), and external force (`0x27`). A join-only smoke
+is not enough for support evidence.
 
 To run smoke tests as a target matrix, create a JSON config like
 [`smoke-matrix.example.json`](smoke-matrix.example.json) and run:

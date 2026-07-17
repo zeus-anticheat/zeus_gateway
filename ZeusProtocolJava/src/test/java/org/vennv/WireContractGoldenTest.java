@@ -4,12 +4,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
+import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.vennv.packets.PacketChunkData;
+import org.vennv.packets.PacketCollisionWindow;
 import org.vennv.packets.PacketPlayerAttackEntity;
 import org.vennv.packets.PacketPlayerExternalForce;
 import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPhysicsCaptureSample;
+import org.vennv.packets.PacketPlayerInput;
 import org.vennv.packets.PacketPlayerVelocity;
 import org.vennv.packets.PacketPlayerPosition;
 import org.vennv.packets.PacketServerConfig;
@@ -29,6 +35,88 @@ class WireContractGoldenTest {
         assertEquals(0x22, PacketId.PACKET_PLAYER_VELOCITY & 0xff);
         assertEquals(0x26, PacketId.PACKET_PLAYER_INVENTORY_TRANSACTION & 0xff);
         assertEquals(0x27, PacketId.PACKET_PLAYER_EXTERNAL_FORCE & 0xff);
+        assertEquals(0x2C, PacketId.PACKET_PLAYER_INPUT & 0xff);
+        assertEquals(0x2D, PacketId.PACKET_CHUNK_DATA & 0xff);
+        assertEquals(0x2E, PacketId.PACKET_UPDATE_ATTRIBUTES & 0xff);
+        assertEquals(0x2F, PacketId.PACKET_PHYSICS_CAPTURE_SAMPLE & 0xff);
+        assertEquals(0x30, PacketId.PACKET_COLLISION_WINDOW & 0xff);
+    }
+
+    @Test
+    void collisionWindowFixtureIsStableAcrossLanguages() throws Exception {
+        char[] blockStateChars = new char[512];
+        Arrays.fill(blockStateChars, 'x');
+        String blockState = new String(blockStateChars);
+        List<PacketCollisionWindow.Cell> cells =
+                new ArrayList<PacketCollisionWindow.Cell>(PacketCollisionWindow.COLLISION_WINDOW_CELLS);
+        for (int index = 0; index < PacketCollisionWindow.COLLISION_WINDOW_CELLS; index++) {
+            if (index % 3 == 0) {
+                cells.add(PacketCollisionWindow.Cell.unknown());
+            } else if (index % 3 == 1) {
+                cells.add(PacketCollisionWindow.Cell.knownAir());
+            } else {
+                cells.add(PacketCollisionWindow.Cell.knownBlock(blockState));
+            }
+        }
+        PacketCollisionWindow.CollisionWindowUpdate update =
+                PacketCollisionWindow.CollisionWindowUpdate.full(7, 13, -17, -64, -33, cells);
+        PacketCollisionWindow.EncodedPayload payload = update.encodePayload();
+        assertEquals(PacketCollisionWindow.Encoding.DENSE, payload.getEncoding());
+        assertEquals(1278, payload.getPayloadLength());
+        assertEquals(0xfab36c6fL, payload.getCrc32());
+
+        List<PacketCollisionWindow> fragments = update.toFragments(17, "test-uid", "Tester");
+        assertEquals(2, fragments.size());
+        assertEquals(1107, fragments.get(0).getFragmentPayload().length);
+        assertEquals(171, fragments.get(1).getFragmentPayload().length);
+        byte[] firstDatagram = fragments.get(0).encodeDatagram();
+        byte[] secondDatagram = fragments.get(1).encodeDatagram();
+        assertEquals(1200, firstDatagram.length);
+        assertEquals(264, secondDatagram.length);
+        assertEquals(0x30, firstDatagram[0] & 0xff);
+        assertEquals(0x30, secondDatagram[0] & 0xff);
+        assertEquals(
+                "aa95f906e7589b01d4bcb5192f9f8ea9978078ab98b0ab7e3b3a3bb8fef3aa82",
+                sha256(firstDatagram));
+        assertEquals(
+                "4a72a14cec701ccf238fb88b003b3be39611cdf6105fb4fc0e9ae062852e39fc",
+                sha256(secondDatagram));
+
+        PacketCollisionWindow first = PacketCollisionWindow.decodeDatagram(firstDatagram);
+        PacketCollisionWindow second = PacketCollisionWindow.decodeDatagram(secondDatagram);
+        assertEquals(17, first.getTimestamp());
+        assertEquals("test-uid", first.getUid());
+        assertEquals("Tester", first.getUsername());
+        assertEquals(null, first.getOptionalProtocolVersion());
+        assertEquals(0, first.getFragmentIndex());
+        assertEquals(1, second.getFragmentIndex());
+        assertEquals(2, first.getFragmentCount());
+        assertEquals(2, second.getFragmentCount());
+        assertEquals(1278, first.getTotalPayloadLength());
+        assertEquals(0xfab36c6fL, first.getPayloadCrc32());
+        assertEquals(update, PacketCollisionWindow.reassemble(Arrays.asList(second, first)));
+    }
+
+    @Test
+    void chunkEncodedSizeMatchesWireBytes() throws Exception {
+        PacketChunkData.BlockData block = new PacketChunkData.BlockData(
+                (byte) 1, 64, (byte) 2, "minecraft:oak_log[axis=y]");
+        PacketChunkData packet = new PacketChunkData(
+                TIMESTAMP, UID, USERNAME, 3, 4, true, Arrays.asList(block));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        packet.encode(out);
+        assertEquals(
+                PacketChunkData.encodedBaseSize(UID, USERNAME)
+                        + PacketChunkData.encodedBlockSize(block.blockType),
+                out.size());
+        assertTrue(out.size() <= PacketChunkData.MAX_UDP_PAYLOAD);
+    }
+
+    @Test
+    void chunkCompletionUsesSecondFlagBit() throws Exception {
+        PacketChunkData marker = new PacketChunkData(
+                TIMESTAMP, UID, USERNAME, 3, 4, false, true, java.util.Collections.emptyList());
+        assertTrue(hex(marker).endsWith("0200000000"));
     }
 
     @Test
@@ -40,6 +128,19 @@ class WireContractGoldenTest {
                         UID,
                         USERNAME,
                         new EntityState("e", 1, 2, 3, 4, 5, 6, 7f, 8f, 1.8f, .6f, true))));
+    }
+
+    @Test
+    void playerInputTrustMarkerKeepsWireShape() throws Exception {
+        PacketPlayerInput trusted = new PacketPlayerInput(
+                TIMESTAMP, UID, USERNAME, (byte) 0xD5);
+        PacketPlayerInput fallback = new PacketPlayerInput(
+                TIMESTAMP, UID, USERNAME, (byte) 0x55);
+
+        assertEquals("2c010203040506070800017500016e00d5", hex(trusted));
+        assertEquals("2c010203040506070800017500016e0055", hex(fallback));
+        assertTrue(trusted.isTrustedCapture());
+        assertTrue(!fallback.isTrustedCapture());
     }
 
     @Test
@@ -142,6 +243,14 @@ class WireContractGoldenTest {
                         1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                         (short) 11,
                         ExternalForceFlags.HAS_SLIME | ExternalForceFlags.ENVIRONMENT_BACKED)));
+    }
+
+    private String sha256(byte[] bytes) throws Exception {
+        StringBuilder result = new StringBuilder();
+        for (byte value : MessageDigest.getInstance("SHA-256").digest(bytes)) {
+            result.append(String.format("%02x", value & 0xff));
+        }
+        return result.toString();
     }
 
     private String hex(PacketEncode packet) throws Exception {

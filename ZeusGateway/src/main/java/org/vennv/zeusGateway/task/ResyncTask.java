@@ -1,8 +1,8 @@
 package org.vennv.zeusGateway.task;
 
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
+import org.vennv.zeusGateway.ZeusGateway;
 
 /**
  * Periodically sends the current state of all online players to the Zeus proxy.
@@ -11,10 +11,21 @@ import org.bukkit.entity.Player;
  */
 public final class ResyncTask implements Runnable {
 
+    private final ZeusGateway plugin;
+    private final ChunkSyncTask chunkSyncTask;
+
+    public ResyncTask(ZeusGateway plugin) {
+        this.plugin = plugin;
+        this.chunkSyncTask = new ChunkSyncTask(plugin);
+    }
+
     @Override
     public void run() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            PlayerStateSnapshotService.sendResyncSnapshot(player);
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            plugin.getSchedulerAdapter().runEntityTask(plugin, player, () -> {
+                PlayerStateSnapshotService.sendResyncSnapshot(player);
+                chunkSyncTask.syncPlayer(player);
+            });
         }
     }
 

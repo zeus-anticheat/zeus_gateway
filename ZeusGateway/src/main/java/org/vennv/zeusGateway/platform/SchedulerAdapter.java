@@ -1,5 +1,6 @@
 package org.vennv.zeusGateway.platform;
 
+import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.entity.Player;
 
@@ -21,6 +22,10 @@ public interface SchedulerAdapter {
      * Runs a task in the context of a player entity. This is required for Folia chat delivery.
      */
     void runEntityTask(JavaPlugin plugin, Player player, Runnable task);
+
+    void runEntityTaskLater(JavaPlugin plugin, Player player, Runnable task, long delayTicks);
+
+    void runRegionTask(JavaPlugin plugin, World world, int chunkX, int chunkZ, Runnable task);
 
     /**
      * Runs a task asynchronously.

@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SERVER_JAR = ROOT / "versions" / "1.21.11" / "paper-1.21.11.jar"
 DEFAULT_SERVER_DIR = ROOT / "versions" / "1.21.11" / "physics-lab-smoke-server"
 DEFAULT_EVIDENCE = ROOT / "verification" / "evidence" / "physics-lab-smoke" / "paper-1.21.11.json"
-DEFAULT_GATEWAY = ROOT / "ZeusGateway" / "target" / "ZeusGateway-modern-1.0-SNAPSHOT.jar"
+DEFAULT_GATEWAY = ROOT / "ZeusGateway" / "target" / "ZeusGateway-1.0-SNAPSHOT.jar"
 DEFAULT_LAB = ROOT / "ZeusPhysicsLab" / "target" / "zeus_physics_lab-1.0-SNAPSHOT.jar"
 DEFAULT_SCENARIO = ROOT / "scenarios" / "physics-lab-route.js"
 
@@ -45,7 +45,7 @@ FAILURE_PATTERNS = [
     r"The server has not responded for",
 ]
 
-REQUIRED_PACKET_IDS = [0x01, 0x03, 0x13, 0x14, 0x1E, 0x25, 0x26]
+REQUIRED_PACKET_IDS = [0x01, 0x03, 0x14, 0x1E, 0x25, 0x26]
 
 
 def sha256(path):

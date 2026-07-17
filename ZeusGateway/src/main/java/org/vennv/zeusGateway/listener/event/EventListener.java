@@ -2,7 +2,10 @@ package org.vennv.zeusGateway.listener.event;
 
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
@@ -40,7 +43,6 @@ import org.vennv.zeusGateway.compat.EntityCompat;
 import org.vennv.zeusGateway.compat.EffectCompat;
 import org.vennv.zeusGateway.listener.RawCaptureCapability;
 import org.vennv.zeusGateway.debug.PacketDebugEnvelope;
-import org.vennv.zeusGateway.platform.PlatformDetector;
 import org.vennv.zeusGateway.provider.PacketQueue;
 import org.vennv.zeusGateway.task.ChunkSyncTask;
 import org.vennv.zeusGateway.task.PlayerStateSnapshotService;
@@ -48,15 +50,12 @@ import org.vennv.zeusGateway.utils.ItemUtil;
 
 /**
  * Unified Bukkit event listener that works across Paper, Spigot, and Folia.
- * <p>
- * Paper-specific events (e.g. PrePlayerAttackEntityEvent) are handled in
- * {@link PaperEventListener} and registered only when Paper is detected.
- * This class uses only standard Bukkit/Spigot API so it compiles and runs
- * on every platform.
  */
 public class EventListener implements Listener {
     private final ZeusGateway plugin;
     private final EnumSet<RawCaptureCapability> rawCapabilities;
+    private final ChunkSyncTask chunkSyncTask;
+    private final Set<UUID> crossWorldTeleports = ConcurrentHashMap.newKeySet();
 
     /**
      * Monotonically increasing transaction counter shared between the click
@@ -86,6 +85,7 @@ public class EventListener implements Listener {
         this.rawCapabilities = rawCapabilities.isEmpty()
                 ? EnumSet.noneOf(RawCaptureCapability.class)
                 : EnumSet.copyOf(rawCapabilities);
+        this.chunkSyncTask = plugin == null ? null : new ChunkSyncTask(plugin);
     }
 
     boolean isFallbackEnabled(RawCaptureCapability capability) {
@@ -100,7 +100,10 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
-        PlayerStateSnapshotService.sendFullSnapshot(event.getPlayer());
+        Player player = event.getPlayer();
+        ChunkSyncTask.invalidate(player);
+        PlayerStateSnapshotService.sendFullSnapshot(player);
+        scheduleFullCollisionSnapshot(player);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -112,28 +115,19 @@ public class EventListener implements Listener {
 
         PacketPlayerLeave packet = new PacketPlayerLeave(timestamp, uid, name);
         PacketQueue.push(packet);
+        ChunkSyncTask.remove(player);
+        crossWorldTeleports.remove(player.getUniqueId());
         PlayerStateSnapshotService.clear(player);
-        ChunkSyncTask.clearPlayer(player.getUniqueId());
-        clearRawPositionState(player);
-    }
-
-    private void clearRawPositionState(Player player) {
-        if (plugin == null || !plugin.isProtocolLibAvailable()) {
-            return;
-        }
-        try {
-            Class<?> listener = Class.forName(
-                    "org.vennv.zeusGateway.listener.packets.PacketPositionListener");
-            listener.getMethod("removePlayer", java.util.UUID.class)
-                    .invoke(null, player.getUniqueId());
-        } catch (ReflectiveOperationException | LinkageError e) {
-            plugin.getLogger().fine(
-                    "[ZeusGateway] Unable to clear raw position capture state: " + e.getMessage());
+        if (plugin != null) {
+            plugin.clearPacketInput(player.getUniqueId());
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerVelocity(PlayerVelocityEvent event) {
+        if (!isFallbackEnabled(RawCaptureCapability.VELOCITY)) {
+            return;
+        }
         Player player = event.getPlayer();
         String uid = player.getUniqueId().toString();
         String name = player.getName();
@@ -168,6 +162,8 @@ public class EventListener implements Listener {
 
         PacketPlayerRespawn packet = new PacketPlayerRespawn(timestamp, uid, name);
         PacketQueue.push(packet);
+        ChunkSyncTask.invalidate(player);
+        scheduleFullCollisionSnapshot(player);
     }
 
     // ────────────────────────── Attack Entity ──────────────────────────
@@ -176,13 +172,6 @@ public class EventListener implements Listener {
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         if (!isFallbackEnabled(RawCaptureCapability.ATTACK_ENTITY)) {
             return;
-        }
-
-        // On Paper, PrePlayerAttackEntityEvent is preferred (handled in
-        // PaperEventListener).
-        // On Spigot/Folia we fall back to this standard Bukkit event.
-        if (PlatformDetector.isPaper()) {
-            return; // let PaperEventListener handle it
         }
 
         if (!(event.getDamager() instanceof Player)) {
@@ -382,7 +371,7 @@ public class EventListener implements Listener {
 
     // ──────────────────────────── Teleport ─────────────────────────────
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerTeleport(PlayerTeleportEvent event) {
         Player player = event.getPlayer();
         String uid = player.getUniqueId().toString();
@@ -402,11 +391,19 @@ public class EventListener implements Listener {
                 to.getY(),
                 to.getZ());
         PacketQueue.push(packet);
+        if (to.getWorld() != null && !to.getWorld().equals(event.getFrom().getWorld())) {
+            crossWorldTeleports.add(player.getUniqueId());
+        }
+        ChunkSyncTask.invalidate(player);
+        scheduleFullCollisionSnapshot(player);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
+        if (crossWorldTeleports.remove(player.getUniqueId())) {
+            return;
+        }
         String uid = player.getUniqueId().toString();
         String name = player.getName();
         long timestamp = System.currentTimeMillis();
@@ -421,6 +418,8 @@ public class EventListener implements Listener {
                 to.getY(),
                 to.getZ());
         PacketQueue.push(packet);
+        ChunkSyncTask.invalidate(player);
+        scheduleFullCollisionSnapshot(player);
     }
 
     // ──────────────────────── Potion Effects ──────────────────────────
@@ -485,21 +484,25 @@ public class EventListener implements Listener {
         }
 
         Player player = event.getPlayer();
+        Block block = event.getBlockPlaced();
+        int x = block.getX();
+        int y = block.getY();
+        int z = block.getZ();
         String uid = player.getUniqueId().toString();
         String name = player.getName();
         long timestamp = System.currentTimeMillis();
+        String blockType = blockType(block);
+        World world = block.getWorld();
+        if (!ChunkSyncTask.recordBlockChange(
+                player.getUniqueId(), world.getUID(), x, y, z, blockType, timestamp)) return;
 
-        Location loc = event.getBlockPlaced().getLocation();
-
-        // Emit PacketBlockChangeEvent so CompensatedWorld tracks this block
-        String blockType = BlockCompat.getBlockDataString(event.getBlockPlaced());
         PacketQueue.push(new PacketBlockChangeEvent(
                 timestamp,
                 uid,
                 name,
-                (int) loc.getX(),
-                (int) loc.getY(),
-                (int) loc.getZ(),
+                x,
+                y,
+                z,
                 blockType,
                 (byte) 0x00));
     }
@@ -512,21 +515,25 @@ public class EventListener implements Listener {
         }
 
         Player player = event.getPlayer();
+        Block block = event.getBlock();
+        int x = block.getX();
+        int y = block.getY();
+        int z = block.getZ();
         String uid = player.getUniqueId().toString();
         String name = player.getName();
         long timestamp = System.currentTimeMillis();
+        World world = block.getWorld();
+        if (!ChunkSyncTask.recordBlockChange(
+                player.getUniqueId(), world.getUID(), x, y, z, "minecraft:air", timestamp)) return;
 
-        Location loc = event.getBlock().getLocation();
-
-        // Emit PacketBlockChangeEvent with AIR (block was removed)
         PacketQueue.push(new PacketBlockChangeEvent(
                 timestamp,
                 uid,
                 name,
-                (int) loc.getX(),
-                (int) loc.getY(),
-                (int) loc.getZ(),
-                "AIR",
+                x,
+                y,
+                z,
+                "minecraft:air",
                 (byte) 0x00));
     }
 
@@ -561,13 +568,6 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerArmorChange(PlayerItemHeldEvent event) {
-        // We piggyback on slot changes to re-check armor.
-        // A dedicated armor-change listener is registered via PaperEventListener
-        // on Paper. On Spigot/Folia, we check armor on every item held change
-        // and also in an inventory close event so we don't miss updates.
-        if (PlatformDetector.isPaper()) {
-            return;
-        }
         sendArmorPacket(event.getPlayer());
     }
 
@@ -577,9 +577,6 @@ public class EventListener implements Listener {
             return;
         }
         Player player = (Player) event.getPlayer();
-        if (PlatformDetector.isPaper()) {
-            return;
-        }
         scheduleMutableStateSnapshot(player);
     }
 
@@ -656,21 +653,23 @@ public class EventListener implements Listener {
                     " bukkitCursor=" + debugStack(cursor)));
         }
 
-        org.vennv.utils.ItemStack cursor = ItemUtil.protocolStack(event.getCursor());
-        PacketQueue.push(new PacketPlayerInventoryTransaction(
-                timestamp,
-                uid,
-                name,
-                windowId,
-                -1,
-                slotId,
-                button,
-                mode,
-                transactionId,
-                cursor,
-                java.util.Collections.singletonList(new PacketPlayerInventoryTransaction.ChangedSlot(
-                        slotId,
-                        protocolStack))));
+        if (isFallbackEnabled(RawCaptureCapability.CLICK_WINDOW)) {
+            org.vennv.utils.ItemStack cursor = ItemUtil.protocolStack(event.getCursor());
+            PacketQueue.push(new PacketPlayerInventoryTransaction(
+                    timestamp,
+                    uid,
+                    name,
+                    windowId,
+                    -1,
+                    slotId,
+                    button,
+                    mode,
+                    transactionId,
+                    cursor,
+                    java.util.Collections.singletonList(new PacketPlayerInventoryTransaction.ChangedSlot(
+                            slotId,
+                            protocolStack))));
+        }
         scheduleInventoryStateSnapshot(player, windowId, slotId, button, mode, transactionId);
     }
 
@@ -749,6 +748,24 @@ public class EventListener implements Listener {
                 hitY,
                 hitZ);
         PacketQueue.push(packet);
+
+        if (hitBlock
+                && event.getAction() == org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK
+                && isContainerBlock(event.getClickedBlock())) {
+            org.vennv.utils.ItemStack cursor = ItemUtil.protocolStack(player.getItemOnCursor());
+            PacketQueue.push(new PacketPlayerInventoryTransaction(
+                    timestamp,
+                    uid,
+                    name,
+                    (byte) 0,
+                    -1,
+                    (short) -1,
+                    (byte) 0,
+                    (short) 0,
+                    nextTransactionId(),
+                    cursor,
+                    java.util.Collections.emptyList()));
+        }
     }
 
     // ──────────────────── Vehicle Move (Bukkit) ──────────────────────
@@ -865,6 +882,9 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerToggleSneak(PlayerToggleSneakEvent event) {
+        if (!isFallbackEnabled(RawCaptureCapability.PLAYER_COMMAND)) {
+            return;
+        }
         Player player = event.getPlayer();
         String uid = player.getUniqueId().toString();
         String name = player.getName();
@@ -881,6 +901,9 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerToggleSprint(PlayerToggleSprintEvent event) {
+        if (!isFallbackEnabled(RawCaptureCapability.PLAYER_COMMAND)) {
+            return;
+        }
         Player player = event.getPlayer();
         String uid = player.getUniqueId().toString();
         String name = player.getName();
@@ -909,6 +932,9 @@ public class EventListener implements Listener {
         if (!(event.getEntity() instanceof Player)) {
             return;
         }
+        if (!isFallbackEnabled(RawCaptureCapability.PLAYER_COMMAND) && event.isGliding()) {
+            return;
+        }
         Player player = (Player) event.getEntity();
 
         String uid = player.getUniqueId().toString();
@@ -922,20 +948,27 @@ public class EventListener implements Listener {
         PacketQueue.push(packet);
     }
 
+    private void scheduleFullCollisionSnapshot(Player player) {
+        if (chunkSyncTask == null || plugin.getSchedulerAdapter() == null) {
+            return;
+        }
+        plugin.getSchedulerAdapter().runEntityTaskLater(plugin, player, () -> {
+            crossWorldTeleports.remove(player.getUniqueId());
+            if (player.isOnline()) {
+                chunkSyncTask.forceFull(player);
+            }
+        }, 1L);
+    }
+
     private void scheduleMutableStateSnapshot(Player player) {
         if (plugin == null || plugin.getSchedulerAdapter() == null) {
             PlayerStateSnapshotService.sendMutableStateSnapshot(player);
             return;
         }
-        plugin.getSchedulerAdapter().runTaskLater(plugin, () -> {
-            if (!player.isOnline()) {
-                return;
+        plugin.getSchedulerAdapter().runEntityTaskLater(plugin, player, () -> {
+            if (player.isOnline()) {
+                PlayerStateSnapshotService.sendMutableStateSnapshot(player);
             }
-            plugin.getSchedulerAdapter().runEntityTask(plugin, player, () -> {
-                if (player.isOnline()) {
-                    PlayerStateSnapshotService.sendMutableStateSnapshot(player);
-                }
-            });
         }, 1L);
     }
 
@@ -944,15 +977,10 @@ public class EventListener implements Listener {
             PlayerStateSnapshotService.sendCommandStateSnapshot(player);
             return;
         }
-        plugin.getSchedulerAdapter().runTaskLater(plugin, () -> {
-            if (!player.isOnline()) {
-                return;
+        plugin.getSchedulerAdapter().runEntityTaskLater(plugin, player, () -> {
+            if (player.isOnline()) {
+                PlayerStateSnapshotService.sendCommandStateSnapshot(player);
             }
-            plugin.getSchedulerAdapter().runEntityTask(plugin, player, () -> {
-                if (player.isOnline()) {
-                    PlayerStateSnapshotService.sendCommandStateSnapshot(player);
-                }
-            });
         }, 1L);
     }
 
@@ -969,18 +997,13 @@ public class EventListener implements Listener {
             PlayerStateSnapshotService.sendMutableStateSnapshot(player);
             return;
         }
-        plugin.getSchedulerAdapter().runTaskLater(plugin, () -> {
+        plugin.getSchedulerAdapter().runEntityTaskLater(plugin, player, () -> {
             if (!player.isOnline()) {
                 return;
             }
-            plugin.getSchedulerAdapter().runEntityTask(plugin, player, () -> {
-                if (!player.isOnline()) {
-                    return;
-                }
-                PlayerStateSnapshotService.sendInventoryDetailSnapshot(
-                        player, windowId, -1, slotId, button, mode, transactionId, true);
-                PlayerStateSnapshotService.sendMutableStateSnapshot(player);
-            });
+            PlayerStateSnapshotService.sendInventoryDetailSnapshot(
+                    player, windowId, -1, slotId, button, mode, transactionId, true);
+            PlayerStateSnapshotService.sendMutableStateSnapshot(player);
         }, 1L);
     }
 
@@ -1021,19 +1044,6 @@ public class EventListener implements Listener {
     // The Rust side now auto-expires item_clicks every tick:
     // • on_player_close_window → clears item_clicks
     // • WindowState::tick() → ages-out stale clicks
-
-    // ─────────────────── Steer Vehicle (Bukkit) ─────────────────────
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onVehicleSteer(
-            org.bukkit.event.vehicle.VehicleMoveEvent event) {
-        // Bukkit does not have a dedicated steer-vehicle event, so we derive
-        // steering from movement deltas. The raw packet version is handled by
-        // PacketSteerVehicleListener via ProtocolLib; this is a best-effort
-        // fallback for environments where ProtocolLib may not intercept it.
-        // Intentionally left as a no-op to avoid duplicate data; the
-        // ProtocolLib-based listener covers this packet fully.
-    }
 
     // ────────────────── Vehicle Enter / Exit (Bug #4) ─────────────────
 
@@ -1105,15 +1115,20 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockFromTo(BlockFromToEvent event) {
-        // Fluid flow (water/lava spreading)
         long timestamp = System.currentTimeMillis();
-        org.bukkit.block.Block to = event.getToBlock();
-        String blockType = BlockCompat.getBlockDataString(to);
-        PacketQueue.push(new PacketBlockChangeEvent(
-                timestamp, "world", "world",
-                to.getX(), to.getY(), to.getZ(),
-                blockType,
-                (byte) 0x03));
+        Block source = event.getBlock();
+        Block to = event.getToBlock();
+        World world = to.getWorld();
+        String blockType = blockType(source);
+        for (Player player : world.getPlayers()) {
+            UUID playerId = player.getUniqueId();
+            if (!ChunkSyncTask.recordBlockChange(
+                    playerId, world.getUID(), to.getX(), to.getY(), to.getZ(),
+                    blockType, timestamp)) continue;
+            PacketQueue.push(new PacketBlockChangeEvent(
+                    timestamp, playerId.toString(), player.getName(),
+                    to.getX(), to.getY(), to.getZ(), blockType, (byte) 0x03));
+        }
     }
 
     // BlockRedstoneEvent is a Spigot-specific event for current/old current state
@@ -1238,44 +1253,71 @@ public class EventListener implements Listener {
             java.util.List<Block> movedBlocks,
             org.bukkit.block.BlockFace direction,
             boolean retracting) {
-        if (movedBlocks == null || movedBlocks.isEmpty() || direction == null) {
-            return;
-        }
-
-        Vector dir = direction.getDirection();
-        int dx = dir.getBlockX();
-        int dy = dir.getBlockY();
-        int dz = dir.getBlockZ();
-
+        if (movedBlocks == null || movedBlocks.isEmpty() || direction == null) return;
+        World world = movedBlocks.get(0).getWorld();
+        UUID worldId = world.getUID();
+        Vector movement = direction.getDirection();
+        int dx = movement.getBlockX();
+        int dy = movement.getBlockY();
+        int dz = movement.getBlockZ();
         long timestamp = System.currentTimeMillis();
+        byte action = retracting ? (byte) 0x02 : (byte) 0x01;
 
-        for (Block block : movedBlocks) {
-            int oldX = block.getX();
-            int oldY = block.getY();
-            int oldZ = block.getZ();
-
-            int newX = oldX + dx;
-            int newY = oldY + dy;
-            int newZ = oldZ + dz;
-
-            String blockName = BlockCompat.getBlockDataString(block);
-
-            // Old position becomes AIR
-            PacketQueue.push(new PacketBlockChangeEvent(
-                    timestamp, "world", "world",
-                    oldX, oldY, oldZ,
-                    "AIR",
-                    (byte) 0x01));
-
-            // New position gets the block
-            PacketQueue.push(new PacketBlockChangeEvent(
-                    timestamp, "world", "world",
-                    newX, newY, newZ,
-                    blockName,
-                    (byte) 0x01));
+        for (Player player : world.getPlayers()) {
+            UUID playerId = player.getUniqueId();
+            String uid = playerId.toString();
+            String name = player.getName();
+            java.util.List<PacketBlockChangeEvent> changes = new java.util.ArrayList<>();
+            for (Block block : movedBlocks) {
+                int oldX = block.getX();
+                int oldY = block.getY();
+                int oldZ = block.getZ();
+                int newX = oldX + dx;
+                int newY = oldY + dy;
+                int newZ = oldZ + dz;
+                String blockName = blockType(block);
+                if (ChunkSyncTask.recordBlockChange(
+                        playerId, worldId, oldX, oldY, oldZ,
+                        "minecraft:air", timestamp)) {
+                    changes.add(new PacketBlockChangeEvent(
+                            timestamp, uid, name, oldX, oldY, oldZ,
+                            "minecraft:air", action));
+                }
+                if (ChunkSyncTask.recordBlockChange(
+                        playerId, worldId, newX, newY, newZ,
+                        blockName, timestamp)) {
+                    changes.add(new PacketBlockChangeEvent(
+                            timestamp, uid, name, newX, newY, newZ,
+                            blockName, action));
+                }
+            }
+            PacketQueue.pushAll(changes);
         }
     }
 
+
+    private static boolean shouldEmitBlockChange(Player player, int x, int y, int z) {
+        if (player == null) return false;
+        World world = player.getWorld();
+        return world != null && shouldEmitBlockChange(
+                player.getUniqueId(), world.getUID(), x, y, z);
+    }
+
+    static boolean shouldEmitBlockChange(
+            UUID playerId, UUID worldId, int x, int y, int z) {
+        return playerId != null
+                && worldId != null
+                && ChunkSyncTask.contains(playerId, worldId, x, y, z);
+    }
+
+    private static String blockType(Block block) {
+        return normalizeBlockType(
+                BlockCompat.isAir(block), BlockCompat.getBlockDataString(block));
+    }
+
+    static String normalizeBlockType(boolean air, String blockType) {
+        return air ? "minecraft:air" : blockType;
+    }
 
     private boolean overlaps(double[] first, double[] second) {
         return first[0] < second[3] && first[3] > second[0]
@@ -1413,5 +1455,11 @@ public class EventListener implements Listener {
             default:
                 return (byte) 0;
         }
+    }
+
+    private static boolean isContainerBlock(Block block) {
+        if (block == null) return false;
+        String name = block.getType().name();
+        return name.equals("CHEST") || name.equals("TRAPPED_CHEST");
     }
 }

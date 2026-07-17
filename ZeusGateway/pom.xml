@@ -7,13 +7,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.vennv</groupId>
-    <artifactId>zeus_gateway_modern</artifactId>
+    <artifactId>zeus_gateway</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>ZeusGateway Modern</name>
-    <description
-    >Zeus Anti-Cheat data collector plugin - supports Paper, Spigot, and Folia</description>
+    <name>ZeusGateway Unified</name>
+    <description>Zeus packet-forwarding plugin for Spigot, Paper, and Folia</description>
 
     <properties>
         <java.version>8</java.version>
@@ -24,7 +23,7 @@
 
     <build>
         <defaultGoal>clean package</defaultGoal>
-        <finalName>ZeusGateway-modern-${project.version}</finalName>
+        <finalName>ZeusGateway-${project.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -46,6 +45,23 @@
                         <goals>
                             <goal>shade</goal>
                         </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <filters>
+                                <filter>
+                                    <artifact>org.vennv:zeus_gateway_legacy</artifact>
+                                    <excludes>
+                                        <exclude>plugin.yml</exclude>
+                                        <exclude>config.yml</exclude>
+                                        <exclude>org/vennv/*.class</exclude>
+                                        <exclude>org/vennv/packets/**</exclude>
+                                        <exclude>org/vennv/utils/**</exclude>
+                                        <exclude>META-INF/maven/org.vennv/ZeusProtocolJava/**</exclude>
+                                        <exclude>zeus-protocol-contract.json</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -75,15 +91,18 @@
             <url
             >https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
-        <!-- ProtocolLib -->
-        <repository>
-            <id>dmulloy2-repo</id>
-            <url>https://repo.dmulloy2.net/repository/public/</url>
-        </repository>
         <!-- Minecraft libraries (for NMS / auth-lib etc.) -->
         <repository>
             <id>minecraft-libraries</id>
             <url>https://libraries.minecraft.net</url>
+        </repository>
+        <repository>
+            <id>grim-snapshots</id>
+            <url>https://repo.grim.ac/snapshots</url>
+        </repository>
+        <repository>
+            <id>codemc-releases</id>
+            <url>https://repo.codemc.io/repository/maven-releases/</url>
         </repository>
     </repositories>
 
@@ -108,22 +127,15 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.21.11-R0.1-SNAPSHOT</version>
+            <version>26.2-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
 
-        <!--
-            ProtocolLib – OPTIONAL at runtime.
-            Marked as provided so it is NOT shaded into the final JAR.
-            The plugin detects its presence at runtime and degrades gracefully
-            when it is missing (Bukkit-event-only mode).
-        -->
         <dependency>
-            <groupId>com.comphenix.protocol</groupId>
-            <artifactId>ProtocolLib</artifactId>
-            <version>5.3.0</version>
+            <groupId>com.github.retrooper</groupId>
+            <artifactId>packetevents-spigot</artifactId>
+            <version>2.13.0</version>
             <scope>provided</scope>
-            <optional>true</optional>
         </dependency>
 
         <!--
@@ -134,6 +146,11 @@
         <dependency>
             <groupId>org.vennv</groupId>
             <artifactId>ZeusProtocolJava</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.vennv</groupId>
+            <artifactId>zeus_gateway_legacy</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
         <dependency>

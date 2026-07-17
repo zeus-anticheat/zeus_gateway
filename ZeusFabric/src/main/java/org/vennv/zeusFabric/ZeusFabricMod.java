@@ -12,6 +12,7 @@ import org.vennv.zeusFabric.network.ProxyClient;
 import org.vennv.zeusFabric.provider.PacketQueue;
 import org.vennv.zeusFabric.task.BatchSender;
 import org.vennv.zeusFabric.task.PlayerStateSnapshotService;
+import org.vennv.zeusFabric.task.ResyncTask;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,7 +47,7 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
     // ── TPS tracking ──
     private long lastTickNanos = 0;
     private double emaTps = 20.0;
-    private int chunkSyncTicks = 0;
+    private final ResyncTask resyncTask = new ResyncTask();
 
     public static ZeusFabricMod getInstance() {
         return INSTANCE;
@@ -85,14 +86,7 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
         // ─── Register all event listeners ───────────────────────────────
         ZeusEventListeners.registerAll();
 
-        // ─── Resync Task ────────────────────────────────────────────────
-        org.vennv.zeusFabric.task.ResyncTask resyncTask = new org.vennv.zeusFabric.task.ResyncTask();
-
-        // ─── Server tick (for TPS tracking & Resync) ────────────────────
-        ServerTickEvents.END_SERVER_TICK.register(server -> {
-            this.onEndServerTick(server);
-            resyncTask.tick(server);
-        });
+        ServerTickEvents.END_SERVER_TICK.register(this::onEndServerTick);
 
         LOGGER.info("[ZeusFabric] Event listeners registered.");
     }
@@ -129,24 +123,44 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
 
     private void onServerStopping(MinecraftServer minecraftServer) {
         LOGGER.info("[ZeusFabric] Server stopping – shutting down Zeus...");
+        ZeusEventListeners.stopCaptureControlPoller();
 
         if (batchSender != null) {
             batchSender.stop();
         }
 
         if (batchThread != null) {
-            batchThread.interrupt();
             try {
                 batchThread.join(3000);
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
             }
+            if (batchThread.isAlive()) {
+                LOGGER.warn("[ZeusFabric] Sender drain timed out with {} queued packets", PacketQueue.size());
+                if (proxyClient != null) {
+                    proxyClient.close();
+                }
+                batchThread.interrupt();
+                try {
+                    batchThread.join(1000);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+                if (batchThread.isAlive()) {
+                    LOGGER.error("[ZeusFabric] Sender thread did not stop after forced shutdown");
+                }
+            }
         }
 
-        if (proxyClient != null) {
+        if (proxyClient != null && !proxyClient.isClosed()) {
             proxyClient.close();
         }
 
+        long dropped = PacketQueue.droppedCount();
+        if (dropped > 0L) {
+            LOGGER.warn("[ZeusFabric] Dropped {} packets while queue capacity was {}", dropped, PacketQueue.capacity());
+        }
+        PlayerStateSnapshotService.clearAll();
         PacketQueue.clear();
         server = null;
         LOGGER.info("[ZeusFabric] Shutdown complete.");
@@ -155,6 +169,18 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
     // ──────────────────────── TPS sampling ─────────────────────────────
 
     private void onEndServerTick(MinecraftServer minecraftServer) {
+        if (PacketQueue.discontinuityRequired()) {
+            boolean recovered = PacketQueue.recoverFromDiscontinuity(() -> {
+                for (var player : minecraftServer.getPlayerManager().getPlayerList()) {
+                    PlayerStateSnapshotService.invalidate(player);
+                    PlayerStateSnapshotService.sendResyncSnapshot(player);
+                }
+            });
+            if (!recovered) {
+                LOGGER.warn("[ZeusFabric] Queue discontinuity resync did not fit capacity {}", PacketQueue.capacity());
+            }
+        }
+        resyncTask.tick(minecraftServer);
         long now = System.nanoTime();
 
         if (lastTickNanos == 0) {
@@ -174,14 +200,6 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
         double tps = Math.max(5.0, Math.min(20.0, emaTps));
 
         PacketQueue.push(new org.vennv.packets.PacketTPSServer(tps));
-
-        chunkSyncTicks++;
-        if (chunkSyncTicks >= 60) {
-            chunkSyncTicks = 0;
-            for (var player : minecraftServer.getPlayerManager().getPlayerList()) {
-                PlayerStateSnapshotService.sendPositionAndBlocksSnapshot(player);
-            }
-        }
     }
 
     // ──────────────────────── Config loading ───────────────────────────
@@ -215,11 +233,20 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
             proxyHost = props.getProperty("proxy-host", "127.0.0.1");
             proxyPort = Integer.parseInt(props.getProperty("proxy-port", "9999"));
             batchSize = Integer.parseInt(props.getProperty("batch-size", "100"));
+            if (proxyPort < 1 || proxyPort > 65535) {
+                throw new IllegalArgumentException("proxy-port must be between 1 and 65535");
+            }
+            if (batchSize < 1 || batchSize > PacketQueue.capacity()) {
+                throw new IllegalArgumentException("batch-size must be between 1 and " + PacketQueue.capacity());
+            }
 
             LOGGER.info("[ZeusFabric] Config loaded: host={}, port={}, batch-size={}",
                     proxyHost, proxyPort, batchSize);
 
         } catch (Exception e) {
+            proxyHost = "127.0.0.1";
+            proxyPort = 9999;
+            batchSize = 100;
             LOGGER.error("[ZeusFabric] Failed to load config, using defaults.", e);
         }
     }

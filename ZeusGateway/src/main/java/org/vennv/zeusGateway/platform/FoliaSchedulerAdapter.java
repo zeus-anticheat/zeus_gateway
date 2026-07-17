@@ -1,6 +1,7 @@
 package org.vennv.zeusGateway.platform;
 
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -14,7 +15,10 @@ import java.util.concurrent.TimeUnit;
  */
 public final class FoliaSchedulerAdapter implements SchedulerAdapter {
 
+    private static final Runnable RETIRED_TASK = () -> {};
+
     private final Object globalRegionScheduler;
+    private final Object regionScheduler;
     private final Object asyncScheduler;
     private final Method globalRunMethod;
     private final Method globalRunDelayedMethod;
@@ -29,6 +33,9 @@ public final class FoliaSchedulerAdapter implements SchedulerAdapter {
             Method getGlobalRegionScheduler = Bukkit.getServer().getClass()
                     .getMethod("getGlobalRegionScheduler");
             globalRegionScheduler = getGlobalRegionScheduler.invoke(Bukkit.getServer());
+
+            Method getRegionScheduler = Bukkit.getServer().getClass().getMethod("getRegionScheduler");
+            regionScheduler = getRegionScheduler.invoke(Bukkit.getServer());
 
             // Get Folia's AsyncScheduler
             Method getAsyncScheduler = Bukkit.getServer().getClass()
@@ -58,7 +65,7 @@ public final class FoliaSchedulerAdapter implements SchedulerAdapter {
         }
     }
 
-    private Method findMethod(Class<?> clazz, String name, Class<?>... paramTypes) {
+    static Method findMethod(Class<?> clazz, String name, Class<?>... paramTypes) {
         // Try direct lookup first
         try {
             return clazz.getMethod(name, paramTypes);
@@ -117,6 +124,57 @@ public final class FoliaSchedulerAdapter implements SchedulerAdapter {
         } catch (Exception e) {
             throw new RuntimeException("[ZeusGateway] Failed to run task on Folia entity scheduler", e);
         }
+    }
+
+    @Override
+    public void runEntityTaskLater(JavaPlugin plugin, Player player, Runnable task, long delayTicks) {
+        try {
+            Object scheduler = player.getClass().getMethod("getScheduler").invoke(player);
+            invokeEntityTaskLater(scheduler, plugin, task, delayTicks);
+        } catch (Exception e) {
+            throw new RuntimeException("[ZeusGateway] Failed to run delayed task on Folia entity scheduler", e);
+        }
+    }
+
+    static void invokeEntityTaskLater(Object scheduler, JavaPlugin plugin, Runnable task, long delayTicks)
+            throws Exception {
+        Method runDelayed = findMethod(
+                scheduler.getClass(),
+                "runDelayed",
+                org.bukkit.plugin.Plugin.class,
+                java.util.function.Consumer.class,
+                Runnable.class,
+                long.class);
+        runDelayed.invoke(scheduler, plugin, (java.util.function.Consumer<Object>) ignored -> task.run(), RETIRED_TASK,
+                Math.max(1, delayTicks));
+    }
+
+    @Override
+    public void runRegionTask(
+            JavaPlugin plugin, World world, int chunkX, int chunkZ, Runnable task) {
+        try {
+            invokeRegionTask(regionScheduler, plugin, world, chunkX, chunkZ, task);
+        } catch (Exception e) {
+            throw new RuntimeException("[ZeusGateway] Failed to run task on Folia region scheduler", e);
+        }
+    }
+
+    static void invokeRegionTask(
+            Object scheduler,
+            JavaPlugin plugin,
+            World world,
+            int chunkX,
+            int chunkZ,
+            Runnable task) throws Exception {
+        Method execute = findMethod(
+                scheduler.getClass(),
+                "execute",
+                org.bukkit.plugin.Plugin.class,
+                World.class,
+                int.class,
+                int.class,
+                Runnable.class);
+        execute.invoke(scheduler, plugin, world, chunkX, chunkZ, task);
     }
 
     @Override

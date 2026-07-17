@@ -1,123 +1,134 @@
 package org.vennv.zeusGateway.listener.packets;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
-import org.bukkit.World;
-import org.bukkit.block.Block;
-import org.bukkit.entity.Player;
+import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import com.github.retrooper.packetevents.event.PacketSendEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.packettype.PacketTypeCommon;
+import com.github.retrooper.packetevents.protocol.player.ClientVersion;
+import com.github.retrooper.packetevents.protocol.player.User;
+import com.github.retrooper.packetevents.protocol.world.chunk.BaseChunk;
+import com.github.retrooper.packetevents.protocol.world.chunk.Column;
+import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkData;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkDataBulk;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import org.vennv.packets.PacketChunkData;
 import org.vennv.packets.PacketChunkData.BlockData;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
 
-import java.util.ArrayList;
-import java.util.List;
-
-/**
- * Intercepts outbound MAP_CHUNK packets and sends the full chunk terrain
- * to the Rust backend as a single PacketChunkData packet.
- *
- * This populates `compensated_world.chunks` with initial terrain so that
- * `geometrically_supported()` and `get_block_type()` work immediately
- * after player join — without waiting for BlockChangeEvent deltas.
- *
- * Note: MAP_CHUNK runs on the netty thread. We hop to the main Bukkit thread
- * to safely query Chunk APIs (getBlockAt, etc.) because Bukkit's Chunk API
- * is not thread-safe on most builds.
- */
-public class PacketChunkListener extends PacketAdapter {
+public class PacketChunkListener extends PacketListenerAbstract {
     private final ZeusGateway plugin;
+    private final OrderedWorldPacketDispatcher dispatcher;
 
-    public PacketChunkListener(ZeusGateway plugin) {
-        super(plugin, ListenerPriority.MONITOR, PacketType.Play.Server.MAP_CHUNK);
+    public PacketChunkListener(ZeusGateway plugin, OrderedWorldPacketDispatcher dispatcher) {
+        super(PacketListenerPriority.MONITOR);
         this.plugin = plugin;
+        this.dispatcher = dispatcher;
     }
 
     @Override
-    public void onPacketSending(PacketEvent event) {
+    public void onPacketSend(PacketSendEvent event) {
         if (event.isCancelled()) return;
-
-        Player player = event.getPlayer();
-        if (player == null) return;
-
-        int chunkX = event.getPacket().getIntegers().read(0);
-        int chunkZ = event.getPacket().getIntegers().read(1);
-
-        sendChunkBlocks(plugin, player, chunkX, chunkZ);
+        PacketTypeCommon type = event.getPacketType();
+        if (type != PacketType.Play.Server.CHUNK_DATA
+                && type != PacketType.Play.Server.MAP_CHUNK_BULK) return;
+        dispatcher.submit(event, this::process, false);
     }
 
-    public static void sendChunkBlocks(ZeusGateway plugin, Player player, int chunkX, int chunkZ) {
-        plugin.getServer().getScheduler().runTask(plugin, () -> {
-            try {
-                World world = (player != null && player.isOnline()) ? player.getWorld() : null;
-                if (world == null) return;
+    private void process(PacketSendEvent event) {
+        User user = event.getUser();
+        UUID uuid = user.getUUID();
+        String name = user.getName();
+        if (uuid == null || name == null) return;
 
-                // Schedule an async chunk load in case Bukkit doesn't have it loaded yet.
-                // If it IS loaded, getChunkAt synchronously returns; otherwise we force-load
-                // and read on the main thread via a follow-up sync task.
-                if (!world.isChunkLoaded(chunkX, chunkZ)) {
-                    // Force-load on main thread (synchronous, no generation if not present)
-                    world.getChunkAt(chunkX, chunkZ);
+        PacketTypeCommon type = event.getPacketType();
+        if (type == PacketType.Play.Server.CHUNK_DATA) {
+            Column column = new WrapperPlayServerChunkData(event).getColumn();
+            if (column != null) {
+                emitColumn(user, uuid, name, column);
+                if (column.isFullChunk() && !Thread.currentThread().isInterrupted()) {
+                    dispatcher.recover(uuid);
                 }
+            }
+        } else if (type == PacketType.Play.Server.MAP_CHUNK_BULK) {
+            WrapperPlayServerChunkDataBulk packet = new WrapperPlayServerChunkDataBulk(event);
+            int[] chunkX = packet.getX();
+            int[] chunkZ = packet.getZ();
+            BaseChunk[][] columns = packet.getChunks();
+            if (chunkX == null || chunkZ == null || columns == null) return;
+            int count = Math.min(Math.min(chunkX.length, chunkZ.length), columns.length);
+            for (int i = 0; i < count && !Thread.currentThread().isInterrupted(); i++) {
+                emitSections(user, uuid, name, chunkX[i], chunkZ[i], columns[i], 0, true);
+            }
+            if (count > 0 && !Thread.currentThread().isInterrupted()) dispatcher.recover(uuid);
+        }
+    }
 
-                Chunk chunk = world.getChunkAt(chunkX, chunkZ);
-                if (chunk == null || !chunk.isLoaded()) return;
+    private void emitColumn(User user, UUID uuid, String name, Column column) {
+        int minSection = Math.floorDiv(user.getMinWorldHeight(), 16);
+        emitSections(user, uuid, name, column.getX(), column.getZ(), column.getChunks(),
+            minSection, column.isFullChunk());
+    }
 
-                int startX = chunkX << 4;
-                int startZ = chunkZ << 4;
-                int minY = world.getMinHeight();
-                int maxY = world.getMaxHeight();
-                long timestamp = System.currentTimeMillis();
-                String uid = player.getUniqueId().toString();
-                String name = player.getName();
+    private void emitSections(
+            User user, UUID uuid, String name, int chunkX, int chunkZ,
+            BaseChunk[] sections, int minSection, boolean fullChunk) {
+        long timestamp = System.currentTimeMillis();
+        ClientVersion version = user.getClientVersion();
+        int baseSize = PacketChunkData.encodedBaseSize(uuid.toString(), name);
+        int encodedSize = baseSize;
+        List<BlockData> blocks = new ArrayList<>();
+        boolean reset = fullChunk;
 
-                // Collect ALL non-air blocks (including STONE/DIRT/BEDROCK/WATER/LAVA)
-                // so Rust backend has complete collision geometry. Split into batches
-                // of 800 blocks to stay well under the 65KB UDP payload limit
-                // (~23 bytes/block average → ~18.4KB per packet).
-                List<BlockData> blocks = new ArrayList<>(800);
-                int blockCount = 0;
-                boolean resetChunk = true;
-
-                for (int x = 0; x < 16; x++) {
-                    for (int z = 0; z < 16; z++) {
-                        for (int y = minY; y < maxY; y++) {
-                            Block block = chunk.getBlock(x, y, z);
-                            String typeName = block.getBlockData().getAsString();
-                            if (typeName.equals("minecraft:air") || typeName.equals("minecraft:cave_air") || typeName.equals("minecraft:void_air")) {
+        if (sections != null) {
+            for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+                if (Thread.currentThread().isInterrupted()) return;
+                BaseChunk section = sections[sectionIndex];
+                if (section == null || section.isEmpty()) continue;
+                int baseY = (minSection + sectionIndex) << 4;
+                for (int y = 0; y < 16; y++) {
+                    if (Thread.currentThread().isInterrupted()) return;
+                    for (int x = 0; x < 16; x++) {
+                        for (int z = 0; z < 16; z++) {
+                            WrappedBlockState state = section.get(version, x, y, z);
+                            if (state == null || state.getType().isAir()) continue;
+                            String blockType = state.toString();
+                            int blockSize = PacketChunkData.encodedBlockSize(blockType);
+                            if (baseSize + blockSize > PacketChunkData.MAX_UDP_PAYLOAD) {
+                                plugin.getLogger().warning("[ZeusGateway] Dropped oversized chunk block state");
                                 continue;
                             }
-                            blocks.add(new BlockData((byte) x, y, (byte) z, typeName));
-                            blockCount++;
-
-                            if (blocks.size() >= 800) {
-                                PacketQueue.push(new PacketChunkData(
-                                    timestamp, uid, name,
-                                    chunkX, chunkZ, resetChunk, blocks));
-                                resetChunk = false;
-                                blocks = new ArrayList<>(800);
+                            if (encodedSize + blockSize > PacketChunkData.MAX_UDP_PAYLOAD) {
+                                emit(timestamp, uuid, name, chunkX, chunkZ, reset, false, blocks);
+                                reset = false;
+                                blocks = new ArrayList<>();
+                                encodedSize = baseSize;
                             }
+                            blocks.add(new BlockData((byte) x, baseY + y, (byte) z, blockType));
+                            encodedSize += blockSize;
                         }
                     }
                 }
-
-                plugin.getLogger().info(
-                    "[ZeusGateway] MapChunk at (" + chunkX + "," + chunkZ + ") for "
-                    + player.getName() + " -> " + blockCount + " non-air blocks");
-
-                // Send remainder (or empty marker if chunk is all-air so Rust knows it was processed)
-                if (!blocks.isEmpty() || blockCount == 0) {
-                    PacketQueue.push(new PacketChunkData(
-                        timestamp, uid, name,
-                        chunkX, chunkZ, resetChunk, blocks));
-                }
-            } catch (Throwable e) {
-                plugin.getLogger().warning("[ZeusGateway] Failed to parse MapChunk: " + e.getMessage());
             }
-        });
+        }
+
+        if (!blocks.isEmpty() || reset) {
+            emit(timestamp, uuid, name, chunkX, chunkZ, reset, false, blocks);
+        }
+        if (fullChunk) {
+            emit(timestamp, uuid, name, chunkX, chunkZ, false, true, Collections.emptyList());
+        }
+    }
+
+    private static void emit(
+            long timestamp, UUID uuid, String name, int chunkX, int chunkZ,
+            boolean reset, boolean complete, List<BlockData> blocks) {
+        PacketQueue.push(new PacketChunkData(
+                timestamp, uuid.toString(), name, chunkX, chunkZ, reset, complete, blocks));
     }
 }

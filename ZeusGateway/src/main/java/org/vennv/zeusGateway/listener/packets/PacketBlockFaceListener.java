@@ -1,132 +1,96 @@
 package org.vennv.zeusGateway.listener.packets;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.reflect.StructureModifier;
-import com.comphenix.protocol.wrappers.EnumWrappers;
+import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import com.github.retrooper.packetevents.event.PacketReceiveEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.player.DiggingAction;
+import com.github.retrooper.packetevents.protocol.player.User;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerBlockPlacement;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerDigging;
+import java.util.UUID;
 import org.bukkit.entity.Player;
 import org.vennv.packets.PacketPlayerBlockFace;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
 
-public class PacketBlockFaceListener extends PacketAdapter {
-    private final ZeusGateway plugin;
+public class PacketBlockFaceListener extends PacketListenerAbstract {
+    private final OrderedPlayerPacketDispatcher dispatcher;
 
-    public PacketBlockFaceListener(ZeusGateway plugin) {
-        super(plugin, ListenerPriority.LOWEST,
-                PacketType.Play.Client.BLOCK_DIG);
-        this.plugin = plugin;
+    public PacketBlockFaceListener(ZeusGateway plugin, OrderedPlayerPacketDispatcher dispatcher) {
+        super(PacketListenerPriority.LOWEST);
+        this.dispatcher = dispatcher;
     }
 
     @Override
-    public void onPacketReceiving(PacketEvent event) {
-        EnumWrappers.PlayerDigType digType = readDigType(event);
-        if (!isBlockDigAction(digType)) {
+    public void onPacketReceive(PacketReceiveEvent event) {
+        boolean diggingPacket = event.getPacketType() == PacketType.Play.Client.PLAYER_DIGGING;
+        boolean placementPacket = event.getPacketType() == PacketType.Play.Client.PLAYER_BLOCK_PLACEMENT;
+        if (!diggingPacket && !placementPacket) {
             return;
         }
-
-        Player player = event.getPlayer();
-        String uid = player.getUniqueId().toString();
-        String name = player.getName();
-        long timestamp = System.currentTimeMillis();
-
-        Byte face = readFace(event);
-
+        User user = event.getUser();
+        if (user == null) {
+            return;
+        }
+        UUID uuid = user.getUUID();
+        String name = user.getName();
+        if (uuid == null || name == null || name.isEmpty()) {
+            return;
+        }
+        Byte face;
+        try {
+            if (diggingPacket) {
+                WrapperPlayClientPlayerDigging digging = new WrapperPlayClientPlayerDigging(event);
+                if (!isBlockDigAction(digging.getAction())) {
+                    return;
+                }
+                face = validFace(digging.getBlockFaceId());
+            } else {
+                face = validFace(new WrapperPlayClientPlayerBlockPlacement(event).getFaceId());
+            }
+        } catch (RuntimeException ignored) {
+            return;
+        }
         if (face == null) {
-            plugin.getLogger().fine(
-                    "Skipping BLOCK_DIG face: unreadable direction, handle="
-                            + event.getPacket().getHandle().getClass().getName()
-            );
             return;
         }
-
+        Player player = event.getPlayer();
+        if (player == null) return;
         PacketPlayerBlockFace packet = new PacketPlayerBlockFace(
-                timestamp,
-                uid,
+                System.currentTimeMillis(),
+                uuid.toString(),
                 name,
-                face
-        );
-        PacketQueue.push(packet);
+                face);
+        dispatcher.submit(player, () -> PacketQueue.push(packet));
     }
 
-    private EnumWrappers.PlayerDigType readDigType(PacketEvent event) {
-        try {
-            return event.getPacket().getPlayerDigTypes().readSafely(0);
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    private boolean isBlockDigAction(EnumWrappers.PlayerDigType digType) {
-        return digType == EnumWrappers.PlayerDigType.START_DESTROY_BLOCK
-                || digType == EnumWrappers.PlayerDigType.ABORT_DESTROY_BLOCK
-                || digType == EnumWrappers.PlayerDigType.STOP_DESTROY_BLOCK;
-    }
-
-    /**
-     * Maps a ProtocolLib Direction enum to the protocol's face byte value.
-     * <p>
-     * Face values:
-     * 0 = DOWN   (-Y)
-     * 1 = UP     (+Y)
-     * 2 = NORTH  (-Z)
-     * 3 = SOUTH  (+Z)
-     * 4 = WEST   (-X)
-     * 5 = EAST   (+X)
-     */
-    private Byte readFace(PacketEvent event) {
-        try {
-            StructureModifier<EnumWrappers.Direction> directions = event.getPacket().getDirections();
-            if (directions.size() > 0) {
-                Byte face = mapDirectionToFace(directions.readSafely(0));
-                if (face != null) {
-                    return face;
-                }
-            }
-        } catch (Exception ignored) {
-            // Try integer layout below.
-        }
-
-        try {
-            StructureModifier<Integer> integers = event.getPacket().getIntegers();
-            if (integers.size() > 1) {
-                Byte face = validFace(integers.readSafely(1));
-                if (face != null) {
-                    return face;
-                }
-            }
-            if (integers.size() > 0) {
-                return validFace(integers.readSafely(0));
-            }
-        } catch (Exception ignored) {
-            // Unreadable face; caller skips the packet.
-        }
-        return null;
+    private static boolean isBlockDigAction(DiggingAction action) {
+        return action == DiggingAction.START_DIGGING
+                || action == DiggingAction.CANCELLED_DIGGING
+                || action == DiggingAction.FINISHED_DIGGING;
     }
 
     static Byte validFace(Integer face) {
         return face != null && face >= 0 && face <= 5 ? face.byteValue() : null;
     }
 
-    static Byte mapDirectionToFace(EnumWrappers.Direction direction) {
+    static Byte mapDirectionToFace(Object direction) {
         if (direction == null) {
             return null;
         }
-
-        switch (direction) {
-            case DOWN:
+        switch (direction.toString()) {
+            case "DOWN":
                 return (byte) 0;
-            case UP:
+            case "UP":
                 return (byte) 1;
-            case NORTH:
+            case "NORTH":
                 return (byte) 2;
-            case SOUTH:
+            case "SOUTH":
                 return (byte) 3;
-            case WEST:
+            case "WEST":
                 return (byte) 4;
-            case EAST:
+            case "EAST":
                 return (byte) 5;
             default:
                 return null;

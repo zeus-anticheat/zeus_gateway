@@ -10,4 +10,6 @@ public final class ExternalForceFlags {
     public static final int SERVER_VELOCITY_PACKET = 1 << 4;
     public static final int DAMAGE_BACKED = 1 << 5;
     public static final int ENVIRONMENT_BACKED = 1 << 6;
+    public static final int VELOCITY_FIRST_BREAD = 1 << 7;
+    public static final int VELOCITY_REQUIRED = 1 << 8;
 }

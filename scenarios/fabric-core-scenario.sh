@@ -9,7 +9,7 @@ SERVER_FIFO="${1:?server stdin fifo path required}"
 HOST="${2:-127.0.0.1}"
 PORT="${3:-25565}"
 VERSION="${4:-}"
-TIMEOUT="${5:-60}"
+TIMEOUT="${5:-90}"
 
 ARGS=(--host "$HOST" --port "$PORT" --timeout "$TIMEOUT")
 if [ -n "$VERSION" ]; then
@@ -32,9 +32,11 @@ if [ -p "$SERVER_FIFO" ]; then
   sleep 1
   echo "execute as ZeusSmokeBot at @s run setblock ~ ~ ~2 chest" > "$SERVER_FIFO"
   sleep 1
-  echo "execute as ZeusSmokeBot at @s run setblock ~3 ~ ~ piston[facing=west]" > "$SERVER_FIFO"
+  echo "execute as ZeusSmokeBot at @s run setblock ~-2 ~ ~ piston[facing=east]" > "$SERVER_FIFO"
   sleep 1
-  echo "execute as ZeusSmokeBot at @s run setblock ~4 ~ ~ redstone_block" > "$SERVER_FIFO"
+  echo "execute as ZeusSmokeBot at @s run setblock ~-1 ~ ~ stone" > "$SERVER_FIFO"
+  sleep 1
+  echo "execute as ZeusSmokeBot at @s run setblock ~-3 ~ ~ redstone_block" > "$SERVER_FIFO"
 fi
 
 wait $BOT_PID

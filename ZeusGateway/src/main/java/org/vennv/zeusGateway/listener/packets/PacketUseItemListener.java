@@ -1,78 +1,69 @@
 package org.vennv.zeusGateway.listener.packets;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.wrappers.EnumWrappers;
-import com.comphenix.protocol.reflect.StructureModifier;
+import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import com.github.retrooper.packetevents.event.PacketReceiveEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.player.InteractionHand;
+import com.github.retrooper.packetevents.protocol.player.User;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientUseItem;
+import java.util.UUID;
 import org.bukkit.entity.Player;
 import org.vennv.packets.PacketPlayerUseItem;
 import org.vennv.utils.Hand;
 import org.vennv.zeusGateway.ZeusGateway;
-import org.vennv.zeusGateway.platform.ServerVersion;
 import org.vennv.zeusGateway.provider.PacketQueue;
 
-public class PacketUseItemListener extends PacketAdapter {
+public class PacketUseItemListener extends PacketListenerAbstract {
+    private final OrderedPlayerPacketDispatcher dispatcher;
 
-    public PacketUseItemListener(ZeusGateway plugin) {
-        super(plugin, ListenerPriority.LOWEST,
-                PacketType.Play.Client.USE_ITEM);
+    public PacketUseItemListener(ZeusGateway plugin, OrderedPlayerPacketDispatcher dispatcher) {
+        super(PacketListenerPriority.LOWEST);
+        this.dispatcher = dispatcher;
     }
 
     @Override
-    public void onPacketReceiving(PacketEvent event) {
-        Player player = event.getPlayer();
-        String uid = player.getUniqueId().toString();
-        String name = player.getName();
-        long timestamp = System.currentTimeMillis();
-
-        Hand hand = Hand.MAIN_HAND;
-        byte sequence = 0;
-
+    public void onPacketReceive(PacketReceiveEvent event) {
+        if (event.getPacketType() != PacketType.Play.Client.USE_ITEM) {
+            return;
+        }
+        User user = event.getUser();
+        if (user == null) {
+            return;
+        }
+        UUID uuid = user.getUUID();
+        String name = user.getName();
+        if (uuid == null || name == null || name.isEmpty()) {
+            return;
+        }
+        InteractionHand packetHand;
+        int sequence;
         try {
-            // Read the hand enum from the packet
-            StructureModifier<EnumWrappers.Hand> hands = event.getPacket().getHands();
-            if (hands.size() > 0) {
-                EnumWrappers.Hand packetHand = hands.read(0);
-                if (packetHand == EnumWrappers.Hand.OFF_HAND) {
-                    hand = Hand.OFF_HAND;
-                }
-            }
-        } catch (Exception e) {
-            // Fallback: try reading as integer
-            try {
-                StructureModifier<Integer> integers = event.getPacket().getIntegers();
-                if (integers.size() > 0) {
-                    int handValue = integers.read(0);
-                    if (handValue == 1) {
-                        hand = Hand.OFF_HAND;
-                    }
-                }
-            } catch (Exception ignored) {
-                // Default to MAIN_HAND
-            }
+            WrapperPlayClientUseItem useItem = new WrapperPlayClientUseItem(event);
+            packetHand = useItem.getHand();
+            sequence = useItem.getSequence();
+        } catch (RuntimeException ignored) {
+            return;
         }
-
-        if (ServerVersion.isAtLeast(1, 19, 2)) {
-            try {
-                StructureModifier<Integer> integers = event.getPacket().getIntegers();
-                int lastIndex = integers.size() - 1;
-                if (lastIndex >= 0) {
-                    sequence = integers.read(lastIndex).byteValue();
-                }
-            } catch (Exception ignored) {
-                // Sequence not available on this packet/version.
-            }
+        if (packetHand == null || sequence < 0) {
+            return;
         }
-
+        Hand hand;
+        if (packetHand == InteractionHand.MAIN_HAND) {
+            hand = Hand.MAIN_HAND;
+        } else if (packetHand == InteractionHand.OFF_HAND) {
+            hand = Hand.OFF_HAND;
+        } else {
+            return;
+        }
+        Player player = event.getPlayer();
+        if (player == null) return;
         PacketPlayerUseItem packet = new PacketPlayerUseItem(
-                timestamp,
-                uid,
+                System.currentTimeMillis(),
+                uuid.toString(),
                 name,
                 hand,
-                sequence
-        );
-        PacketQueue.push(packet);
+                (byte) sequence);
+        dispatcher.submit(player, () -> PacketQueue.push(packet));
     }
 }

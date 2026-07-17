@@ -1,5 +1,7 @@
 package org.vennv.zeusGateway.listener.packets;
 
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import org.vennv.packets.PacketPhysicsCaptureSample;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
@@ -25,6 +27,7 @@ public class PhysicsCaptureManager {
 
     private static final AtomicBoolean CAPTURE_ACTIVE = new AtomicBoolean(false);
     private static final long POLL_INTERVAL_MS = 5000;
+    private static volatile Thread poller;
 
     private static String backendHost = "127.0.0.1";
     private static int backendPort = 3000;
@@ -33,7 +36,8 @@ public class PhysicsCaptureManager {
             new java.util.concurrent.ConcurrentHashMap<>();
 
     /** Start the capture state poller. Call once on plugin enable. */
-    public static void start(ZeusGateway plugin) {
+    public static synchronized void start(ZeusGateway plugin) {
+        stop();
         // Read the dashboard host/port if available from plugin config or env
         String envHost = System.getenv("ZEUS_DASHBOARD_HOST");
         if (envHost != null && !envHost.isEmpty()) {
@@ -45,7 +49,7 @@ public class PhysicsCaptureManager {
             backendPort = 3000;
         }
         // Start polling thread
-        Thread poller = new Thread(() -> {
+        poller = new Thread(() -> {
             while (true) {
                 try {
                     Thread.sleep(POLL_INTERVAL_MS);
@@ -59,6 +63,16 @@ public class PhysicsCaptureManager {
         poller.setDaemon(true);
         poller.start();
         plugin.getLogger().info("[PhysicsCapture] Started capture state poller");
+    }
+
+    public static synchronized void stop() {
+        Thread activePoller = poller;
+        poller = null;
+        if (activePoller != null) {
+            activePoller.interrupt();
+        }
+        CAPTURE_ACTIVE.set(false);
+        lastSampleNanos.clear();
     }
 
     public static boolean isCaptureActive() {
@@ -226,10 +240,21 @@ public class PhysicsCaptureManager {
     }
 
     public static int serverProtocol() {
+        try {
+            com.github.retrooper.packetevents.manager.server.ServerVersion version =
+                    PacketEvents.getAPI().getServerManager().getVersion();
+            if (version != null && version.getProtocolVersion() > 0) {
+                return version.getProtocolVersion();
+            }
+        } catch (RuntimeException | LinkageError ignored) {
+        }
         if (ServerVersion.major() == 1 && ServerVersion.minor() == 20) {
             return ServerVersion.patch() >= 5 ? 766 : ServerVersion.patch() >= 3 ? 765 : 764;
         }
         if (ServerVersion.major() == 1 && ServerVersion.minor() == 21) {
+            if (ServerVersion.patch() >= 11) return 774;
+            if (ServerVersion.patch() >= 9) return 773;
+            if (ServerVersion.patch() >= 7) return 772;
             if (ServerVersion.patch() >= 6) return 771;
             if (ServerVersion.patch() >= 5) return 770;
             if (ServerVersion.patch() >= 4) return 769;
@@ -240,12 +265,10 @@ public class PhysicsCaptureManager {
     }
 
     public static int clientProtocol(org.bukkit.entity.Player player) {
-        int fallback;
-        try {
-            fallback = com.comphenix.protocol.ProtocolLibrary.getProtocolManager()
-                    .getProtocolVersion(player);
-        } catch (Throwable ignored) {
-            fallback = serverProtocol();
+        int fallback = serverProtocol();
+        ClientVersion version = PacketEvents.getAPI().getPlayerManager().getClientVersion(player);
+        if (version != null && version.getProtocolVersion() > 0) {
+            fallback = version.getProtocolVersion();
         }
         return clientProtocol(player.getUniqueId(), fallback);
     }
@@ -296,12 +319,6 @@ public class PhysicsCaptureManager {
         return configured;
     }
 
-    /**
-     * Prefer ViaVersion's connection protocol when the optional plugin is
-     * installed.  ProtocolLib remains the compatibility fallback supplied by
-     * the position listener; neither value participates in a physics profile
-     * key without an explicit behaviour fingerprint.
-     */
     public static int clientProtocol(UUID uuid, int fallback) {
         try {
             Class<?> via = Class.forName("com.viaversion.viaversion.api.Via");
@@ -312,26 +329,20 @@ public class PhysicsCaptureManager {
                 return ((Number) value).intValue();
             }
         } catch (Throwable ignored) {
-            // ViaVersion is optional.  The caller's ProtocolLib/server value
-            // remains the diagnostic fallback.
         }
         return fallback;
     }
 
     public static String clientVersion(int clientProtocol) {
         if (clientProtocol <= 0) return "unknown";
-        // Keep this mapping diagnostic-only.  It is never used as a profile
-        // key and unknown/future protocols remain visibly unknown.
-        switch (clientProtocol) {
-            case 763: return "1.20";
-            case 765: return "1.20.5";
-            case 767: return "1.21";
-            case 768: return "1.21.2";
-            case 769: return "1.21.4";
-            case 770: return "1.21.5";
-            case 771: return "1.21.6";
-            default: return "protocol-" + clientProtocol;
+        ClientVersion version = ClientVersion.getById(clientProtocol);
+        if (version == null || version.getProtocolVersion() != clientProtocol) {
+            return "protocol-" + clientProtocol;
         }
+        String releaseName = version.getReleaseName();
+        return releaseName == null || releaseName.isEmpty()
+                ? "protocol-" + clientProtocol
+                : releaseName;
     }
 
     // ── Polling logic ──

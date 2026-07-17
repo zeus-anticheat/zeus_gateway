@@ -6,19 +6,22 @@ import java.util.logging.Level;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.listener.RawCaptureCapability;
 import org.vennv.zeusGateway.listener.event.EventListener;
-import org.vennv.zeusGateway.listener.event.PaperEventListener;
 import org.vennv.zeusGateway.network.ProxyClient;
 import org.vennv.zeusGateway.platform.PlatformDetector;
 import org.vennv.zeusGateway.platform.PlatformType;
 import org.vennv.zeusGateway.platform.ServerCombatSettings;
 import org.vennv.zeusGateway.platform.ServerVersion;
+import org.vennv.zeusGateway.provider.PacketQueue;
 import org.vennv.zeusGateway.task.BatchSender;
+import org.vennv.zeusGateway.task.ChunkSyncTask;
 import org.vennv.zeusGateway.task.PlayerStateSnapshotService;
 import org.vennv.zeusGateway.task.UpdateTPS;
 
 public class ZeusLoader {
 
     protected ZeusGateway plugin;
+    private ProxyClient proxy;
+    private Thread senderThread;
 
     public ZeusLoader(ZeusGateway plugin) {
         this.plugin = plugin;
@@ -61,17 +64,21 @@ public class ZeusLoader {
     private void initProxy() {
         org.bukkit.configuration.file.FileConfiguration cfg = this.plugin.getConfig();
         try {
-            ProxyClient proxy = new ProxyClient(
+            proxy = new ProxyClient(
                 cfg.getString("proxy-ac.host"),
                 cfg.getInt("proxy-ac.port"),
                 plugin.getPacketDebugService()
             );
 
-            Thread thread = new Thread(
-                new BatchSender(proxy, cfg.getInt("packets.batch-size"))
+            senderThread = new Thread(
+                new BatchSender(
+                        proxy,
+                        cfg.getInt("packets.batch-size"),
+                        uid -> ChunkSyncTask.invalidateAndRequestFullResync(plugin, uid)),
+                "ZeusGateway-BatchSender"
             );
-            thread.setDaemon(true);
-            thread.start();
+            senderThread.setDaemon(true);
+            senderThread.start();
 
             plugin
                 .getLogger()
@@ -87,36 +94,34 @@ public class ZeusLoader {
                 "[ZeusGateway] Failed to load proxy configuration!",
                 e
             );
-            this.plugin.getServer()
-                .getPluginManager()
-                .disablePlugin(this.plugin);
+            throw new IllegalStateException("Failed to initialize proxy client", e);
         }
+    }
+
+    public void close() {
+        if (senderThread != null) {
+            senderThread.interrupt();
+            try {
+                senderThread.join(1000L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            senderThread = null;
+        }
+        if (proxy != null) {
+            proxy.close();
+            proxy = null;
+        }
+        PacketQueue.clear();
     }
 
     private void initListeners() {
         EnumSet<RawCaptureCapability> rawCapabilities =
-            EnumSet.noneOf(RawCaptureCapability.class);
+                EnumSet.noneOf(RawCaptureCapability.class);
+        rawCapabilities.addAll(plugin.getRawCapabilities());
 
         // ─────────────────────────────────────────────────────────────────
-        // 1. Register ProtocolLib-based packet listeners (if ProtocolLib is available)
-        // ─────────────────────────────────────────────────────────────────
-        if (plugin.isProtocolLibAvailable()) {
-            rawCapabilities = registerProtocolLibListenersIfAvailable();
-        } else {
-            plugin
-                .getLogger()
-                .warning(
-                    "[ZeusGateway] ProtocolLib not available — skipping raw packet listeners."
-                );
-            plugin
-                .getLogger()
-                .warning(
-                    "[ZeusGateway] Some anti-cheat data sources will be Bukkit-event-only (less precise)."
-                );
-        }
-
-        // ─────────────────────────────────────────────────────────────────
-        // 2. Register cross-platform Bukkit event listeners (Paper / Spigot / Folia)
+        // 1. Register cross-platform Bukkit event listeners (Paper / Spigot / Folia)
         // ─────────────────────────────────────────────────────────────────
         this.plugin.getServer()
             .getPluginManager()
@@ -127,67 +132,15 @@ public class ZeusLoader {
                     + rawCapabilities);
 
         // ─────────────────────────────────────────────────────────────────
-        // 3. Register Paper-exclusive event listeners (only on Paper / Paper forks)
+        // 2. Handle players already online (reload or late start)
         // ─────────────────────────────────────────────────────────────────
-        if (PlatformDetector.isPaper() || PlatformDetector.isFolia()) {
-            try {
-                this.plugin.getServer()
-                    .getPluginManager()
-                    .registerEvents(
-                            new PaperEventListener(
-                                    this.plugin,
-                                    rawCapabilities.contains(RawCaptureCapability.ATTACK_ENTITY)),
-                            this.plugin);
-                plugin
-                    .getLogger()
-                    .info(
-                        "[ZeusGateway] Registered Paper-exclusive event listeners."
-                    );
-            } catch (Exception | NoClassDefFoundError e) {
-                plugin
-                    .getLogger()
-                    .warning(
-                        "[ZeusGateway] Failed to register Paper event listeners: " +
-                            e.getMessage()
-                    );
-                plugin
-                    .getLogger()
-                    .warning(
-                        "[ZeusGateway] Falling back to Bukkit-only listeners for attack/armor events."
-                    );
-            }
-        } else {
-            plugin
-                .getLogger()
-                .info(
-                    "[ZeusGateway] Running on Spigot — Paper-exclusive listeners skipped."
-                );
-        }
-
-        // ─────────────────────────────────────────────────────────────────
-        // 4. Handle players already online (reload or late start)
-        // ─────────────────────────────────────────────────────────────────
+        ChunkSyncTask chunkSyncTask = new ChunkSyncTask(plugin);
         for (org.bukkit.entity.Player player : plugin.getServer().getOnlinePlayers()) {
-            PlayerStateSnapshotService.sendFullSnapshot(player);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private EnumSet<RawCaptureCapability> registerProtocolLibListenersIfAvailable() {
-        try {
-            Class<?> registrar = Class.forName(
-                "org.vennv.zeusGateway.listener.packets.ProtocolLibListenerRegistrar"
-            );
-            Object result = registrar.getMethod("register", ZeusGateway.class)
-                .invoke(null, plugin);
-            return (EnumSet<RawCaptureCapability>) result;
-        } catch (ReflectiveOperationException | LinkageError e) {
-            plugin.getLogger().log(
-                Level.WARNING,
-                "[ZeusGateway] ProtocolLib capability adapter could not be loaded; using event fallbacks.",
-                e
-            );
-            return EnumSet.noneOf(RawCaptureCapability.class);
+            plugin.getSchedulerAdapter().runEntityTask(plugin, player, () -> {
+                ChunkSyncTask.invalidate(player);
+                PlayerStateSnapshotService.sendFullSnapshot(player);
+                chunkSyncTask.forceFull(player);
+            });
         }
     }
 
@@ -199,7 +152,8 @@ public class ZeusLoader {
         PlatformType platform = plugin.getPlatformType();
 
         UpdateTPS tpsTask = new UpdateTPS();
-        org.vennv.zeusGateway.task.ResyncTask resyncTask = new org.vennv.zeusGateway.task.ResyncTask();
+        org.vennv.zeusGateway.task.ResyncTask resyncTask =
+                new org.vennv.zeusGateway.task.ResyncTask(plugin);
 
         switch (platform) {
             case FOLIA:

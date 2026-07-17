@@ -10,9 +10,8 @@ The plugin intercepts a game event through one of these mechanisms:
 
 | Mechanism                  | Platform          | Example                    |
 |---------------------------|-------------------|----------------------------|
-| ProtocolLib PacketAdapter  | Paper/Spigot      | POSITION, ARM_ANIMATION    |
+| PacketEvents listener      | Paper/Spigot/Folia| POSITION, ARM_ANIMATION    |
 | Bukkit EventHandler        | Paper/Spigot/Folia| PlayerJoinEvent            |
-| Paper EventHandler         | Paper/Folia       | PrePlayerAttackEntityEvent |
 | Fabric API Callback        | Fabric            | AttackEntityCallback       |
 | Per-tick polling            | Fabric            | Position, armor, effects   |
 

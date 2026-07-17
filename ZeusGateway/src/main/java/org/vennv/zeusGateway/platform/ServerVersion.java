@@ -2,7 +2,6 @@ package org.vennv.zeusGateway.platform;
 
 import org.bukkit.Bukkit;
 
-import java.lang.reflect.Method;
 import java.util.logging.Logger;
 
 /**
@@ -52,10 +51,6 @@ public final class ServerVersion {
     public static boolean HAS_GENERIC_ATTACK_SPEED;
     public static boolean HAS_ENTITY_INTERACTION_RANGE;
 
-    // ── ProtocolLib info ──────────────────────────────────────────────────
-    public static boolean PROTOCOL_LIB_AVAILABLE;
-    public static int PROTOCOL_LIB_MAJOR;   // 4 or 5
-
     private static boolean initialised;
 
     private ServerVersion() {}
@@ -77,7 +72,6 @@ public final class ServerVersion {
         parseVersion();
         detectNmsVersion();
         resolveFeatureFlags();
-        detectProtocolLib();
 
         logger.info("[ZeusGateway] Server version: " + MAJOR + "." + MINOR + "." + PATCH
                 + " (NMS: " + (NMS_VERSION != null ? NMS_VERSION : "mojang-mapped") + ")");
@@ -90,9 +84,6 @@ public final class ServerVersion {
                 + "PotionKey=" + HAS_POTION_KEY + ", "
                 + "EntityHeight=" + HAS_ENTITY_HEIGHT + ", "
                 + "EntityPose=" + HAS_ENTITY_POSE);
-        if (PROTOCOL_LIB_AVAILABLE) {
-            logger.info("[ZeusGateway] ProtocolLib v" + PROTOCOL_LIB_MAJOR + ".x detected.");
-        }
     }
 
     /** @return {@code true} if the server version is ≥ {@code major.minor}. */
@@ -192,31 +183,6 @@ public final class ServerVersion {
         // 1.21.2+: Attribute.PLAYER_ENTITY_INTERACTION_RANGE
         HAS_ENTITY_INTERACTION_RANGE = isAtLeast(1, 21, 2) && classExists("org.bukkit.attribute.Attribute") 
             && enumExists("org.bukkit.attribute.Attribute", "PLAYER_ENTITY_INTERACTION_RANGE");
-    }
-
-    /**
-     * Detects whether ProtocolLib is available and determines its major version.
-
-     */
-    private static void detectProtocolLib() {
-        try {
-            Class.forName("com.comphenix.protocol.ProtocolLibrary");
-            PROTOCOL_LIB_AVAILABLE = true;
-
-            org.bukkit.plugin.Plugin pl = Bukkit.getPluginManager().getPlugin("ProtocolLib");
-            if (pl != null) {
-                String ver = pl.getDescription().getVersion();
-                // "5.3.0" → major 5; "4.8.0" → major 4
-                PROTOCOL_LIB_MAJOR = ver.startsWith("5") ? 5
-                        : ver.startsWith("4") ? 4
-                        : 5; // default to 5 for unknown/future versions
-            } else {
-                PROTOCOL_LIB_MAJOR = 5;
-            }
-        } catch (ClassNotFoundException e) {
-            PROTOCOL_LIB_AVAILABLE = false;
-            PROTOCOL_LIB_MAJOR = 0;
-        }
     }
 
     // ──────────────────────────────────────────────────────────────────────

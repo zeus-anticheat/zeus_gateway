@@ -9,6 +9,7 @@ import org.vennv.PacketBaseInfo;
 import org.vennv.PacketId;
 
 public final class PacketChunkData extends PacketBaseInfo {
+    public static final int MAX_UDP_PAYLOAD = 65_507;
 
     public static class BlockData {
         public final byte localX;
@@ -27,6 +28,7 @@ public final class PacketChunkData extends PacketBaseInfo {
     private final int chunkX;
     private final int chunkZ;
     private final boolean isFullChunk;
+    private final boolean isComplete;
     private final List<BlockData> blocks;
 
     public PacketChunkData(
@@ -38,10 +40,24 @@ public final class PacketChunkData extends PacketBaseInfo {
         boolean isFullChunk,
         List<BlockData> blocks
     ) {
+        this(timestamp, uid, username, chunkX, chunkZ, isFullChunk, false, blocks);
+    }
+
+    public PacketChunkData(
+        long timestamp,
+        String uid,
+        String username,
+        int chunkX,
+        int chunkZ,
+        boolean isFullChunk,
+        boolean isComplete,
+        List<BlockData> blocks
+    ) {
         super(timestamp, uid, username);
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         this.isFullChunk = isFullChunk;
+        this.isComplete = isComplete;
         this.blocks = blocks;
     }
 
@@ -50,13 +66,24 @@ public final class PacketChunkData extends PacketBaseInfo {
         return PacketId.PACKET_CHUNK_DATA;
     }
 
+    public static int encodedBaseSize(String uid, String username) {
+        return 27
+                + uid.getBytes(StandardCharsets.UTF_8).length
+                + username.getBytes(StandardCharsets.UTF_8).length;
+    }
+
+    public static int encodedBlockSize(String blockType) {
+        return 8 + blockType.getBytes(StandardCharsets.UTF_8).length;
+    }
+
     @Override
     public void encode(ByteArrayOutputStream out) throws IOException {
         encodePlayerInfo(out);
 
         ByteBufferUtil.putInt(out, chunkX);
         ByteBufferUtil.putInt(out, chunkZ);
-        ByteBufferUtil.putByte(out, (byte) (isFullChunk ? 1 : 0));
+        int flags = (isFullChunk ? 1 : 0) | (isComplete ? 2 : 0);
+        ByteBufferUtil.putByte(out, (byte) flags);
 
         // number of blocks
         ByteBufferUtil.putInt(out, blocks.size());

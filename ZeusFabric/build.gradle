@@ -1,4 +1,7 @@
+import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import java.util.jar.JarFile
+import java.util.jar.JarInputStream
 
 plugins {
     id 'fabric-loom' version '1.15.5'
@@ -11,10 +14,16 @@ group = 'org.vennv'
 
 def supportMatrix = new JsonSlurper().parse(file('../support-matrix.json'))
 def minecraftTarget = findProperty('mcTarget') ?: supportMatrix.fabric.defaultTarget
+def buildStatuses = ['build-verifiable', 'supported']
+def buildableTargets = supportMatrix.fabric.targets.findAll { it.status in buildStatuses }*.minecraft
 def target = supportMatrix.fabric.targets.find { it.minecraft == minecraftTarget }
-if (target == null || !(target.status in ['build-verifiable', 'supported'])) {
+if (target == null || !(target.status in buildStatuses)) {
     throw new GradleException("No buildable ZeusFabric adapter for Minecraft ${minecraftTarget}; see support-matrix.json")
 }
+def versionSource = minecraftTarget in ['1.21.2', '1.21.3', '1.21.4'] ? 'v1212'
+        : minecraftTarget == '1.21.5' ? 'v1215'
+        : minecraftTarget in ['1.21.6', '1.21.7', '1.21.8'] ? 'v1216'
+        : 'v1219'
 
 base {
     archivesName = "ZeusFabric-${minecraftTarget}"
@@ -28,6 +37,8 @@ repositories {
     }
     mavenLocal()
 }
+
+sourceSets.main.java.srcDir("src/versioned/${versionSource}/java")
 
 dependencies {
     // Fabric
@@ -65,6 +76,184 @@ java {
 jar {
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}
+
+def adapterJar = { String version -> layout.buildDirectory.file("libs/ZeusFabric-${version}-${project.version}.jar").get().asFile }
+def universalJar = layout.buildDirectory.file("libs/ZeusFabric-universal-${project.version}.jar")
+
+def selfChecks = [
+    queueSelfCheck: 'org.vennv.zeusFabric.provider.PacketQueueTest',
+    movementSelfCheck: 'org.vennv.zeusFabric.provider.MovementSemanticsTest',
+    captureIdentitySelfCheck: 'org.vennv.zeusFabric.provider.CaptureIdentityTest',
+    pollingPolicySelfCheck: 'org.vennv.zeusFabric.provider.PollingPolicyTest',
+    chunkSnapshotSelfCheck: 'org.vennv.zeusFabric.task.ChunkSnapshotSemanticsTest',
+    collisionGenerationSelfCheck: 'org.vennv.zeusFabric.task.CollisionGenerationAllocatorTest',
+    teleportDedupeSelfCheck: 'org.vennv.zeusFabric.listener.AuthoritativeTeleportDedupeTest',
+    senderSelfCheck: 'org.vennv.zeusFabric.task.BatchSenderTest',
+    fabricContractSelfCheck: 'org.vennv.zeusFabric.contract.FabricContractSourceTest'
+]
+selfChecks.each { taskName, testClass ->
+    tasks.register(taskName, JavaExec) {
+        group = 'verification'
+        dependsOn testClasses
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = testClass
+    }
+}
+
+tasks.named('test') {
+    failOnNoDiscoveredTests = false
+    dependsOn selfChecks.keySet().collect { tasks.named(it) }
+}
+
+tasks.named('check') {
+    dependsOn selfChecks.keySet().collect { tasks.named(it) }
+}
+
+tasks.register('buildExactAdapters') {
+    group = 'build'
+    description = 'Builds every exact Fabric adapter declared buildable in support-matrix.json.'
+    doLast {
+        buildableTargets.each { version ->
+            providers.exec {
+                commandLine './gradlew', '--no-daemon', 'build', "-PmcTarget=${version}"
+            }.result.get().assertNormalExitValue()
+            if (!adapterJar(version).isFile()) {
+                throw new GradleException("Missing exact Fabric adapter: ${adapterJar(version)}")
+            }
+        }
+    }
+}
+
+def universalStage = layout.buildDirectory.dir('universal')
+
+tasks.register('prepareUniversalJar') {
+    dependsOn tasks.named('buildExactAdapters')
+    inputs.files(buildableTargets.collect { adapterJar(it) })
+    outputs.dir(universalStage)
+    outputs.upToDateWhen { false }
+    doLast {
+        File staged = universalStage.get().asFile
+        delete staged
+        new File(staged, 'META-INF/jars').mkdirs()
+        def metadata = [
+            schemaVersion: 1,
+            id: 'zeusfabric_universal',
+            version: project.version.toString(),
+            name: 'ZeusFabric Universal Distribution',
+            description: 'Exact-version ZeusFabric adapters for Minecraft 1.21.2 through 1.21.11',
+            authors: ['VennDev'],
+            license: 'All-Rights-Reserved',
+            environment: 'server',
+            jars: buildableTargets.collect { [file: "META-INF/jars/ZeusFabric-${it}-${project.version}.jar"] },
+            depends: [
+                fabricloader: '>=0.18.1',
+                minecraft: buildableTargets.collect { "=${it}" },
+                java: '>=21',
+                'fabric-api': '*'
+            ],
+            custom: [
+                'zeusfabric:adapter-selection': [
+                    strategy: 'fabric-loader-single-id-exact-minecraft',
+                    adapterId: 'zeusfabric',
+                    targets: buildableTargets
+                ]
+            ]
+        ]
+        new File(staged, 'fabric.mod.json').setText(
+            JsonOutput.prettyPrint(JsonOutput.toJson(metadata)) + System.lineSeparator(),
+            'UTF-8'
+        )
+        buildableTargets.each { version ->
+            copy {
+                from adapterJar(version)
+                into new File(staged, 'META-INF/jars')
+            }
+        }
+    }
+}
+
+tasks.register('universalJar', Jar) {
+    group = 'build'
+    description = 'Nests exact-version adapters in one metadata-only Fabric distribution JAR.'
+    dependsOn tasks.named('prepareUniversalJar')
+    archiveBaseName = 'ZeusFabric-universal'
+    archiveVersion = project.version
+    destinationDirectory = layout.buildDirectory.dir('libs')
+    from universalStage
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+tasks.register('fabricLoaderSelectionSelfCheck', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('universalJar'), testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'org.vennv.zeusFabric.contract.FabricLoaderSelectionTest'
+    argumentProviders.add({ [universalJar.get().asFile.absolutePath] + buildableTargets } as CommandLineArgumentProvider)
+}
+
+tasks.register('validateUniversalJar') {
+    group = 'verification'
+    dependsOn tasks.named('universalJar'), tasks.named('fabricLoaderSelectionSelfCheck')
+    doLast {
+        File artifact = universalJar.get().asFile
+        if (!artifact.isFile()) throw new GradleException("Missing universal artifact: ${artifact}")
+        JarFile outer = new JarFile(artifact)
+        try {
+            def outerMetadata = new JsonSlurper().parse(outer.getInputStream(outer.getJarEntry('fabric.mod.json')))
+            if (outerMetadata.entrypoints || outerMetadata.mixins) {
+                throw new GradleException('Universal outer JAR must remain metadata-only')
+            }
+            if ((outerMetadata.depends.minecraft as Set) != (buildableTargets.collect { "=${it}" } as Set)) {
+                throw new GradleException('Universal Minecraft selector differs from exact buildable targets')
+            }
+            def declaredNestedPaths = outerMetadata.jars*.file as Set
+            def expectedNestedPaths = buildableTargets.collect {
+                "META-INF/jars/ZeusFabric-${it}-${project.version}.jar"
+            } as Set
+            if (declaredNestedPaths != expectedNestedPaths) {
+                throw new GradleException("Universal nested adapter declarations differ: ${declaredNestedPaths}")
+            }
+            def actualNestedPaths = Collections.list(outer.entries())*.name.findAll {
+                it.startsWith('META-INF/jars/') && it.endsWith('.jar')
+            } as Set
+            if (actualNestedPaths != expectedNestedPaths) {
+                throw new GradleException("Universal nested adapter entries differ: ${actualNestedPaths}")
+            }
+            def ids = []
+            def exactSelectors = []
+            buildableTargets.each { version ->
+                String path = "META-INF/jars/ZeusFabric-${version}-${project.version}.jar"
+                def entry = outer.getJarEntry(path)
+                if (entry == null) throw new GradleException("Missing nested adapter ${path}")
+                JarInputStream nested = new JarInputStream(outer.getInputStream(entry))
+                try {
+                    def nestedEntry
+                    while ((nestedEntry = nested.nextJarEntry) != null && nestedEntry.name != 'fabric.mod.json') { }
+                    if (nestedEntry == null) throw new GradleException("Nested adapter ${version} has no fabric.mod.json")
+                    def nestedMetadata = new JsonSlurper().parse(nested)
+                    if (nestedMetadata.depends.minecraft != "=${version}") {
+                        throw new GradleException("Nested adapter ${version} is not exact-version constrained")
+                    }
+                    exactSelectors << nestedMetadata.depends.minecraft
+                    ids << nestedMetadata.id
+                } finally {
+                    nested.close()
+                }
+            }
+            if (ids.toSet() != ['zeusfabric'] as Set || ids.size() != buildableTargets.size()) {
+                throw new GradleException("Nested adapters must share one selectable id: ${ids}")
+            }
+            buildableTargets.each { version ->
+                if (exactSelectors.count("=${version}") != 1) {
+                    throw new GradleException("Target ${version} does not have exactly one exact selector")
+                }
+            }
+        } finally {
+            outer.close()
+        }
     }
 }
 

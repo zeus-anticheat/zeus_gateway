@@ -1,0 +1,197 @@
+{
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/build.gradle": {
+    "mtime": 1784005477.8346746,
+    "ast_hash": "89646b8a75b838ca5d1d171c6fef8ddc",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/settings.gradle": {
+    "mtime": 1773015142.5218844,
+    "ast_hash": "5b50efe6be3e0b286be6f518cfb127cd",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/gradlew": {
+    "mtime": 1773274015.1366642,
+    "ast_hash": "780b1d3e23a3b82154795f73df943a14",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/test.java": {
+    "mtime": 1775924502.0198588,
+    "ast_hash": "53b96081aeb95f38e2b8020cfc76a78c",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/TestP.java": {
+    "mtime": 1776540847.791781,
+    "ast_hash": "8dfa3b2315a24682c2c1ed5bc030dcdb",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/ZeusFabricMod.java": {
+    "mtime": 1784271936.4679236,
+    "ast_hash": "67f6f81ac395fe3ab5d3d1b2c2f977d3",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/ServerCombatSettings.java": {
+    "mtime": 1777234100.4442961,
+    "ast_hash": "75edf0a6dabf13a126990c31873ce072",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/listener/test_enchantment.java": {
+    "mtime": 1775924474.3373687,
+    "ast_hash": "d041d55aad2b6b7ef617d41276f3ece1",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/listener/ZeusEventListeners.java": {
+    "mtime": 1784271935.6869116,
+    "ast_hash": "4d642a9ceae40519d013b262e1cfc5b0",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/network/ProxyClient.java": {
+    "mtime": 1784249106.5437977,
+    "ast_hash": "7f97498b8bf289be198a5691359ad180",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/provider/PacketQueue.java": {
+    "mtime": 1784249255.54664,
+    "ast_hash": "89e744c3e11bfd55fb34fca1380d0e1e",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/provider/MovementSemantics.java": {
+    "mtime": 1784003703.7409496,
+    "ast_hash": "4b66b86f075d93cbe3a328663e4e44e2",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/provider/CaptureIdentity.java": {
+    "mtime": 1784004023.1781368,
+    "ast_hash": "92daaabeb9f63b949b9db25b4526e2a7",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/provider/PollingPolicy.java": {
+    "mtime": 1784004528.5242963,
+    "ast_hash": "705a41562caba713b46a6cd091a59583",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/task/BatchSender.java": {
+    "mtime": 1783989043.8953118,
+    "ast_hash": "2c377328539673d75797642264df2ab5",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/task/ResyncTask.java": {
+    "mtime": 1779837178.325054,
+    "ast_hash": "cb01e3372ac46d6933919e92d0f8c95c",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/task/PlayerStateSnapshotService.java": {
+    "mtime": 1784249788.4770749,
+    "ast_hash": "ab48e0b0ee7d72c9ed338b99eb88fdfe",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/task/ChunkSnapshotSemantics.java": {
+    "mtime": 1784249872.6019263,
+    "ast_hash": "3ded87293186aa5c5c8b129a13f28c76",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/utils/ItemUtil.java": {
+    "mtime": 1779821734.2530465,
+    "ast_hash": "37a8c851cc752377c7cc256a0c5fc7b4",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/utils/MinecraftCompat.java": {
+    "mtime": 1784004415.7701147,
+    "ast_hash": "4963dc8277a4e9a568cfa0971e783282",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/utils/BlockUtil.java": {
+    "mtime": 1783969568.034445,
+    "ast_hash": "428c13f3b590194be34502f32682c267",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java": {
+    "mtime": 1784271807.6019206,
+    "ast_hash": "8e521efa5a9b6779190235a78d204b41",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerCommonNetworkHandlerMixin.java": {
+    "mtime": 1784271936.4559236,
+    "ast_hash": "cc5e7b826534cb6e2d50fa5487da488f",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerCommonNetworkHandlerAccessor.java": {
+    "mtime": 1784004690.3044984,
+    "ast_hash": "9daea5ff92f81551c8315db22f164f6a",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/resources/fabric.mod.json": {
+    "mtime": 1779844477.0679672,
+    "ast_hash": "071655ded75db6d89581288677f9ed2e",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/resources/zeusfabric.mixins.json": {
+    "mtime": 1784004695.879637,
+    "ast_hash": "99af69a2063c5033c6be3646e5c0f1d1",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/provider/PacketQueueTest.java": {
+    "mtime": 1784271415.5488763,
+    "ast_hash": "e2657570e812e00f6fef4a25c3d47755",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/provider/MovementSemanticsTest.java": {
+    "mtime": 1784005053.0068762,
+    "ast_hash": "6a5b6a7959a3d2f705177a97f0d4e0d4",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/provider/CaptureIdentityTest.java": {
+    "mtime": 1784004555.7200298,
+    "ast_hash": "55090435829cff9cf05b99a81bf3b8b5",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/provider/PollingPolicyTest.java": {
+    "mtime": 1784004536.1295028,
+    "ast_hash": "3e71148df31bfca16b08a8ac76b1d739",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/task/BatchSenderTest.java": {
+    "mtime": 1784249383.635592,
+    "ast_hash": "60390fd4b4adba5274e5752c1c98d4b6",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/task/ChunkSnapshotSemanticsTest.java": {
+    "mtime": 1784249573.517356,
+    "ast_hash": "6aaa3b3932d541a8f0c143fc82fe9402",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/contract/FabricContractSourceTest.java": {
+    "mtime": 1784272067.8679628,
+    "ast_hash": "8f9d793ab6a652e782baa9cbe90d519c",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/contract/FabricLoaderSelectionTest.java": {
+    "mtime": 1783988445.1565464,
+    "ast_hash": "73c77c478a42d0b86556a5ae64cc7a5d",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/versioned/v1212/java/org/vennv/zeusFabric/utils/MinecraftVersionAccess.java": {
+    "mtime": 1784006020.6302302,
+    "ast_hash": "354b93afbd73f82a0ff34ab8dff90ad0",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/versioned/v1215/java/org/vennv/zeusFabric/utils/MinecraftVersionAccess.java": {
+    "mtime": 1784006021.1032393,
+    "ast_hash": "0f28867776c6d118294b25348bea7662",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/versioned/v1216/java/org/vennv/zeusFabric/utils/MinecraftVersionAccess.java": {
+    "mtime": 1784006027.7093654,
+    "ast_hash": "bb583025d3472e50790080d2cb928f3b",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/versioned/v1219/java/org/vennv/zeusFabric/utils/MinecraftVersionAccess.java": {
+    "mtime": 1784006028.062372,
+    "ast_hash": "aa665fa7957c175aecd1e61a509e32f3",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/build_log.txt": {
+    "mtime": 1776540833.0212355,
+    "ast_hash": "4c0cce4a439186d753732c9957f3cff5",
+    "semantic_hash": ""
+  }
+}

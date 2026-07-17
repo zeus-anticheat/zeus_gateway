@@ -18,6 +18,9 @@ public class BlockUtil {
 
     public static boolean isOnGround(ServerPlayerEntity player, Vec3d pos) {
         World world = MinecraftCompat.entityWorld(player);
+        if (world == null) {
+            return player.isOnGround();
+        }
         final double epsilon = 0.0001;
         final double playerWidth = player.getWidth();
 
@@ -77,6 +80,9 @@ public class BlockUtil {
         List<RelativeBlock> blocks = new ArrayList<>();
 
         World world = MinecraftCompat.entityWorld(player);
+        if (world == null) {
+            return blocks;
+        }
 
         int baseX = MathHelper.floor(pos.getX());
         int baseY = MathHelper.floor(pos.getY());

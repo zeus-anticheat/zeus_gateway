@@ -1,12 +1,11 @@
 name: ZeusGateway
 version: '1.0-SNAPSHOT'
 main: org.vennv.zeusGateway.ZeusGateway
-api-version: '1.13'
-description: Zeus Anti-Cheat data collector plugin - modern Gateway artifact
+description: Zeus packet-forwarding plugin for Spigot, Paper, and Folia
 authors:
   - VennDev
-softdepend:
-  - ProtocolLib
+depend:
+  - packetevents
 folia-supported: true
 commands:
   zeusdebug:

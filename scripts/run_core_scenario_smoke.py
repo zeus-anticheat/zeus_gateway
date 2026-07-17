@@ -39,10 +39,8 @@ FAILURE_PATTERNS = [
     r"Exception in thread \"main\"",
 ]
 
-PROFILES = {
-    "compatibility-core": [0x09, 0x13, 0x22, 0x26, 0x27],
-    "online-minimal": [0x01, 0x03],
-}
+def profile_names():
+    return sorted(load_manifest().get("supportEvidenceProfiles", {}))
 
 
 def load_manifest():
@@ -62,25 +60,19 @@ def gateway_target(target):
 
 def default_gateway_target():
     for entry in load_manifest().get("gateway", {}).get("targets", []):
-        if entry.get("artifact") == "ZeusGateway-modern":
+        if entry.get("id") == "paper-1.21.11":
             return entry["id"]
-    raise SystemExit("support-matrix.json has no modern Gateway runtime target")
+    raise SystemExit("support-matrix.json has no paper-1.21.11 Gateway runtime target")
 
 
 def default_artifact(kind, target):
     if kind == "gateway":
-        artifact = gateway_target(target)["artifact"]
-        if artifact == "ZeusGateway-legacy":
-            return ROOT / "ZeusGatewayLegacy" / "target" / "ZeusGateway-legacy-1.0-SNAPSHOT.jar"
-        if artifact == "ZeusGateway-modern":
-            return ROOT / "ZeusGateway" / "target" / "ZeusGateway-modern-1.0-SNAPSHOT.jar"
-        raise SystemExit("unknown Gateway artifact in support-matrix.json: {0}".format(artifact))
+        gateway_target(target)
+        return ROOT / "ZeusGateway" / "target" / "ZeusGateway-1.0-SNAPSHOT.jar"
     return ROOT / "ZeusFabric" / "build" / "libs" / "ZeusFabric-{0}-1.0-SNAPSHOT.jar".format(target)
 
 
 def default_success_pattern(kind, target):
-    if kind == "gateway" and gateway_target(target)["artifact"] == "ZeusGateway-legacy":
-        return SUCCESS_PATTERNS["gateway-legacy"]
     return SUCCESS_PATTERNS[kind]
 
 
@@ -88,6 +80,12 @@ def server_target_pattern(kind, target):
     if kind != "gateway":
         return None
     return gateway_target(target).get("startupLogPattern")
+
+
+def external_dependency_pattern(kind):
+    if kind != "gateway":
+        return None
+    return load_manifest().get("gateway", {}).get("packetEvents", {}).get("startupLogPattern")
 
 
 def safe_name(value):
@@ -123,12 +121,44 @@ def parse_command(args):
     raise SystemExit("missing server command; pass --command-line 'java -jar server.jar nogui' or -- java ...")
 
 
-def parse_packet_ids(values, profiles):
+def target_evidence_capabilities(kind, target, data=None):
+    data = data or load_manifest()
+    if kind == "gateway":
+        entries = data.get("gateway", {}).get("targets", [])
+        key = "id"
+    else:
+        entries = data.get("fabric", {}).get("targets", [])
+        key = "minecraft"
+    entry = next((entry for entry in entries if entry.get(key) == target), None)
+    if entry is None:
+        raise SystemExit("unknown {0} target in support-matrix.json: {1}".format(kind, target))
+    return set(entry.get("evidenceCapabilities") or [])
+
+
+def profile_packet_ids(profile, capabilities, data=None):
+    data = data or load_manifest()
+    definition = data.get("supportEvidenceProfiles", {}).get(profile)
+    if definition is None:
+        raise SystemExit("unknown packet profile: {0}".format(profile))
+    result = [int(packet_id, 0) for packet_id in definition.get("requiredPacketIds", [])]
+    for capability, packet_id in definition.get("capabilityPacketIds", {}).items():
+        if capability in capabilities:
+            result.append(int(packet_id, 0))
+    return result
+
+
+def capability_scenario_commands(capabilities):
+    commands = []
+    if "movement-attributes" in capabilities:
+        commands.append("effect give ZeusSmokeBot minecraft:speed 5 1 true")
+    return commands
+
+
+def parse_packet_ids(values, profiles, kind, target):
     result = []
+    capabilities = target_evidence_capabilities(kind, target)
     for profile in profiles:
-        if profile not in PROFILES:
-            raise SystemExit("unknown packet profile: {0}".format(profile))
-        result.extend(PROFILES[profile])
+        result.extend(profile_packet_ids(profile, capabilities))
     for value in values:
         for part in value.split(","):
             part = part.strip()
@@ -254,32 +284,39 @@ def drain_output(output, lines, echo):
             print(line)
 
 
-def wait_for_startup(process, output, lines, timeout, success_pattern, target_pattern, failure_regexes, echo):
+def wait_for_startup(
+        process, output, lines, timeout, success_pattern, target_pattern,
+        dependency_pattern, failure_regexes, echo):
     deadline = time.monotonic() + timeout
     success_seen = False
     target_seen = target_pattern is None
+    dependency_seen = dependency_pattern is None
     while time.monotonic() < deadline:
         try:
             line = output.get(timeout=0.25)
         except queue.Empty:
             if process.poll() is not None:
-                return False, target_seen, "server exited before startup success"
+                return False, target_seen, dependency_seen, "server exited before startup success"
             continue
         lines.append(line)
         if echo:
             print(line)
         if target_pattern and target_pattern in line:
             target_seen = True
+        if dependency_pattern and dependency_pattern in line:
+            dependency_seen = True
         if success_pattern in line:
             success_seen = True
-            if target_seen:
-                return True, True, None
+        if success_seen and target_seen and dependency_seen:
+            return True, True, True, None
         for failure_regex in failure_regexes:
             if failure_regex.search(line):
-                return False, target_seen, line
+                return False, target_seen, dependency_seen, line
     if success_seen and not target_seen:
-        return False, False, "plugin enabled but exact server target log fingerprint was not observed"
-    return False, target_seen, "startup timeout after {0}s".format(timeout)
+        return False, False, dependency_seen, "plugin enabled but exact server target log fingerprint was not observed"
+    if success_seen and not dependency_seen:
+        return False, target_seen, False, "plugin enabled but exact external dependency log fingerprint was not observed"
+    return False, target_seen, dependency_seen, "startup timeout after {0}s".format(timeout)
 
 
 def run_scenario_command(command_line, cwd, timeout):
@@ -324,10 +361,13 @@ def run_smoke(args):
     server_dir = Path(args.server_dir)
     evidence = Path(args.evidence) if args.evidence else default_evidence(args.kind, target)
     evidence = evidence if evidence.is_absolute() else ROOT / evidence
-    required_ids = parse_packet_ids(args.expect_packet_id, args.profile)
+    capabilities = target_evidence_capabilities(args.kind, target)
+    required_ids = parse_packet_ids(args.expect_packet_id, args.profile, args.kind, target)
     command = parse_command(args)
+    capability_commands = capability_scenario_commands(capabilities)
     success_pattern = args.success_pattern or default_success_pattern(args.kind, target)
     target_pattern = server_target_pattern(args.kind, target)
+    dependency_pattern = external_dependency_pattern(args.kind)
     failure_regexes = [re.compile(pattern) for pattern in FAILURE_PATTERNS + list(args.failure_pattern)]
 
     if not artifact.exists():
@@ -350,13 +390,16 @@ def run_smoke(args):
         "serverDir": str(server_dir),
         "command": command,
         "scenarioCommand": shlex.split(args.scenario_command_line) if args.scenario_command_line else None,
+        "capabilityScenarioCommands": capability_commands,
         "profiles": args.profile,
+        "evidenceCapabilities": sorted(capabilities),
         "requiredPacketIds": ["0x{0:02x}".format(packet_id) for packet_id in required_ids],
         "proxyHost": args.proxy_host,
         "proxyPort": planned_port,
         "captureSeconds": args.capture_seconds,
         "successPattern": success_pattern,
         "serverTargetPattern": target_pattern,
+        "externalDependencyPattern": dependency_pattern,
         "failurePatterns": FAILURE_PATTERNS + list(args.failure_pattern),
     }
     if args.dry_run:
@@ -396,13 +439,14 @@ def run_smoke(args):
     log_reader.start()
 
     try:
-        startup_ok, server_target_seen, startup_failure = wait_for_startup(
+        startup_ok, server_target_seen, external_dependency_seen, startup_failure = wait_for_startup(
             process,
             output,
             lines,
             args.startup_timeout,
             success_pattern,
             target_pattern,
+            dependency_pattern,
             failure_regexes,
             args.echo,
         )
@@ -418,14 +462,14 @@ def run_smoke(args):
 
                 def delayed_stdin():
                     time.sleep(args.delayed_stdin_wait)
-                    for cmd in args.delayed_stdin_command:
+                    for cmd in list(args.delayed_stdin_command) + capability_commands:
                         if process.stdin and process.poll() is None:
                             process.stdin.write(cmd + "\n")
                             process.stdin.flush()
                         time.sleep(args.stdin_command_delay)
 
                 delayed_thread = None
-                if args.delayed_stdin_command:
+                if args.delayed_stdin_command or capability_commands:
                     delayed_thread = threading.Thread(target=delayed_stdin, daemon=True)
                     delayed_thread.start()
 
@@ -462,6 +506,7 @@ def run_smoke(args):
         "durationSeconds": round(time.monotonic() - start, 3),
         "startupSeen": startup_ok,
         "serverTargetSeen": server_target_seen,
+        "externalDependencySeen": external_dependency_seen,
         "startupFailure": startup_failure,
         "scenarioResult": scenario_result,
         "stopAction": stop_action,
@@ -490,7 +535,7 @@ def main():
         "--profile",
         action="append",
         default=[],
-        choices=sorted(PROFILES),
+        choices=profile_names(),
         help="packet expectation profile; compatibility-core is required for support evidence",
     )
     parser.add_argument("--expect-packet-id", action="append", default=[], help="required packet id, hex or decimal; can be repeated or comma-separated")

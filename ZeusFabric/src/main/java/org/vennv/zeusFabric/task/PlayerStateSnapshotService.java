@@ -9,11 +9,14 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.vennv.Effect;
-import org.vennv.packets.PacketChunkData;
-import org.vennv.packets.PacketChunkData.BlockData;
+import org.vennv.packets.PacketCollisionWindow;
+import org.vennv.packets.PacketCollisionWindow.Cell;
+import org.vennv.packets.PacketCollisionWindow.CellUpdate;
+import org.vennv.packets.PacketCollisionWindow.CollisionWindowUpdate;
 import org.vennv.packets.PacketPlayerArmorsEquipment;
 import org.vennv.packets.PacketPlayerChangeMode;
 import org.vennv.packets.PacketPlayerEffect;
@@ -23,9 +26,9 @@ import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerJoin;
 import org.vennv.packets.PacketPlayerOpenWindow;
 import org.vennv.packets.PacketPlayerPosition;
-import org.vennv.packets.PacketPhysicsCaptureSample;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.packets.PacketServerConfig;
+import org.vennv.packets.PacketUpdateAttributes;
 import org.vennv.utils.Armors;
 import org.vennv.utils.EffectFlags;
 import org.vennv.utils.EffectType;
@@ -38,8 +41,10 @@ import org.vennv.zeusFabric.utils.BlockUtil;
 import org.vennv.zeusFabric.utils.ItemUtil;
 import org.vennv.zeusFabric.utils.MinecraftCompat;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,23 +57,25 @@ import java.util.stream.Collectors;
  * stay behaviorally aligned with ZeusGateway.
  */
 public final class PlayerStateSnapshotService {
-    private static final int CHUNK_RADIUS = 3;
-    private static final int Y_PADDING = 5;
-    private static final int CHUNK_BATCH_SIZE = 200;
     private static final Map<String, String> HELD_HASH = new ConcurrentHashMap<>();
     private static final Map<String, String> ARMOR_HASH = new ConcurrentHashMap<>();
     private static final Map<String, String> ENCHANT_HASH = new ConcurrentHashMap<>();
     private static final Map<String, String> INVENTORY_HASH = new ConcurrentHashMap<>();
-    private static final Map<String, Boolean> SENT_CHUNKS = new ConcurrentHashMap<>();
+    private static final Object COLLISION_LOCK = new Object();
+    private static final Map<String, ChunkSnapshotSemantics.State> COLLISION_STATES = new HashMap<>();
+    private static final CollisionGenerationAllocator COLLISION_GENERATIONS =
+            CollisionGenerationAllocator.persistent();
 
     private PlayerStateSnapshotService() {}
 
     public static void sendFullSnapshot(ServerPlayerEntity player) {
-        sendSnapshot(player, true);
+        invalidate(player);
+        sendSnapshot(player, true, PacketPlayerPosition.SOURCE_SNAPSHOT);
     }
 
     public static void sendResyncSnapshot(ServerPlayerEntity player) {
-        sendSnapshot(player, false);
+        clearMutableState(player.getUuidAsString());
+        sendSnapshot(player, true, PacketPlayerPosition.SOURCE_RESYNC);
     }
 
     public static void sendMutableStateSnapshot(ServerPlayerEntity player) {
@@ -133,28 +140,82 @@ public final class PlayerStateSnapshotService {
         sendOpenInventorySnapshot(timestamp, player.getUuidAsString(), player.getName().getString(), player, force);
     }
 
-    public static void sendPositionAndBlocksSnapshot(ServerPlayerEntity player) {
-        long timestamp = System.currentTimeMillis();
-        sendPositionAndBlocks(
-                timestamp,
-                player.getUuidAsString(),
-                player.getName().getString(),
-                player);
-    }
-
     public static void clear(ServerPlayerEntity player) {
         clear(player.getUuidAsString());
     }
 
     public static void clear(String uid) {
+        clearMutableState(uid);
+        remove(uid);
+    }
+
+    private static void clearMutableState(String uid) {
         HELD_HASH.remove(uid);
         ARMOR_HASH.remove(uid);
         ENCHANT_HASH.remove(uid);
         INVENTORY_HASH.remove(uid);
-        SENT_CHUNKS.keySet().removeIf(key -> key.startsWith(uid + ":"));
     }
 
-    private static void sendSnapshot(ServerPlayerEntity player, boolean forceStableState) {
+    public static void invalidate(ServerPlayerEntity player) {
+        invalidate(player.getUuidAsString());
+    }
+
+    public static void invalidate(String uid) {
+        synchronized (COLLISION_LOCK) {
+            COLLISION_STATES.put(uid, ChunkSnapshotSemantics.State.empty(nextCollisionGeneration()));
+            PacketQueue.removeCollisionWindows(uid);
+        }
+    }
+
+    public static void remove(ServerPlayerEntity player) {
+        remove(player.getUuidAsString());
+    }
+
+    public static void remove(String uid) {
+        synchronized (COLLISION_LOCK) {
+            COLLISION_STATES.remove(uid);
+            PacketQueue.removeCollisionWindows(uid);
+        }
+    }
+
+    public static void clearAll() {
+        synchronized (COLLISION_LOCK) {
+            for (String uid : COLLISION_STATES.keySet()) {
+                PacketQueue.removeCollisionWindows(uid);
+            }
+            COLLISION_STATES.clear();
+        }
+    }
+
+    public static boolean contains(
+            ServerPlayerEntity player,
+            int x,
+            int y,
+            int z) {
+        World world = MinecraftCompat.entityWorld(player);
+        return world != null && contains(player.getUuidAsString(), worldIdentity(world), x, y, z);
+    }
+
+    public static boolean contains(
+            String uid,
+            String worldIdentity,
+            int x,
+            int y,
+            int z) {
+        synchronized (COLLISION_LOCK) {
+            ChunkSnapshotSemantics.State state = COLLISION_STATES.get(uid);
+            return state != null
+                    && state.committed()
+                    && worldIdentity.equals(state.worldIdentity())
+                    && ChunkSnapshotSemantics.contains(state.center(), x, y, z);
+        }
+    }
+
+    public static void onMovement(ServerPlayerEntity player, double x, double y, double z) {
+        sendCollisionWindow(player, ChunkSnapshotSemantics.Center.floor(x, y, z), false);
+    }
+
+    private static void sendSnapshot(ServerPlayerEntity player, boolean forceStableState, byte positionSource) {
         long timestamp = System.currentTimeMillis();
         String uid = player.getUuidAsString();
         String name = player.getName().getString();
@@ -167,7 +228,8 @@ public final class PlayerStateSnapshotService {
                 name,
                 MinecraftCompat.gameModeIndex(player)));
 
-        sendPositionAndBlocks(timestamp, uid, name, player);
+        sendPositionAndBlocks(timestamp, uid, name, player, positionSource);
+        sendMovementAttributes(timestamp, uid, name, player);
         sendHeldItem(timestamp, uid, name, player, forceStableState);
         sendArmor(timestamp, uid, name, player, forceStableState);
         sendEnchantments(timestamp, uid, name, player, forceStableState);
@@ -200,12 +262,14 @@ public final class PlayerStateSnapshotService {
 
         float movementSpeed = 0.1f;
         if (player.getAttributes().hasAttribute(EntityAttributes.MOVEMENT_SPEED)) {
-            double value = player.getAttributeValue(EntityAttributes.MOVEMENT_SPEED);
-            if (value > 0.0) {
+            double value = player.getAttributeBaseValue(EntityAttributes.MOVEMENT_SPEED);
+            if (Double.isFinite(value) && value > 0.0) {
                 movementSpeed = (float) value;
             }
         }
 
+        int protocol = MinecraftCompat.serverProtocol(
+                org.vennv.zeusFabric.ZeusFabricMod.getServer().getVersion());
         return new PacketServerConfig(
                 timestamp,
                 uid,
@@ -214,13 +278,13 @@ public final class PlayerStateSnapshotService {
                 cooldown,
                 ServerCombatSettings.getMaxCps(),
                 movementSpeed,
-                PacketPhysicsCaptureSample.UNKNOWN_U16,
+                protocol,
                 org.vennv.zeusFabric.ZeusFabricMod.getServer().getVersion(),
                 "fabric",
                 "fabric",
                 System.getProperty("zeus.physics.fingerprint", "vanilla"),
-                PacketPhysicsCaptureSample.UNKNOWN_U16,
-                "unknown",
+                protocol,
+                org.vennv.zeusFabric.ZeusFabricMod.getServer().getVersion(),
                 System.getenv().getOrDefault("ZEUS_TRANSLATION_BEHAVIOR_FINGERPRINT", ""),
                 "fabric");
     }
@@ -229,7 +293,8 @@ public final class PlayerStateSnapshotService {
             long timestamp,
             String uid,
             String name,
-            ServerPlayerEntity player) {
+            ServerPlayerEntity player,
+            byte positionSource) {
         Vec3d pos = new Vec3d(player.getX(), player.getY(), player.getZ());
         Vec3d eye = player.getEyePos();
         boolean onGround = BlockUtil.isOnGround(player, pos);
@@ -249,56 +314,169 @@ public final class PlayerStateSnapshotService {
                 player.getPitch(),
                 player.getHeight(),
                 onGround,
-                PacketPlayerPosition.SOURCE_SNAPSHOT));
-        sendChunkData(timestamp, uid, name, player, pos);
+                positionSource));
+
+        sendCollisionWindow(player, ChunkSnapshotSemantics.Center.floor(pos.x, pos.y, pos.z), true);
     }
 
-    private static void sendChunkData(
+    private static boolean sendCollisionWindow(
+            ServerPlayerEntity player,
+            ChunkSnapshotSemantics.Center center,
+            boolean forceFull) {
+        World world = MinecraftCompat.entityWorld(player);
+        if (world == null) {
+            return false;
+        }
+        String uid = player.getUuidAsString();
+        String name = player.getName().getString();
+        String worldIdentity = worldIdentity(world);
+        ChunkSnapshotSemantics.State previous;
+        long generationAtSample;
+        long sequenceAtSample;
+        boolean full;
+        List<Integer> sampleIndices;
+        ChunkSnapshotSemantics.Center previousCenter;
+        List<Cell> previousCells = null;
+        synchronized (COLLISION_LOCK) {
+            previous = COLLISION_STATES.get(uid);
+            if (previous == null) {
+                previous = ChunkSnapshotSemantics.State.empty(nextCollisionGeneration());
+                COLLISION_STATES.put(uid, previous);
+            } else if (previous.worldIdentity() != null
+                    && !worldIdentity.equals(previous.worldIdentity())) {
+                previous = ChunkSnapshotSemantics.State.empty(nextCollisionGeneration());
+                COLLISION_STATES.put(uid, previous);
+                PacketQueue.removeCollisionWindows(uid);
+            }
+            if (!forceFull
+                    && previous.committed()
+                    && center.equals(previous.center())) {
+                return false;
+            }
+            full = forceFull
+                    || !previous.committed()
+                    || !ChunkSnapshotSemantics.overlaps(previous.center(), center);
+            sampleIndices = full
+                    ? ChunkSnapshotSemantics.allIndices()
+                    : ChunkSnapshotSemantics.entering(previous.center(), center);
+            previousCenter = previous.center();
+            generationAtSample = previous.generation();
+            sequenceAtSample = previous.sequence();
+            if (!full && previous.committed()) {
+                previousCells = previous.cells();
+            }
+        }
+        List<Cell> cells = new ArrayList<>(full
+                ? ChunkSnapshotSemantics.unknownCells()
+                : ChunkSnapshotSemantics.reuse(previousCenter, previousCells, center));
+        sampleCells(world, center, sampleIndices, cells);
+
+        synchronized (COLLISION_LOCK) {
+            ChunkSnapshotSemantics.State current = COLLISION_STATES.get(uid);
+            if (current == null || current.generation() != generationAtSample
+                    || current.sequence() != sequenceAtSample) {
+                return false;
+            }
+            long sequence = Math.incrementExact(previous.sequence());
+            CollisionWindowUpdate update;
+            if (full) {
+                update = CollisionWindowUpdate.full(
+                        previous.generation(),
+                        sequence,
+                        center.x(),
+                        center.y(),
+                        center.z(),
+                        cells);
+            } else {
+                List<CellUpdate> updates = new ArrayList<>(sampleIndices.size());
+                for (int index : sampleIndices) {
+                    updates.add(new CellUpdate(index, cells.get(index)));
+                }
+                update = CollisionWindowUpdate.delta(
+                        previous.generation(),
+                        sequence,
+                        previous.sequence(),
+                        previous.center().x(),
+                        previous.center().y(),
+                        previous.center().z(),
+                        center.x(),
+                        center.y(),
+                        center.z(),
+                        updates);
+            }
+
+            List<PacketCollisionWindow> fragments;
+            try {
+                fragments = update.toFragments(System.currentTimeMillis(), uid, name);
+                for (PacketCollisionWindow fragment : fragments) {
+                    if (fragment.encodedDatagramLength() > PacketCollisionWindow.MAX_DATAGRAM_LENGTH) {
+                        return false;
+                    }
+                }
+            } catch (IllegalArgumentException | IOException exception) {
+                return false;
+            }
+            if (!PacketQueue.pushCollisionWindow(
+                    uid, previous.generation(), sequence, fragments)) {
+                return false;
+            }
+            COLLISION_STATES.put(uid, new ChunkSnapshotSemantics.State(
+                    previous.generation(), sequence, worldIdentity, center, cells));
+            return true;
+        }
+    }
+
+    private static void sampleCells(
+            World world,
+            ChunkSnapshotSemantics.Center center,
+            List<Integer> indices,
+            List<Cell> cells) {
+        int minY = world.getBottomY();
+        int maxY = Math.addExact(minY, world.getHeight());
+        for (int index : indices) {
+            int[] position = ChunkSnapshotSemantics.position(center, index);
+            int x = position[0];
+            int y = position[1];
+            int z = position[2];
+            if (y < minY || y >= maxY || !world.isChunkLoaded(x >> 4, z >> 4)) {
+                cells.set(index, Cell.unknown());
+                continue;
+            }
+            try {
+                var state = world.getBlockState(new BlockPos(x, y, z));
+                cells.set(index, state.isAir()
+                        ? Cell.knownAir()
+                        : Cell.knownBlock(state.toString()));
+            } catch (RuntimeException exception) {
+                cells.set(index, Cell.unknown());
+            }
+        }
+    }
+
+    private static String worldIdentity(World world) {
+        return world.getRegistryKey().getValue().toString();
+    }
+
+    private static long nextCollisionGeneration() {
+        return COLLISION_GENERATIONS.next();
+    }
+
+    public static void sendMovementAttributes(ServerPlayerEntity player) {
+        sendMovementAttributes(
+                System.currentTimeMillis(),
+                player.getUuidAsString(),
+                player.getName().getString(),
+                player);
+    }
+
+    private static void sendMovementAttributes(
             long timestamp,
             String uid,
             String name,
-            ServerPlayerEntity player,
-            Vec3d pos) {
-        World world = MinecraftCompat.entityWorld(player);
-        int centerChunkX = (int) Math.floor(pos.x) >> 4;
-        int centerChunkZ = (int) Math.floor(pos.z) >> 4;
-        int baseY = (int) Math.floor(pos.y);
-        int minY = Math.max(world.getBottomY(), baseY - Y_PADDING);
-        int maxY = Math.min(world.getBottomY() + world.getHeight(), baseY + Y_PADDING + 1);
-
-        for (int dx = -CHUNK_RADIUS; dx <= CHUNK_RADIUS; dx++) {
-            for (int dz = -CHUNK_RADIUS; dz <= CHUNK_RADIUS; dz++) {
-                int chunkX = centerChunkX + dx;
-                int chunkZ = centerChunkZ + dz;
-                String key = uid + ":" + chunkX + ":" + chunkZ + ":" + minY + ":" + maxY;
-                if (SENT_CHUNKS.putIfAbsent(key, Boolean.TRUE) != null) {
-                    continue;
-                }
-                if (!world.isChunkLoaded(chunkX, chunkZ)) {
-                    continue;
-                }
-                List<BlockData> blocks = new ArrayList<>(CHUNK_BATCH_SIZE);
-                int blockCount = 0;
-                for (int x = 0; x < 16; x++) {
-                    for (int z = 0; z < 16; z++) {
-                        for (int y = minY; y < maxY; y++) {
-                            var state = world.getBlockState(new net.minecraft.util.math.BlockPos((chunkX << 4) + x, y, (chunkZ << 4) + z));
-                            if (state.isAir()) {
-                                continue;
-                            }
-                            blocks.add(new BlockData((byte) x, y, (byte) z, state.toString()));
-                            blockCount++;
-                            if (blocks.size() >= CHUNK_BATCH_SIZE) {
-                                PacketQueue.push(new PacketChunkData(timestamp, uid, name, chunkX, chunkZ, false, blocks));
-                                blocks = new ArrayList<>(CHUNK_BATCH_SIZE);
-                            }
-                        }
-                    }
-                }
-                if (!blocks.isEmpty() || blockCount == 0) {
-                    PacketQueue.push(new PacketChunkData(timestamp, uid, name, chunkX, chunkZ, false, blocks));
-                }
-            }
+            ServerPlayerEntity player) {
+        double movementSpeed = player.getAttributeBaseValue(EntityAttributes.MOVEMENT_SPEED);
+        if (Double.isFinite(movementSpeed) && movementSpeed > 0.0) {
+            PacketQueue.push(new PacketUpdateAttributes(timestamp, uid, name, (float) movementSpeed));
         }
     }
 

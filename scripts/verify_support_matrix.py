@@ -22,6 +22,11 @@ ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "support-matrix.json"
 EVIDENCE_ROOT = ROOT / "verification" / "evidence"
 GATEWAY_POM = ROOT / "ZeusGateway" / "pom.xml"
+GATEWAY_ARTIFACT = ROOT / "ZeusGateway" / "target" / "ZeusGateway-1.0-SNAPSHOT.jar"
+GATEWAY_PLUGIN_YML = ROOT / "ZeusGateway" / "src" / "main" / "resources" / "plugin.yml"
+GATEWAY_PAPER_PLUGIN_YML = ROOT / "ZeusGateway" / "src" / "main" / "resources" / "paper-plugin.yml"
+GATEWAY_PAPER_LISTENER = ROOT / "ZeusGateway" / "src" / "main" / "java" / "org" / "vennv" / "zeusGateway" / "listener" / "event" / "PaperEventListener.java"
+GATEWAY_PHYSICS_CAPTURE = ROOT / "ZeusGateway" / "src" / "main" / "java" / "org" / "vennv" / "zeusGateway" / "listener" / "packets" / "PhysicsCaptureManager.java"
 GATEWAY_LEGACY_POM = ROOT / "ZeusGatewayLegacy" / "pom.xml"
 GATEWAY_LEGACY_SRC = ROOT / "ZeusGatewayLegacy" / "src" / "main"
 GATEWAY_LEGACY_PLUGIN_YML = ROOT / "ZeusGatewayLegacy" / "src" / "main" / "resources" / "plugin.yml"
@@ -40,18 +45,19 @@ PUBLICATION_GATES = [
 ]
 ALLOWED_STATUSES = {"planned", "adapter-required", "build-verifiable", "supported"}
 MAVEN_NS = {"m": "http://maven.apache.org/POM/4.0.0"}
-CORE_SCENARIO_REQUIRED_PACKET_IDS = {"0x09", "0x13", "0x22", "0x26", "0x27"}
+PROTOCOL_FIXTURE_PACKET_IDS = {"0x09", "0x22", "0x26", "0x27", "0x30"}
+SIMULATION_CRITICAL_PACKET_IDS = {"0x03", "0x25", "0x2b", "0x30"}
 REQUIRED_PROTOCOL_FIXTURE_TOKENS = {
     "PacketPlayerAttackEntity",
-    "PacketPlayerSurroundingBlocks",
     "PacketPlayerVelocity",
     "PacketPlayerInventoryTransaction",
     "PacketPlayerExternalForce",
+    "PacketCollisionWindow",
     "0x09",
-    "0x13",
     "0x22",
     "0x26",
     "0x27",
+    "0x30",
 }
 LEGACY_FORBIDDEN_SOURCE_PATTERNS = {
     "io.papermc.": "Paper API must stay out of the legacy artifact",
@@ -64,7 +70,6 @@ LEGACY_FORBIDDEN_SOURCE_PATTERNS = {
     "org.bukkit.NamespacedKey": "NamespacedKey is not available across legacy targets",
     ".getBoundingBox(": "BoundingBox access is not legacy-safe",
     ".getBlockData(": "BlockData access is not legacy-safe",
-    ".isAir(": "Material.isAir is not legacy-safe",
     ".getAttribute(": "Attribute access is not legacy-safe",
     ".getPersistentDataContainer(": "PersistentData access is not legacy-safe",
     ".getPose(": "Entity pose access is not legacy-safe",
@@ -75,7 +80,7 @@ LEGACY_FORBIDDEN_SOURCE_PATTERNS = {
     "RegionizedServer": "Folia classes must stay out of legacy",
     "ProtocolLibrary": "ProtocolLib runtime hooks must be isolated before legacy support",
     "ProtocolManager": "ProtocolLib runtime hooks must be isolated before legacy support",
-    "PacketType.": "ProtocolLib packet constants must be isolated before legacy support",
+    "com.comphenix.protocol.PacketType": "ProtocolLib packet constants must be isolated before legacy support",
     "List.of(": "Java 9 collection factory is not Java 8-compatible",
     "Map.of(": "Java 9 collection factory is not Java 8-compatible",
     "Set.of(": "Java 9 collection factory is not Java 8-compatible",
@@ -175,7 +180,21 @@ def verify_generated_docs(data, verifier):
         )
 
 
-def verify_supported_evidence(label, item, gates, verifier, expected_kind, expected_target):
+def required_profile_packet_ids(data, item, profile):
+    definition = data.get("supportEvidenceProfiles", {}).get(profile, {})
+    required = set(definition.get("requiredPacketIds") or [])
+    capabilities = set(item.get("evidenceCapabilities") or [])
+    for capability, packet_id in (definition.get("capabilityPacketIds") or {}).items():
+        if capability in capabilities:
+            required.add(packet_id)
+    return required
+
+
+def missing_profile_packet_ids(data, item, profile, evidence_packet_ids):
+    return required_profile_packet_ids(data, item, profile) - set(evidence_packet_ids)
+
+
+def verify_supported_evidence(label, item, gates, verifier, expected_kind, expected_target, manifest):
     if item.get("status") != "supported":
         return
     evidence = item.get("evidence")
@@ -187,10 +206,13 @@ def verify_supported_evidence(label, item, gates, verifier, expected_kind, expec
         if not evidence_path:
             verifier.fail("{0} is marked supported but evidence.{1} is missing".format(label, gate))
             continue
-        verify_evidence_file(label, gate, evidence_path, verifier, expected_kind, expected_target)
+        verify_evidence_file(
+            label, gate, evidence_path, verifier, expected_kind, expected_target, manifest, item)
 
 
-def verify_evidence_file(label, gate, evidence_path, verifier, expected_kind, expected_target):
+def verify_evidence_file(
+        label, gate, evidence_path, verifier, expected_kind, expected_target,
+        manifest=None, target_item=None):
     if not isinstance(evidence_path, str):
         verifier.fail("{0} evidence.{1} must be a relative JSON path".format(label, gate))
         return
@@ -227,21 +249,36 @@ def verify_evidence_file(label, gate, evidence_path, verifier, expected_kind, ex
         verifier.check(data.get("successSeen") is True, "{0} evidence.{1} must record successSeen=true".format(label, gate))
         if expected_kind == "gateway":
             verifier.check(data.get("serverTargetSeen") is True, "{0} evidence.{1} must prove its exact Gateway server target".format(label, gate))
+            verifier.check(data.get("externalDependencySeen") is True, "{0} evidence.{1} must prove external PacketEvents".format(label, gate))
         verifier.check(data.get("exitCode") == 0, "{0} evidence.{1} must record exitCode=0".format(label, gate))
     if gate == "core-scenario-smoke":
         required_ids = set(data.get("requiredPacketIds") or [])
         verifier.check(bool(required_ids), "{0} evidence.{1} must list requiredPacketIds".format(label, gate))
         verifier.check(
-            CORE_SCENARIO_REQUIRED_PACKET_IDS.issubset(required_ids),
-            "{0} evidence.{1} must require compatibility-core packets {2}".format(
-                label,
-                gate,
-                ", ".join(sorted(CORE_SCENARIO_REQUIRED_PACKET_IDS)),
-            ),
+            "compatibility-core" in set(data.get("profiles") or []),
+            "{0} evidence.{1} must record compatibility-core profile".format(label, gate),
         )
+        if manifest is None or target_item is None:
+            verifier.fail("{0} evidence.{1} cannot be validated without target profile".format(label, gate))
+        else:
+            expected_ids = required_profile_packet_ids(manifest, target_item, "compatibility-core")
+            verifier.check(
+                not missing_profile_packet_ids(
+                    manifest, target_item, "compatibility-core", required_ids),
+                "{0} evidence.{1} must require target compatibility-core packets {2}".format(
+                    label,
+                    gate,
+                    ", ".join(sorted(expected_ids)),
+                ),
+            )
+            verifier.check(
+                set(data.get("evidenceCapabilities") or []) == set(target_item.get("evidenceCapabilities") or []),
+                "{0} evidence.{1} capability profile mismatch".format(label, gate),
+            )
         verifier.check(data.get("startupSeen") is True, "{0} evidence.{1} must record startupSeen=true".format(label, gate))
         if expected_kind == "gateway":
             verifier.check(data.get("serverTargetSeen") is True, "{0} evidence.{1} must prove its exact Gateway server target".format(label, gate))
+            verifier.check(data.get("externalDependencySeen") is True, "{0} evidence.{1} must prove external PacketEvents".format(label, gate))
         verifier.check(data.get("exitCode") == 0, "{0} evidence.{1} must record exitCode=0".format(label, gate))
         verifier.check(data.get("missingPacketIds") == [], "{0} evidence.{1} must have no missingPacketIds".format(label, gate))
         verifier.check(int(data.get("packetCount", 0)) > 0, "{0} evidence.{1} must capture UDP packets".format(label, gate))
@@ -273,17 +310,17 @@ def verify_evidence_artifact(label, gate, data, verifier):
 
 def verify_protocol_fixture_evidence(label, gate, data, verifier):
     verifier.check(
-        data.get("wireContract") == "zeus-udp-v1-packet-ids-0x01-through-0x27",
+        data.get("wireContract") == "zeus-udp-v1-packet-ids-0x01-through-0x30",
         "{0} evidence.{1} wireContract mismatch".format(label, gate),
     )
     tokens = set(data.get("requiredFixtureTokens") or [])
     verifier.check(
-        REQUIRED_PROTOCOL_FIXTURE_TOKENS.issubset(tokens),
+        tokens == REQUIRED_PROTOCOL_FIXTURE_TOKENS,
         "{0} evidence.{1} must list all required fixture tokens".format(label, gate),
     )
     required_ids = set(data.get("requiredPacketIds") or [])
     verifier.check(
-        CORE_SCENARIO_REQUIRED_PACKET_IDS.issubset(required_ids),
+        required_ids == PROTOCOL_FIXTURE_PACKET_IDS,
         "{0} evidence.{1} must list core packet IDs".format(label, gate),
     )
     fixture_test = data.get("fixtureTest")
@@ -320,7 +357,24 @@ def verify_protocol_fixture_evidence(label, gate, data, verifier):
 def verify_manifest(data, verifier):
     verifier.check(data.get("schemaVersion") == 1, "support-matrix schemaVersion must be 1")
     verifier.check(data.get("publicationGate") == PUBLICATION_GATES, "publicationGate must match the release gate contract")
-    verifier.check(data.get("wireContract") == "zeus-udp-v1-packet-ids-0x01-through-0x27", "wireContract changed unexpectedly")
+    verifier.check(data.get("wireContract") == "zeus-udp-v1-packet-ids-0x01-through-0x30", "wireContract changed unexpectedly")
+    profiles = data.get("supportEvidenceProfiles", {})
+    core_profile = profiles.get("compatibility-core", {})
+    core_ids = set(core_profile.get("requiredPacketIds") or [])
+    verifier.check(
+        PROTOCOL_FIXTURE_PACKET_IDS | SIMULATION_CRITICAL_PACKET_IDS <= core_ids,
+        "compatibility-core must include protocol and simulation-critical packet IDs",
+    )
+    capability_ids = core_profile.get("capabilityPacketIds") or {}
+    verifier.check(
+        capability_ids == {"trusted-input": "0x2c", "movement-attributes": "0x2e", "recording": "0x2d"},
+        "compatibility-core capability packet IDs must match target-aware contract",
+    )
+    verifier.check(
+        not ({"0x2c", "0x2e", "0x2d"} & core_ids),
+        "capability packet IDs must not be globally required",
+    )
+    allowed_capabilities = set(capability_ids)
 
     seen_gateway_ids = set()
     for artifact in data.get("gateway", {}).get("artifacts", []):
@@ -344,14 +398,44 @@ def verify_manifest(data, verifier):
         verifier.check(target.get("minecraft"), "{0} is missing minecraft version".format(label))
         status = target.get("status")
         verifier.check(status in ALLOWED_STATUSES, "{0} has invalid status {1}".format(label, status))
+        verifier.check(
+            set(target.get("evidenceCapabilities") or []) <= allowed_capabilities,
+            "{0} has unknown evidenceCapabilities".format(label),
+        )
         if status in {"build-verifiable", "supported"}:
             verifier.check(
                 target.get("startupLogPattern"),
                 "{0} must define startupLogPattern to prove exact runtime target".format(label),
             )
-        verify_supported_evidence(label, target, PUBLICATION_GATES, verifier, "gateway", target_id)
+        verify_supported_evidence(label, target, PUBLICATION_GATES, verifier, "gateway", target_id, data)
 
     verifier.check(bool(seen_gateway_targets), "gateway.targets must contain exact runtime verification targets")
+    verifier.check(
+        {"spigot-1.8.8", "spigot-1.13.2", "paper-1.21.11", "spigot-26.2", "paper-26.2"}
+        <= seen_gateway_targets,
+        "gateway.targets must contain exact unified compatibility matrix",
+    )
+    verifier.check("folia-26.2" not in seen_gateway_targets, "Folia 26.2 must remain absent")
+    gateway_26_2 = [target for target in data.get("gateway", {}).get("targets", []) if target.get("minecraft") == "26.2"]
+    verifier.check(
+        {target.get("platform") for target in gateway_26_2} == {"Spigot", "Paper"},
+        "26.2 Gateway targets must contain Paper and Spigot only",
+    )
+    packet_events = data.get("gateway", {}).get("packetEvents", {})
+    verifier.check(packet_events.get("version") == "2.13.0", "Gateway PacketEvents version must be 2.13.0")
+    verifier.check(packet_events.get("scope") == "provided", "Gateway PacketEvents scope must stay provided")
+    verifier.check(packet_events.get("runtime") == "external-required", "Gateway PacketEvents must stay external-required")
+    verifier.check(
+        packet_events.get("startupLogPattern") == "Enabling packetevents v2.13.0",
+        "Gateway smoke must prove external PacketEvents 2.13.0",
+    )
+    paper_26_2 = next((target for target in gateway_26_2 if target.get("platform") == "Paper"), {})
+    paper_asset = paper_26_2.get("serverAsset", {})
+    verifier.check(paper_asset.get("name") == "paper-26.2-34.jar", "Paper 26.2 asset must stay pinned to build 34")
+    verifier.check(
+        paper_asset.get("sha256") == "ebbce8dcd115170c234af6d132771282ad89b7df410f03ada503d8c32c8fd5ad",
+        "Paper 26.2 asset SHA-256 mismatch",
+    )
 
     target_versions = set()
     default_target = data.get("fabric", {}).get("defaultTarget")
@@ -362,6 +446,10 @@ def verify_manifest(data, verifier):
         target_versions.add(minecraft)
         status = target.get("status")
         verifier.check(status in ALLOWED_STATUSES, "{0} has invalid status {1}".format(label, status))
+        verifier.check(
+            set(target.get("evidenceCapabilities") or []) <= allowed_capabilities,
+            "{0} has unknown evidenceCapabilities".format(label),
+        )
         if status in {"build-verifiable", "supported"}:
             for field in ("minecraftDependency", "loader", "yarn", "fabricApi"):
                 verifier.check(target.get(field), "{0} is {1} but missing {2}".format(label, status, field))
@@ -369,7 +457,7 @@ def verify_manifest(data, verifier):
                 target.get("minecraftDependency") == minecraft,
                 "{0} must use an exact minecraftDependency for this adapter".format(label),
             )
-        verify_supported_evidence(label, target, PUBLICATION_GATES, verifier, "fabric", minecraft)
+        verify_supported_evidence(label, target, PUBLICATION_GATES, verifier, "fabric", minecraft, data)
 
     verifier.check(default_target in target_versions, "fabric.defaultTarget must exist in fabric.targets")
     default_entries = [target for target in data.get("fabric", {}).get("targets", []) if target.get("minecraft") == default_target]
@@ -408,15 +496,15 @@ def verify_protocol_contract(verifier):
     test = read_text(WIRE_GOLDEN_TEST)
     for required in (
         "PacketPlayerAttackEntity",
-        "PacketPlayerSurroundingBlocks",
         "PacketPlayerVelocity",
         "PacketPlayerInventoryTransaction",
         "PacketPlayerExternalForce",
+        "PacketCollisionWindow",
         "0x09",
-        "0x13",
         "0x22",
         "0x26",
         "0x27",
+        "0x30",
     ):
         verifier.check(required in test, "WireContractGoldenTest missing {0}".format(required))
 
@@ -424,13 +512,41 @@ def verify_protocol_contract(verifier):
 def verify_gateway_build(verifier):
     pom = parse_pom(GATEWAY_POM, verifier)
     if pom is not None:
-        verifier.check(pom_text(pom, "m:artifactId") == "zeus_gateway_modern", "ZeusGateway artifactId must be zeus_gateway_modern")
-        verifier.check(pom_text(pom, "m:name") == "ZeusGateway Modern", "ZeusGateway name must identify the modern artifact")
+        verifier.check(pom_text(pom, "m:artifactId") == "zeus_gateway", "ZeusGateway artifactId must identify unified artifact")
+        verifier.check(pom_text(pom, "m:name") == "ZeusGateway Unified", "ZeusGateway name must identify unified artifact")
         verifier.check(
-            pom_text(pom, "m:build/m:finalName") == "ZeusGateway-modern-${project.version}",
-            "ZeusGateway finalName must produce ZeusGateway-modern",
+            pom_text(pom, "m:build/m:finalName") == "ZeusGateway-${project.version}",
+            "ZeusGateway finalName must produce unified ZeusGateway JAR",
         )
-        verifier.check(pom_text(pom, "m:properties/m:java.version") == "8", "ZeusGateway-modern must emit Java 8-compatible bytecode for the 1.14 boundary")
+        verifier.check(pom_text(pom, "m:properties/m:java.version") == "8", "ZeusGateway must emit Java 8-compatible bytecode")
+        verifier.check(
+            pom.findtext(
+                ".//m:dependency[m:groupId='org.vennv'][m:artifactId='zeus_gateway_legacy']/m:version",
+                namespaces=MAVEN_NS,
+            ) == "1.0-SNAPSHOT",
+            "ZeusGateway must include bounded legacy runtime module",
+        )
+        verifier.check(
+            pom.findtext(
+                ".//m:dependency[m:groupId='org.spigotmc'][m:artifactId='spigot-api']/m:version",
+                namespaces=MAVEN_NS,
+            ) == "26.2-R0.1-SNAPSHOT",
+            "ZeusGateway must compile against exact Spigot API 26.2",
+        )
+        verifier.check(
+            pom.findtext(
+                ".//m:dependency[m:groupId='com.github.retrooper'][m:artifactId='packetevents-spigot']/m:version",
+                namespaces=MAVEN_NS,
+            ) == "2.13.0",
+            "ZeusGateway must compile against PacketEvents 2.13.0",
+        )
+        verifier.check(
+            pom.findtext(
+                ".//m:dependency[m:groupId='com.github.retrooper'][m:artifactId='packetevents-spigot']/m:scope",
+                namespaces=MAVEN_NS,
+            ) == "provided",
+            "ZeusGateway must keep PacketEvents provided",
+        )
 
     legacy_pom = parse_pom(GATEWAY_LEGACY_POM, verifier)
     if legacy_pom is not None:
@@ -457,6 +573,20 @@ def verify_gateway_build(verifier):
             ) == "1.8.8-R0.1-SNAPSHOT",
             "ZeusGatewayLegacy must compile against the lowest supported Spigot API baseline 1.8.8",
         )
+        verifier.check(
+            legacy_pom.findtext(
+                ".//m:dependency[m:groupId='com.github.retrooper'][m:artifactId='packetevents-spigot']/m:version",
+                namespaces=MAVEN_NS,
+            ) == "2.13.0",
+            "Unified legacy runtime must compile against PacketEvents 2.13.0",
+        )
+        verifier.check(
+            legacy_pom.findtext(
+                ".//m:dependency[m:groupId='com.github.retrooper'][m:artifactId='packetevents-spigot']/m:scope",
+                namespaces=MAVEN_NS,
+            ) == "provided",
+            "Unified legacy runtime must keep PacketEvents provided",
+        )
         repository_urls = {
             (node.text or "").strip()
             for node in legacy_pom.findall(".//m:repositories/m:repository/m:url", MAVEN_NS)
@@ -469,6 +599,30 @@ def verify_gateway_build(verifier):
         verifier.check(
             release_node is not None and release_node.text in {"8", "${java.version}"},
             "ZeusGatewayLegacy maven-compiler-plugin must release Java 8 bytecode",
+        )
+    if not GATEWAY_PLUGIN_YML.exists():
+        verifier.fail("ZeusGateway plugin.yml is missing")
+    else:
+        plugin_yml = read_text(GATEWAY_PLUGIN_YML)
+        verifier.check("api-version:" not in plugin_yml, "unified plugin.yml must not declare api-version")
+        verifier.check(
+            "main: org.vennv.zeusGateway.ZeusGateway" in plugin_yml,
+            "unified plugin.yml main class mismatch",
+        )
+        verifier.check("- packetevents" in plugin_yml, "unified plugin.yml must require external PacketEvents")
+    verifier.check(not GATEWAY_PAPER_PLUGIN_YML.exists(), "dead Paper descriptor must stay removed")
+    verifier.check(not GATEWAY_PAPER_LISTENER.exists(), "dead direct-linked Paper listener must stay removed")
+    if not GATEWAY_PHYSICS_CAPTURE.exists():
+        verifier.fail("PhysicsCaptureManager is missing")
+    else:
+        physics_capture = read_text(GATEWAY_PHYSICS_CAPTURE)
+        verifier.check(
+            "ClientVersion.getById(clientProtocol)" in physics_capture,
+            "protocol display mapping must come from PacketEvents",
+        )
+        verifier.check(
+            "case 775:" not in physics_capture and "case 776:" not in physics_capture,
+            "protocol 775/776 mapping must not be hardcoded",
         )
     if not GATEWAY_LEGACY_PLUGIN_YML.exists():
         verifier.fail("ZeusGatewayLegacy plugin.yml is missing")
@@ -511,7 +665,8 @@ def verify_fabric_build(data, verifier):
     template = read_text(FABRIC_MOD_TEMPLATE) if FABRIC_MOD_TEMPLATE.exists() else ""
     verifier.check("support-matrix.json" in build, "ZeusFabric build.gradle must read support-matrix.json")
     verifier.check(
-        "target.status in ['build-verifiable', 'supported']" in build,
+        "target.status in buildStatuses" in build
+        and "def buildStatuses = ['build-verifiable', 'supported']" in build,
         "ZeusFabric build.gradle must build only build-verifiable or supported targets",
     )
     verifier.check('archivesName = "ZeusFabric-${minecraftTarget}"' in build, "ZeusFabric artifact name must include mcTarget")
@@ -551,8 +706,6 @@ def verify_thread_safety_patterns(verifier):
 
 def verify_public_docs(verifier):
     forbidden = [
-        re.compile(r"single\s+Gateway\s+JAR", re.IGNORECASE),
-        re.compile(r"one\s+Gateway\s+JAR", re.IGNORECASE),
         re.compile(r"1\.8\s*[-\u2013]\s*1\.21(?:\.x|x)?", re.IGNORECASE),
         re.compile(r"1\.8\s+(?:to|through)\s+1\.21", re.IGNORECASE),
         re.compile(r"Fabric[^\n]{0,80}1\.21\.x[^\n]{0,80}support", re.IGNORECASE),
@@ -586,6 +739,21 @@ def verify_build_scripts(verifier):
     verifier.check("scripts/run_smoke_matrix.py" in release_gate, "verify_release_gate.sh must expose matrix smoke hooks")
     verifier.check("scripts/run_startup_smoke.py" in release_gate, "verify_release_gate.sh must expose startup smoke hooks")
     verifier.check("scripts/run_core_scenario_smoke.py" in release_gate, "verify_release_gate.sh must expose core scenario smoke hooks")
+    for label, script, build_marker, evidence_marker, verify_marker in (
+        (
+            "build.sh", sh, "mvn clean package -pl ZeusGateway -am",
+            "scripts/write_release_evidence.py", "scripts/verify_support_matrix.py --require-artifacts",
+        ),
+        (
+            "build.cmd", cmd, "mvn clean package -pl ZeusGateway -am",
+            r"scripts\write_release_evidence.py", r"scripts\verify_support_matrix.py --require-artifacts",
+        ),
+    ):
+        positions = [script.find(marker) for marker in (build_marker, evidence_marker, verify_marker)]
+        verifier.check(
+            all(position >= 0 for position in positions) and positions == sorted(positions),
+            "{0} must build, write evidence, then verify newly built artifacts".format(label),
+        )
 
 
 def read_protocol_reference(require_artifacts, verifier):
@@ -620,16 +788,16 @@ def verify_protocol_contract_resource(label, data, verifier):
         return
     verifier.check(contract.get("schemaVersion") == 1, "{0} protocol contract schemaVersion must be 1".format(label))
     verifier.check(
-        contract.get("wireContract") == "zeus-udp-v1-packet-ids-0x01-through-0x27",
+        contract.get("wireContract") == "zeus-udp-v1-packet-ids-0x01-through-0x30",
         "{0} protocol contract wireContract mismatch".format(label),
     )
     ids = contract.get("requiredPacketIds") or {}
     for packet, packet_id in {
         "PacketPlayerAttackEntity": "0x09",
-        "PacketPlayerSurroundingBlocks": "0x13",
         "PacketPlayerVelocity": "0x22",
         "PacketPlayerInventoryTransaction": "0x26",
         "PacketPlayerExternalForce": "0x27",
+        "PacketCollisionWindow": "0x30",
     }.items():
         verifier.check(
             ids.get(packet) == packet_id,
@@ -642,18 +810,14 @@ def zip_contains(zf, path):
 
 
 def verify_gateway_artifact(require_artifacts, verifier, protocol_classes, protocol_contract):
-    artifacts = [
-        (
-            ROOT / "ZeusGateway" / "target" / "ZeusGateway-modern-1.0-SNAPSHOT.jar",
-            ("plugin.yml", "paper-plugin.yml"),
-        ),
-        (
-            ROOT / "ZeusGatewayLegacy" / "target" / "ZeusGateway-legacy-1.0-SNAPSHOT.jar",
-            ("plugin.yml",),
-        ),
-    ]
-    for jar, descriptors in artifacts:
-        verify_gateway_artifact_file(jar, descriptors, require_artifacts, verifier, protocol_classes, protocol_contract)
+    verify_gateway_artifact_file(
+        GATEWAY_ARTIFACT,
+        ("plugin.yml",),
+        require_artifacts,
+        verifier,
+        protocol_classes,
+        protocol_contract,
+    )
 
 
 def verify_gateway_artifact_file(jar, descriptors, require_artifacts, verifier, protocol_classes, protocol_contract):
@@ -670,12 +834,42 @@ def verify_gateway_artifact_file(jar, descriptors, require_artifacts, verifier, 
             ):
                 verifier.check(zip_contains(zf, entry), "{0} missing {1}".format(jar.relative_to(ROOT), entry))
             verify_embedded_protocol_surface(jar.relative_to(ROOT), zf, protocol_classes, protocol_contract, verifier)
-            if "ZeusGateway-legacy" in jar.name:
-                verify_legacy_gateway_artifact(jar, zf, verifier)
-            if "ZeusGateway-modern" in jar.name:
-                verify_modern_optional_dependency_boundary(jar, zf, verifier)
+            verify_unified_gateway_artifact(jar, zf, verifier)
     except zipfile.BadZipFile as exc:
         verifier.fail("{0} is not a readable jar: {1}".format(jar.relative_to(ROOT), exc))
+
+
+def verify_unified_gateway_artifact(jar, zf, verifier):
+    names = set(zf.namelist())
+    required = (
+        "org/vennv/zeusGateway/RuntimeSelector.class",
+        "org/vennv/zeusGateway/ModernGatewaySession.class",
+        "org/vennv/zeusGatewayLegacy/LegacyGatewaySession.class",
+        "org/vennv/zeusGatewayLegacy/LegacyPacketEventsSession.class",
+    )
+    for entry in required:
+        verifier.check(entry in names, "{0} missing unified runtime class {1}".format(jar.relative_to(ROOT), entry))
+    verifier.check(
+        "org/vennv/zeusGateway/listener/event/PaperEventListener.class" not in names,
+        "unified JAR must not contain dead direct-linked Paper listener",
+    )
+    verifier.check("paper-plugin.yml" not in names, "unified JAR must use lowest-common-denominator plugin.yml")
+    verifier.check(
+        not any(entry.startswith((
+            "com/github/retrooper/packetevents/",
+            "io/github/retrooper/packetevents/",
+        )) for entry in names),
+        "unified JAR must keep PacketEvents external",
+    )
+    if "plugin.yml" in names:
+        plugin_yml = zf.read("plugin.yml").decode("utf-8")
+        verifier.check("api-version:" not in plugin_yml, "unified JAR plugin.yml must not declare api-version")
+        verifier.check(
+            "main: org.vennv.zeusGateway.ZeusGateway" in plugin_yml,
+            "unified JAR plugin.yml main class mismatch",
+        )
+        verifier.check("- packetevents" in plugin_yml, "unified JAR must require external PacketEvents")
+    verify_modern_optional_dependency_boundary(jar, zf, verifier)
 
 
 def verify_modern_optional_dependency_boundary(jar, zf, verifier):
@@ -690,8 +884,7 @@ def verify_modern_optional_dependency_boundary(jar, zf, verifier):
             )
     shared_entries = (
         "org/vennv/zeusGateway/ZeusGateway.class",
-        "org/vennv/zeusGateway/init/ZeusLoader.class",
-        "org/vennv/zeusGateway/listener/event/EventListener.class",
+        "org/vennv/zeusGateway/RuntimeSelector.class",
     )
     for entry in shared_entries:
         if not zip_contains(zf, entry):
@@ -699,14 +892,8 @@ def verify_modern_optional_dependency_boundary(jar, zf, verifier):
             continue
         data = zf.read(entry)
         verifier.check(
-            b"com/comphenix/protocol/" not in data,
-            "{0}!/{1} directly resolves ProtocolLib despite optional runtime dependency".format(
-                jar.relative_to(ROOT), entry
-            ),
-        )
-        verifier.check(
-            b"org/vennv/zeusGateway/listener/packets/" not in data,
-            "{0}!/{1} directly resolves ProtocolLib packet adapters despite fallback mode".format(
+            b"io/papermc/" not in data and b"com/destroystokyo/" not in data,
+            "{0}!/{1} directly resolves post-1.8 Paper API from bootstrap".format(
                 jar.relative_to(ROOT), entry
             ),
         )

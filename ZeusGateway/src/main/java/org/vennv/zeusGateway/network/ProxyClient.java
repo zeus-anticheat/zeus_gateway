@@ -8,9 +8,11 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.util.logging.Logger;
 import org.vennv.PacketEncode;
+import org.vennv.packets.PacketCollisionWindow;
 
 public final class ProxyClient {
 
+    static final int MAX_UDP_PAYLOAD = 65_507;
     private static final Logger LOGGER = Logger.getLogger("ZeusGateway");
 
     private final DatagramSocket socket;
@@ -70,12 +72,22 @@ public final class ProxyClient {
     }
 
     public boolean send(PacketEncode packet) {
+        java.util.logging.Logger.getLogger("ZeusGateway").severe("[TRACE] ProxyClient.send: packetClass=" + packet.getClass().getSimpleName());
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
 
             packet.encode(out);
 
             byte[] payload = out.toByteArray();
+            int maxPayload = packet instanceof PacketCollisionWindow
+                    ? PacketCollisionWindow.MAX_DATAGRAM_LENGTH
+                    : MAX_UDP_PAYLOAD;
+            if (payload.length > maxPayload) {
+                if (!suppressErrors) {
+                    LOGGER.warning("[ZeusGateway] Refusing oversized UDP payload: " + payload.length + " bytes");
+                }
+                return false;
+            }
 
             DatagramPacket udp = new DatagramPacket(
                 payload,

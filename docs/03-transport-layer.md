@@ -90,6 +90,5 @@ while (true) {
 9. Typical packet sizes:
    - Minimum (Join/Leave/Death/BlockChangeAck): ~50 bytes.
    - Position: ~110 bytes.
-   - SurroundingBlocks: variable, typically 2-5 KB depending on block state
-     string lengths.
-   - Maximum practical size stays well under the UDP MTU (65535 bytes).
+   - ChunkData: variable and split by exact encoded size.
+   - Every emitted datagram is at most 65,507 bytes.

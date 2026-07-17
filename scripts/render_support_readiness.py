@@ -62,7 +62,13 @@ def targets(data):
             }
 
 
-def gate_state(verifier_module, kind, target, gate):
+def target_item(data, kind, target):
+    section = "gateway" if kind == "gateway" else "fabric"
+    key = "id" if kind == "gateway" else "minecraft"
+    return next(item for item in data[section]["targets"] if item.get(key) == target)
+
+
+def gate_state(verifier_module, data, kind, target, gate):
     path = evidence_path(kind, target, gate)
     if not (ROOT / path).exists():
         return {
@@ -73,7 +79,8 @@ def gate_state(verifier_module, kind, target, gate):
         }
 
     verifier = verifier_module.Verifier()
-    verifier_module.verify_evidence_file(target, gate, str(path), verifier, kind, target)
+    verifier_module.verify_evidence_file(
+        target, gate, str(path), verifier, kind, target, data, target_item(data, kind, target))
     if verifier.errors:
         return {
             "gate": gate,
@@ -93,7 +100,7 @@ def readiness(data):
     verifier_module = load_verifier_module()
     rows = []
     for target in targets(data):
-        gates = [gate_state(verifier_module, target["kind"], target["target"], gate) for gate in PUBLICATION_GATES]
+        gates = [gate_state(verifier_module, data, target["kind"], target["target"], gate) for gate in PUBLICATION_GATES]
         missing = [gate["gate"] for gate in gates if gate["state"] != "passed"]
         rows.append({
             **target,

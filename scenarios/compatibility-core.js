@@ -3,13 +3,15 @@
  * Core scenario bot for ZeusGateway/ZeusFabric smoke tests.
  * Joins an offline-mode server and exercises movement, attack, inventory,
  * and velocity paths so ZeusGateway emits packets:
- *   0x09 (AttackEntity), 0x13 (Velocity), 0x22 (SurroundingBlocks),
- *   0x26 (InventoryTransaction), 0x27 (ExternalForce)
+ *   0x09 (AttackEntity), 0x22 (Velocity), 0x26 (InventoryTransaction),
+ *   0x27 (ExternalForce)
  *
  * Usage: node compatibility-core.js [--host HOST] [--port PORT] [--version VERSION] [--timeout SECONDS]
  */
 
+const assert = require('assert');
 const mineflayer = require('mineflayer');
+const { Vec3 } = require('vec3');
 
 const args = process.argv.slice(2);
 function arg(name, fallback) {
@@ -20,7 +22,12 @@ function arg(name, fallback) {
 const HOST = arg('host', '127.0.0.1');
 const PORT = parseInt(arg('port', '25565'), 10);
 const VERSION = arg('version', null);
-const TIMEOUT = parseInt(arg('timeout', '60'), 10) * 1000;
+const TIMEOUT = parseInt(arg('timeout', '90'), 10) * 1000;
+
+if (args.includes('--self-check')) {
+  runSelfCheck();
+  process.exit(0);
+}
 
 let done = false;
 function finish(code, msg) {
@@ -40,10 +47,28 @@ const botOpts = {
 if (VERSION) botOpts.version = VERSION;
 
 const bot = mineflayer.createBot(botOpts);
+let selfForceEvents = 0;
+let healthDrops = 0;
+let lastHealth;
+let deaths = 0;
+bot._client.on('entity_velocity', (packet) => {
+  if (bot.entity && packet.entityId === bot.entity.id) selfForceEvents++;
+});
+bot._client.on('explosion', (packet) => {
+  if (hasExplosionKnockback(packet)) selfForceEvents++;
+});
+bot.on('health', () => {
+  if (Number.isFinite(lastHealth) && bot.health < lastHealth) healthDrops++;
+  lastHealth = bot.health;
+});
+bot.on('death', () => {
+  deaths++;
+});
 
 const timer = setTimeout(() => {
   finish(1, 'TIMEOUT: scenario did not complete within ' + (TIMEOUT / 1000) + 's');
 }, TIMEOUT);
+let scenarioStarted = false;
 
 bot.on('error', (err) => {
   console.error('Bot error:', err.message);
@@ -56,26 +81,26 @@ bot.on('kicked', (reason) => {
 });
 
 bot.on('spawn', async () => {
+  if (scenarioStarted) {
+    console.log('[scenario] Respawn observed; active scenario continues');
+    return;
+  }
+  scenarioStarted = true;
   console.log('[scenario] Bot spawned at', bot.entity.position.toString());
   const mcVersion = bot.version || '1.16';
-  const major = mcVersion.split('.').map(Number);
-  const isLegacy = major[0] === 1 && major[1] < 13; // 1.8-1.12
+  const isLegacy = isLegacyVersion(mcVersion);
+  const commands = commandSet(isLegacy, bot.username);
   console.log('[scenario] Server version:', mcVersion, 'isLegacy=' + isLegacy);
 
   // Version-specific command builders
-  const summonZombieCmd = isLegacy
-    ? '/summon Zombie ~ ~ ~'
-    : '/summon minecraft:zombie ~ ~ ~';
-  const summonTnt = (x, y, z) => isLegacy
-    ? `/summon PrimedTnt ${x} ${y} ${z} {Fuse:20}`
-    : `/summon tnt ${x} ${y} ${z} {fuse:20}`;
-  const pistonBlock = isLegacy ? 'piston 1' : 'piston[facing=west]';
+  const summonZombieCmd = commands.summonZombie;
+  const summonTnt = commands.summonTnt;
 
   try {
     // Wait for server-side delayed commands to summon entities/blocks near bot.
     // On Fabric servers where bot.chat('/command') doesn't work (signed chat),
     // the smoke runner sends delayed stdin commands ~12s after scenario starts.
-    await sleep(15000);
+    await sleep(30000);
 
     // Phase 1: Attack FIRST while summoned entities are still alive
     console.log('[scenario] Phase 1: Attack');
@@ -104,6 +129,10 @@ bot.on('spawn', async () => {
         await sleep(700);
       }
       console.log('[scenario] Completed attack burst');
+      bot.chat(commands.killEntities);
+      if (!await waitFor(() => !entity.isValid, 3000)) {
+        throw new Error('Attack target remained active between phases');
+      }
     } else {
       console.log('[scenario] No entity found, swinging arm only');
       for (let i = 0; i < 5; i++) {
@@ -112,7 +141,7 @@ bot.on('spawn', async () => {
       }
     }
 
-    // Phase 2: Movement — walk around to trigger SurroundingBlocks (0x22)
+    // Phase 2: Movement — walk around while velocity capture remains active (0x22)
     console.log('[scenario] Phase 2: Movement');
     bot.setControlState('forward', true);
     await sleep(2000);
@@ -125,15 +154,23 @@ bot.on('spawn', async () => {
     await sleep(1500);
     bot.setControlState('back', false);
     await sleep(500);
+    if (bot.supportFeature('newPlayerInputPacket')) {
+      bot.setControlState('sneak', true);
+      await sleep(500);
+      bot.setControlState('sneak', false);
+      await sleep(500);
+      console.log('[scenario] PLAYER_INPUT sneak toggle completed');
+    }
+    bot.clearControlStates();
 
     // Phase 3: Inventory click — triggers InventoryTransaction (0x26)
     // InventoryClickEvent fires when player clicks in an open inventory view.
     // We /give items, place a chest, teleport to it, then open and click inside it.
     console.log('[scenario] Phase 3: Inventory');
     try {
-      bot.chat('/give @s minecraft:stone 64');
+      bot.chat(commands.giveStone);
       await sleep(600);
-      bot.chat('/give @s minecraft:dirt 32');
+      bot.chat(commands.giveDirt);
       await sleep(600);
       // Place a chest at a known absolute position near bot
       const pos = bot.entity.position;
@@ -143,7 +180,7 @@ bot.on('spawn', async () => {
       bot.chat(`/setblock ${cx} ${cy} ${cz} chest`);
       await sleep(500);
       // Teleport bot right next to chest
-      bot.chat(`/tp @s ${cx} ${cy} ${cz - 1}`);
+      bot.chat(`/tp ${bot.username} ${cx} ${cy} ${cz - 1}`);
       await sleep(1000);
       // Try to open the chest
       const chestBlock = bot.blockAt(bot.entity.position.offset(0, 0, 1));
@@ -202,34 +239,30 @@ bot.on('spawn', async () => {
     }
     await sleep(1500);
 
-    // Phase 4: Trigger ExternalForce (0x27) via piston (no TNT to keep bot alive)
-    console.log('[scenario] Phase 4: ExternalForce triggers');
-    try {
-      const pos = bot.entity.position;
-      const px = Math.floor(pos.x) + 3;
-      const py = Math.floor(pos.y);
-      const pz = Math.floor(pos.z);
-      // Place piston facing player
-      bot.chat(`/setblock ${px} ${py} ${pz} ${pistonBlock}`);
-      await sleep(500);
-      bot.chat(`/setblock ${px+1} ${py} ${pz} redstone_block`);
-      await sleep(2000);
-      // Cleanup
-      bot.chat(`/setblock ${px} ${py} ${pz} air`);
-      bot.chat(`/setblock ${px+1} ${py} ${pz} air`);
-      // Brief explosion at distance to trigger force without killing bot
-      const ex = Math.floor(pos.x) + 6;
-      const ey = Math.floor(pos.y);
-      const ez = Math.floor(pos.z);
-      bot.chat(summonTnt(ex, ey, ez));
-      await sleep(2000);
-    } catch (e) {
-      console.log('[scenario] ExternalForce command error (non-fatal):', e.message);
-    }
-    await sleep(2000);
+    console.log('[scenario] Phase 4: Piston external force');
+    bot.clearControlStates();
+    const geometry = pistonGeometry(bot.entity.position);
+    await preparePiston(geometry, commands);
+    console.log('[scenario] Piston moved block into', formatBlock(geometry.destination));
+    await sleep(1500);
+    await cleanupPiston(geometry);
 
-    // Phase 5: Additional movement for more surrounding blocks
-    console.log('[scenario] Phase 5: Extra movement');
+    console.log('[scenario] Phase 5: Survival damage and velocity');
+    bot.clearControlStates();
+    await ensureSurvival(commands);
+    const forceCount = selfForceEvents;
+    const healthDropCount = healthDrops;
+    const deathCount = deaths;
+    const damageSite = await prepareDamageSite(bot.entity.position);
+    bot.chat(summonTnt(damageSite.tnt.x + 0.5, damageSite.tnt.y, damageSite.tnt.z + 0.5));
+    const damageSeen = await waitFor(() => selfForceEvents > forceCount && healthDrops > healthDropCount, 7000);
+    setBlock(damageSite.support, 'air');
+    if (!damageSeen) throw new Error('Damage/velocity was not observed');
+    if (!bot.isAlive || bot.health <= 0 || deaths !== deathCount) throw new Error('Bot did not survive damage/velocity phase');
+    console.log('[scenario] Damage/velocity verified; health=' + bot.health);
+    await sleep(1000);
+
+    console.log('[scenario] Phase 6: Extra movement');
     bot.setControlState('left', true);
     await sleep(1500);
     bot.setControlState('left', false);
@@ -247,6 +280,136 @@ bot.on('spawn', async () => {
     finish(1, 'SCENARIO_ERROR: ' + err.message);
   }
 });
+
+function isLegacyVersion(version) {
+  const parts = version.split('.').map(Number);
+  return parts[0] === 1 && parts[1] < 13;
+}
+
+function commandSet(isLegacy, username) {
+  return {
+    piston: isLegacy ? 'piston 5' : 'minecraft:piston[facing=east]',
+    survival: isLegacy ? `/gamemode 0 ${username}` : `/gamemode survival ${username}`,
+    giveDirt: isLegacy ? `/give ${username} dirt 32` : `/give ${username} minecraft:dirt 32`,
+    giveStone: isLegacy ? `/give ${username} stone 64` : `/give ${username} minecraft:stone 64`,
+    killEntities: isLegacy
+      ? '/kill @e[type=!Player,r=16]'
+      : '/kill @e[type=!minecraft:player,distance=..16]',
+    summonZombie: isLegacy ? '/summon Zombie ~ ~ ~' : '/summon minecraft:zombie ~ ~ ~',
+    summonTnt: isLegacy
+      ? (x, y, z) => `/summon PrimedTnt ${x} ${y} ${z}`
+      : (x, y, z) => `/summon minecraft:tnt ${x} ${y} ${z}`
+  };
+}
+
+function pistonGeometry(position) {
+  const destination = new Vec3(Math.floor(position.x), Math.floor(position.y), Math.floor(position.z));
+  return {
+    destination,
+    moving: destination.offset(-1, 0, 0),
+    piston: destination.offset(-2, 0, 0),
+    power: destination.offset(-3, 0, 0)
+  };
+}
+
+function formatBlock(point) {
+  return `${point.x} ${point.y} ${point.z}`;
+}
+
+function setBlock(point, block) {
+  bot.chat(`/setblock ${formatBlock(point)} ${block}`);
+}
+
+function blockIs(point, name) {
+  const block = bot.blockAt(point);
+  return block && block.name === name;
+}
+
+async function preparePiston(geometry, commands) {
+  for (const point of Object.values(geometry)) setBlock(point, 'air');
+  await sleep(500);
+  setBlock(geometry.piston, commands.piston);
+  setBlock(geometry.moving, 'stone');
+  if (!await waitFor(() => blockIs(geometry.moving, 'stone'), 3000)) {
+    throw new Error('Could not build movable piston geometry');
+  }
+  setBlock(geometry.power, 'redstone_block');
+  if (!await waitFor(() => blockIs(geometry.destination, 'stone'), 3000)) {
+    throw new Error('Piston did not move its block into the bot');
+  }
+}
+
+async function cleanupPiston(geometry) {
+  setBlock(geometry.power, 'air');
+  await sleep(500);
+  for (const point of Object.values(geometry)) setBlock(point, 'air');
+  await sleep(500);
+}
+
+async function prepareDamageSite(position) {
+  const tnt = new Vec3(Math.floor(position.x) + 7, Math.floor(position.y), Math.floor(position.z));
+  const support = tnt.offset(0, -1, 0);
+  setBlock(support, 'stone');
+  setBlock(tnt, 'air');
+  if (!await waitFor(() => blockIs(support, 'stone'), 3000)) {
+    throw new Error('Could not prepare damage/velocity site');
+  }
+  return { support, tnt };
+}
+
+async function ensureSurvival(commands) {
+  if (bot.game.gameMode !== 'survival') {
+    bot.chat(commands.survival);
+  }
+  if (!await waitFor(() => bot.game.gameMode === 'survival', 3000)) {
+    throw new Error('Survival mode could not be verified');
+  }
+  if (!await waitFor(() => bot.isAlive && Number.isFinite(bot.health) && bot.health >= 10, 10000)) {
+    throw new Error('Bot lacks enough health for damage/velocity phase');
+  }
+  console.log('[scenario] Survival verified; health=' + bot.health);
+}
+
+function hasExplosionKnockback(packet) {
+  const knockback = packet.playerKnockback;
+  return Boolean(
+    (knockback && (knockback.x || knockback.y || knockback.z)) ||
+    packet.playerMotionX || packet.playerMotionY || packet.playerMotionZ
+  );
+}
+
+async function waitFor(predicate, timeout) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if (predicate()) return true;
+    await sleep(50);
+  }
+  return predicate();
+}
+
+function runSelfCheck() {
+  assert.strictEqual(isLegacyVersion('1.8.8'), true);
+  assert.strictEqual(isLegacyVersion('1.12.2'), true);
+  assert.strictEqual(isLegacyVersion('1.13.2'), false);
+  assert.strictEqual(isLegacyVersion('26.2'), false);
+  assert.strictEqual(commandSet(true, 'Bot').piston, 'piston 5');
+  assert.strictEqual(commandSet(true, 'Bot').survival, '/gamemode 0 Bot');
+  assert.strictEqual(commandSet(true, 'Bot').giveStone, '/give Bot stone 64');
+  assert.strictEqual(commandSet(true, 'Bot').summonTnt(1, 2, 3), '/summon PrimedTnt 1 2 3');
+  assert.strictEqual(commandSet(false, 'Bot').piston, 'minecraft:piston[facing=east]');
+  assert.strictEqual(commandSet(false, 'Bot').survival, '/gamemode survival Bot');
+  assert.strictEqual(commandSet(false, 'Bot').giveStone, '/give Bot minecraft:stone 64');
+  assert.strictEqual(commandSet(false, 'Bot').summonTnt(1, 2, 3), '/summon minecraft:tnt 1 2 3');
+  assert.strictEqual(mineflayer.supportFeature('newPlayerInputPacket', '1.8.8'), false);
+  assert.strictEqual(mineflayer.supportFeature('newPlayerInputPacket', '1.21.11'), true);
+  const geometry = pistonGeometry(new Vec3(10.75, 64, -2.25));
+  assert.deepStrictEqual(geometry.destination, new Vec3(10, 64, -3));
+  assert.deepStrictEqual(geometry.moving, new Vec3(9, 64, -3));
+  assert.deepStrictEqual(geometry.piston, new Vec3(8, 64, -3));
+  assert.deepStrictEqual(geometry.power, new Vec3(7, 64, -3));
+  assert.strictEqual(mineflayer.oldestSupportedVersion, '1.8.8');
+  console.log('SELF_CHECK_PASSED');
+}
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));

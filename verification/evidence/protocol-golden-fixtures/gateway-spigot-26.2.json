@@ -1,0 +1,38 @@
+{
+  "createdAt": "2026-07-13T23:57:27.712068+00:00",
+  "dryRun": false,
+  "fixtureTest": "ZeusProtocolJava/src/test/java/org/vennv/WireContractGoldenTest.java",
+  "gate": "protocol-golden-fixtures",
+  "kind": "gateway",
+  "protocolArtifact": "ZeusProtocolJava/target/ZeusProtocolJava-1.0-SNAPSHOT.jar",
+  "protocolArtifactSha256": "3a83258d8f2fd240191c0358d3065cd9fd0f752a1b2264fa079d8c13f93009ae",
+  "requiredFixtureTokens": [
+    "PacketPlayerAttackEntity",
+    "PacketPlayerVelocity",
+    "PacketPlayerInventoryTransaction",
+    "PacketPlayerExternalForce",
+    "0x09",
+    "0x22",
+    "0x26",
+    "0x27"
+  ],
+  "requiredPacketIds": [
+    "0x09",
+    "0x22",
+    "0x26",
+    "0x27"
+  ],
+  "result": "passed",
+  "schemaVersion": 1,
+  "target": "spigot-26.2",
+  "testCommand": [
+    "mvn",
+    "-q",
+    "-pl",
+    "ZeusProtocolJava",
+    "-am",
+    "test"
+  ],
+  "tool": "scripts/write_release_evidence.py",
+  "wireContract": "zeus-udp-v1-packet-ids-0x01-through-0x2F"
+}

@@ -1,91 +1,156 @@
 {
   "schemaVersion": 1,
-  "wireContract": "zeus-udp-v1-packet-ids-0x01-through-0x2F",
+  "wireContract": "zeus-udp-v1-packet-ids-0x01-through-0x30",
   "publicationGate": [
     "artifact-build",
     "protocol-golden-fixtures",
     "server-startup-smoke",
     "core-scenario-smoke"
   ],
+  "supportEvidenceProfiles": {
+    "compatibility-core": {
+      "requiredPacketIds": [
+        "0x03",
+        "0x09",
+        "0x22",
+        "0x25",
+        "0x26",
+        "0x27",
+        "0x2b",
+        "0x30"
+      ],
+      "capabilityPacketIds": {
+        "trusted-input": "0x2c",
+        "movement-attributes": "0x2e",
+        "recording": "0x2d"
+      }
+    },
+    "online-minimal": {
+      "requiredPacketIds": [
+        "0x01",
+        "0x03"
+      ],
+      "capabilityPacketIds": {}
+    }
+  },
   "gateway": {
+    "packetEvents": {
+      "artifact": "com.github.retrooper:packetevents-spigot",
+      "version": "2.13.0",
+      "scope": "provided",
+      "runtime": "external-required",
+      "startupLogPattern": "Enabling packetevents v2.13.0",
+      "runtimeAsset": {
+        "name": "packetevents-spigot-2.13.0.jar",
+        "url": "https://github.com/retrooper/packetevents/releases/download/v2.13.0/packetevents-spigot-2.13.0.jar",
+        "sha256": "6d9ece0d87ee727a79a20b7ffbd432021609c6f52bafcb654fc2d3e9b6f064c5"
+      }
+    },
     "artifacts": [
       {
-        "id": "ZeusGateway-legacy",
+        "id": "ZeusGateway",
         "java": "8",
-        "platforms": "Paper/Spigot",
-        "range": "1.8-1.13.x",
+        "platforms": "Spigot/Paper/Folia",
+        "range": "1.8.8 through current exact verification targets",
         "status": "build-verifiable",
-        "note": "All declared targets supported; per-target evidence in support-matrix.targets."
-      },
-      {
-        "id": "ZeusGateway-modern",
-        "java": "8+",
-        "platforms": "Paper/Spigot/Folia",
-        "range": "No released supported targets yet",
-        "status": "build-verifiable",
-        "note": "All declared targets supported; per-target evidence in support-matrix.targets."
+        "note": "One runtime-selecting JAR; no target is supported until every publication gate has fresh evidence."
       }
     ],
     "targets": [
       {
         "id": "spigot-1.8.8",
-        "artifact": "ZeusGateway-legacy",
+        "artifact": "ZeusGateway",
         "platform": "Spigot",
         "minecraft": "1.8.8",
         "startupLogPattern": "Implementing API version 1.8.8-R0.1-SNAPSHOT",
-        "status": "supported",
-        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
-        "evidence": {
-          "artifact-build": "verification/evidence/artifact-build/gateway-spigot-1.8.8.json",
-          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/gateway-spigot-1.8.8.json",
-          "server-startup-smoke": "verification/evidence/startup-smoke/gateway-spigot-1.8.8.json",
-          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/gateway-spigot-1.8.8.json"
-        }
+        "evidenceCapabilities": ["recording"],
+        "status": "build-verifiable",
+        "note": "Unified artifact build wiring only; startup and scenario evidence must be refreshed."
       },
       {
         "id": "spigot-1.13.2",
-        "artifact": "ZeusGateway-legacy",
+        "artifact": "ZeusGateway",
         "platform": "Spigot",
         "minecraft": "1.13.2",
         "startupLogPattern": "Starting minecraft server version 1.13.2",
-        "status": "supported",
-        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
-        "evidence": {
-          "artifact-build": "verification/evidence/artifact-build/gateway-spigot-1.13.2.json",
-          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/gateway-spigot-1.13.2.json",
-          "server-startup-smoke": "verification/evidence/startup-smoke/gateway-spigot-1.13.2.json",
-          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/gateway-spigot-1.13.2.json"
-        }
+        "evidenceCapabilities": ["recording"],
+        "status": "build-verifiable",
+        "note": "Unified artifact build wiring only; startup and scenario evidence must be refreshed."
       },
       {
         "id": "spigot-1.14.4",
-        "artifact": "ZeusGateway-modern",
+        "artifact": "ZeusGateway",
         "platform": "Spigot",
         "minecraft": "1.14.4",
         "startupLogPattern": "Starting minecraft server version 1.14.4",
-        "status": "supported",
-        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
-        "evidence": {
-          "artifact-build": "verification/evidence/artifact-build/gateway-spigot-1.14.4.json",
-          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/gateway-spigot-1.14.4.json",
-          "server-startup-smoke": "verification/evidence/startup-smoke/gateway-spigot-1.14.4.json",
-          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/gateway-spigot-1.14.4.json"
-        }
+        "evidenceCapabilities": [
+          "movement-attributes",
+          "recording"
+        ],
+        "status": "build-verifiable",
+        "note": "Unified artifact build wiring only; startup and scenario evidence must be refreshed."
       },
       {
         "id": "paper-1.21.7",
-        "artifact": "ZeusGateway-modern",
+        "artifact": "ZeusGateway",
         "platform": "Paper",
         "minecraft": "1.21.7",
         "startupLogPattern": "Loading Paper 1.21.7-",
-        "status": "supported",
-        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
-        "evidence": {
-          "artifact-build": "verification/evidence/artifact-build/gateway-paper-1.21.7.json",
-          "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/gateway-paper-1.21.7.json",
-          "server-startup-smoke": "verification/evidence/startup-smoke/gateway-paper-1.21.7.json",
-          "core-scenario-smoke": "verification/evidence/core-scenario-smoke/gateway-paper-1.21.7.json"
-        }
+        "evidenceCapabilities": [
+          "trusted-input",
+          "movement-attributes"
+        ],
+        "status": "build-verifiable",
+        "note": "Unified artifact build wiring only; startup and scenario evidence must be refreshed."
+      },
+      {
+        "id": "paper-1.21.11",
+        "artifact": "ZeusGateway",
+        "platform": "Paper",
+        "minecraft": "1.21.11",
+        "startupLogPattern": "Loading Paper 1.21.11-",
+        "evidenceCapabilities": [
+          "trusted-input",
+          "movement-attributes",
+          "recording"
+        ],
+        "status": "build-verifiable",
+        "note": "Unified artifact build wiring only; startup and scenario evidence must be refreshed."
+      },
+      {
+        "id": "spigot-26.2",
+        "artifact": "ZeusGateway",
+        "platform": "Spigot",
+        "minecraft": "26.2",
+        "startupLogPattern": "Implementing API version 26.2-R0.1-SNAPSHOT",
+        "evidenceCapabilities": [
+          "trusted-input",
+          "movement-attributes",
+          "recording"
+        ],
+        "status": "build-verifiable",
+        "note": "Compiles against exact Spigot API 26.2; runtime smoke uses Paper because no official Spigot binary is published."
+      },
+      {
+        "id": "paper-26.2",
+        "artifact": "ZeusGateway",
+        "platform": "Paper",
+        "minecraft": "26.2",
+        "startupLogPattern": "Loading Paper 26.2-",
+        "evidenceCapabilities": [
+          "trusted-input",
+          "movement-attributes",
+          "recording"
+        ],
+        "status": "build-verifiable",
+        "serverAsset": {
+          "name": "paper-26.2-34.jar",
+          "url": "https://fill-data.papermc.io/v1/objects/ebbce8dcd115170c234af6d132771282ad89b7df410f03ada503d8c32c8fd5ad/paper-26.2-34.jar",
+          "sha256": "ebbce8dcd115170c234af6d132771282ad89b7df410f03ada503d8c32c8fd5ad",
+          "channel": "ALPHA",
+          "build": 34
+        },
+        "note": "Exact Paper target pinned to official ALPHA build 34; Folia 26.2 is intentionally absent."
       }
     ]
   },
@@ -104,8 +169,11 @@
       },
       {
         "minecraft": "1.21.2",
-        "status": "supported",
-        "note": "All publication gates pass.",
+        "status": "build-verifiable",
+        "note": "Publication gates require fresh evidence after adapter changes.",
+        "evidenceCapabilities": [
+          "trusted-input"
+        ],
         "minecraftDependency": "1.21.2",
         "loader": "0.18.1",
         "yarn": "1.21.2+build.1",
@@ -119,8 +187,11 @@
       },
       {
         "minecraft": "1.21.3",
-        "status": "supported",
-        "note": "All publication gates pass.",
+        "status": "build-verifiable",
+        "note": "Publication gates require fresh evidence after adapter changes.",
+        "evidenceCapabilities": [
+          "trusted-input"
+        ],
         "minecraftDependency": "1.21.3",
         "loader": "0.18.1",
         "yarn": "1.21.3+build.2",
@@ -138,8 +209,11 @@
         "loader": "0.18.1",
         "yarn": "1.21.4+build.8",
         "fabricApi": "0.112.2+1.21.4",
-        "status": "supported",
-        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "status": "build-verifiable",
+        "note": "Publication gates require fresh evidence after adapter changes.",
+        "evidenceCapabilities": [
+          "trusted-input"
+        ],
         "evidence": {
           "artifact-build": "verification/evidence/artifact-build/fabric-1.21.4.json",
           "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.4.json",
@@ -149,8 +223,11 @@
       },
       {
         "minecraft": "1.21.5",
-        "status": "supported",
-        "note": "All publication gates pass.",
+        "status": "build-verifiable",
+        "note": "Publication gates require fresh evidence after adapter changes.",
+        "evidenceCapabilities": [
+          "trusted-input"
+        ],
         "minecraftDependency": "1.21.5",
         "loader": "0.18.1",
         "yarn": "1.21.5+build.1",
@@ -164,8 +241,11 @@
       },
       {
         "minecraft": "1.21.6",
-        "status": "supported",
-        "note": "All publication gates pass.",
+        "status": "build-verifiable",
+        "note": "Publication gates require fresh evidence after adapter changes.",
+        "evidenceCapabilities": [
+          "trusted-input"
+        ],
         "minecraftDependency": "1.21.6",
         "loader": "0.18.1",
         "yarn": "1.21.6+build.1",
@@ -179,8 +259,11 @@
       },
       {
         "minecraft": "1.21.7",
-        "status": "supported",
-        "note": "All publication gates pass.",
+        "status": "build-verifiable",
+        "note": "Publication gates require fresh evidence after adapter changes.",
+        "evidenceCapabilities": [
+          "trusted-input"
+        ],
         "minecraftDependency": "1.21.7",
         "loader": "0.18.1",
         "yarn": "1.21.7+build.8",
@@ -194,8 +277,11 @@
       },
       {
         "minecraft": "1.21.8",
-        "status": "supported",
-        "note": "All publication gates pass.",
+        "status": "build-verifiable",
+        "note": "Publication gates require fresh evidence after adapter changes.",
+        "evidenceCapabilities": [
+          "trusted-input"
+        ],
         "minecraftDependency": "1.21.8",
         "loader": "0.18.1",
         "yarn": "1.21.8+build.1",
@@ -209,12 +295,15 @@
       },
       {
         "minecraft": "1.21.9",
-        "status": "supported",
+        "status": "build-verifiable",
         "minecraftDependency": "1.21.9",
         "loader": "0.18.1",
         "yarn": "1.21.9+build.1",
         "fabricApi": "0.134.1+1.21.9",
-        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "note": "Publication gates require fresh evidence after adapter changes.",
+        "evidenceCapabilities": [
+          "trusted-input"
+        ],
         "evidence": {
           "artifact-build": "verification/evidence/artifact-build/fabric-1.21.9.json",
           "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.9.json",
@@ -224,12 +313,15 @@
       },
       {
         "minecraft": "1.21.10",
-        "status": "supported",
+        "status": "build-verifiable",
         "minecraftDependency": "1.21.10",
         "loader": "0.18.1",
         "yarn": "1.21.10+build.3",
         "fabricApi": "0.138.4+1.21.10",
-        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "note": "Publication gates require fresh evidence after adapter changes.",
+        "evidenceCapabilities": [
+          "trusted-input"
+        ],
         "evidence": {
           "artifact-build": "verification/evidence/artifact-build/fabric-1.21.10.json",
           "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.10.json",
@@ -243,8 +335,11 @@
         "loader": "0.18.1",
         "yarn": "1.21.11+build.1",
         "fabricApi": "0.141.4+1.21.11",
-        "status": "supported",
-        "note": "All publication gates pass: build, protocol fixtures, startup smoke, and core scenario smoke.",
+        "status": "build-verifiable",
+        "note": "Publication gates require fresh evidence after adapter changes.",
+        "evidenceCapabilities": [
+          "trusted-input"
+        ],
         "evidence": {
           "artifact-build": "verification/evidence/artifact-build/fabric-1.21.11.json",
           "protocol-golden-fixtures": "verification/evidence/protocol-golden-fixtures/fabric-1.21.11.json",

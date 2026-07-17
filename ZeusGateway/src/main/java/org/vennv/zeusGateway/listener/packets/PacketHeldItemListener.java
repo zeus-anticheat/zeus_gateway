@@ -1,9 +1,10 @@
 package org.vennv.zeusGateway.listener.packets;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.events.ListenerPriority;
+import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import com.github.retrooper.packetevents.event.PacketReceiveEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientHeldItemChange;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.vennv.packets.PacketPlayerHeldItem;
@@ -13,36 +14,33 @@ import org.vennv.zeusGateway.provider.PacketQueue;
 import org.vennv.zeusGateway.task.PlayerStateSnapshotService;
 import org.vennv.zeusGateway.utils.ItemUtil;
 
-public class PacketHeldItemListener extends PacketAdapter {
+public class PacketHeldItemListener extends PacketListenerAbstract {
     private final ZeusGateway plugin;
+    private final OrderedPlayerPacketDispatcher dispatcher;
 
-    public PacketHeldItemListener(ZeusGateway plugin) {
-        super(plugin, ListenerPriority.LOWEST,
-                PacketType.Play.Client.HELD_ITEM_SLOT);
+    public PacketHeldItemListener(ZeusGateway plugin, OrderedPlayerPacketDispatcher dispatcher) {
+        super(PacketListenerPriority.LOWEST);
         this.plugin = plugin;
+        this.dispatcher = dispatcher;
     }
 
     @Override
-    public void onPacketReceiving(PacketEvent event) {
-        Player player = event.getPlayer();
-        long timestamp = System.currentTimeMillis();
-
-        int slotIndex = 0;
-        try {
-            slotIndex = event.getPacket().getIntegers().read(0);
-        } catch (Exception ignored) {
-        }
-
-        if (plugin.getSchedulerAdapter() == null) {
+    public void onPacketReceive(PacketReceiveEvent event) {
+        if (event.getPacketType() != PacketType.Play.Client.HELD_ITEM_CHANGE) {
             return;
         }
-        int selectedSlot = slotIndex;
-        plugin.getSchedulerAdapter().runEntityTask(
-                plugin, player, () -> emitHeldItem(player, selectedSlot, timestamp));
+
+        long timestamp = System.currentTimeMillis();
+        int slotIndex = new WrapperPlayClientHeldItemChange(event).getSlot();
+        Player player = event.getPlayer();
+        if (player == null) {
+            return;
+        }
+        dispatcher.submit(player, () -> emitHeldItem(player, slotIndex, timestamp));
     }
 
     private void emitHeldItem(Player player, int slotIndex, long timestamp) {
-        if (!player.isOnline()) {
+        if (!player.isOnline() || slotIndex < 0 || slotIndex >= player.getInventory().getSize()) {
             return;
         }
         String uid = player.getUniqueId().toString();
@@ -64,15 +62,10 @@ public class PacketHeldItemListener extends PacketAdapter {
             PlayerStateSnapshotService.sendMutableStateSnapshot(player);
             return;
         }
-        plugin.getSchedulerAdapter().runTaskLater(plugin, () -> {
-            if (!player.isOnline()) {
-                return;
+        plugin.getSchedulerAdapter().runEntityTaskLater(plugin, player, () -> {
+            if (player.isOnline()) {
+                PlayerStateSnapshotService.sendMutableStateSnapshot(player);
             }
-            plugin.getSchedulerAdapter().runEntityTask(plugin, player, () -> {
-                if (player.isOnline()) {
-                    PlayerStateSnapshotService.sendMutableStateSnapshot(player);
-                }
-            });
         }, 1L);
     }
 }

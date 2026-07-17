@@ -1,8 +1,8 @@
 {
   "artifact": "ZeusFabric/build/libs/ZeusFabric-1.21.9-1.0-SNAPSHOT.jar",
-  "artifactSha256": "8a0b711fb8c66d632336227293f9566c49b03bf3ce94468cf0dcce359e9ea111",
-  "artifactSizeBytes": 113235,
-  "createdAt": "2026-05-27T13:15:22.413274+00:00",
+  "artifactSha256": "b5f10f56855e2272266dd9fd78b8392a07fe52f2fe503432289dbac3011b06a1",
+  "artifactSizeBytes": 149933,
+  "createdAt": "2026-07-13T21:03:24.725119+00:00",
   "dryRun": false,
   "gate": "artifact-build",
   "kind": "fabric",

@@ -1,6 +1,7 @@
 package org.vennv.zeusFabric.network;
 
 import org.vennv.PacketEncode;
+import org.vennv.packets.PacketCollisionWindow;
 import org.vennv.zeusFabric.ZeusFabricMod;
 
 import java.io.ByteArrayOutputStream;
@@ -10,6 +11,7 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 
 public final class ProxyClient {
+    private static final int MAX_UDP_PAYLOAD = 65_507;
 
     private final DatagramSocket socket;
     private final InetSocketAddress proxyAddress;
@@ -30,9 +32,9 @@ public final class ProxyClient {
         this.socket = new DatagramSocket();
     }
 
-    public void send(PacketEncode packet) {
+    public boolean send(PacketEncode packet) {
         if (closed) {
-            return;
+            return false;
         }
 
         try {
@@ -40,6 +42,14 @@ public final class ProxyClient {
             packet.encode(out);
 
             byte[] payload = out.toByteArray();
+            int maxPayload = packet instanceof PacketCollisionWindow
+                    ? PacketCollisionWindow.MAX_DATAGRAM_LENGTH
+                    : MAX_UDP_PAYLOAD;
+            if (payload.length > maxPayload) {
+                ZeusFabricMod.LOGGER.warn(
+                        "[ZeusFabric] Refusing oversized UDP payload: {} bytes", payload.length);
+                return false;
+            }
 
             DatagramPacket udp = new DatagramPacket(
                     payload,
@@ -48,8 +58,10 @@ public final class ProxyClient {
             );
 
             socket.send(udp);
+            return true;
         } catch (IOException e) {
-            e.printStackTrace();
+            ZeusFabricMod.LOGGER.error("[ZeusFabric] Failed to send UDP payload", e);
+            return false;
         }
     }
 

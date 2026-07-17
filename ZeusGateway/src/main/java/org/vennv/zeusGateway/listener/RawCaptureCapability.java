@@ -13,5 +13,7 @@ public enum RawCaptureCapability {
     SWING_HAND,
     ATTACK_ENTITY,
     VEHICLE_MOVE,
-    PLAYER_COMMAND
+    PLAYER_COMMAND,
+    PLAYER_INPUT,
+    VELOCITY
 }

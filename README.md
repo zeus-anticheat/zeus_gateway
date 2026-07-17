@@ -9,8 +9,8 @@ Zeus Anti-Cheat data collector plugins for Minecraft servers. These plugins capt
 ```
 zeus_plugins/
 ├── ZeusProtocolJava/      # Shared packet codec library (platform-agnostic)
-├── ZeusGateway/           # ZeusGateway-modern: Paper/Spigot/Folia, Java 8+ bytecode, 1.14+
-├── ZeusGatewayLegacy/     # ZeusGateway-legacy: Spigot/Paper, Java 8 bytecode, 1.8-1.13.x
+├── ZeusGateway/           # Final unified Bukkit-family JAR, Java 8 bytecode
+├── ZeusGatewayLegacy/     # Legacy runtime module retained and shaded into ZeusGateway
 ├── ZeusFabric/            # Exact-version Fabric artifact build
 ├── scenarios/             # Mineflayer-based core scenario smoke driver
 ├── scripts/               # Support-matrix render/verify and smoke runners
@@ -28,50 +28,38 @@ zeus_plugins/
 [`docs/generated/support-readiness.md`](docs/generated/support-readiness.md). A server target is published as
 `supported` only when its artifact build, protocol fixtures, server-startup smoke, and core-scenario smoke
 gates all pass on real servers; the smoke driver lives in `scenarios/` and exercises attack, velocity,
-inventory transaction, surrounding-blocks and external-force packet paths against an offline-mode server.
+inventory transaction, and external-force packet paths against an offline-mode server.
 
-ZeusGateway ships as **two artifacts** — a single JAR cannot cover the full announced range:
+ZeusGateway ships as one final artifact: `ZeusGateway-1.0-SNAPSHOT.jar`. Its Java 8 bootstrap selects the bounded legacy runtime through 1.13.x and the modern runtime from 1.14 onward. PacketEvents remains an external required plugin.
 
-- `ZeusGateway-legacy` (Java 8 bytecode, Spigot/Paper, 1.8 – 1.13.x).
-- `ZeusGateway-modern` (Java 8 bytecode, Paper / Spigot / Folia, 1.14 – 1.21.x).
-
-Targets that have passed all gates and are currently `supported`:
-
-| Target | Artifact | Java |
-|--------|----------|------|
-| spigot-1.8.8 | `ZeusGateway-legacy` | 8 |
-| spigot-1.13.2 | `ZeusGateway-legacy` | 8 |
-| spigot-1.14.4 | `ZeusGateway-modern` | 8+ |
-| paper-1.21.7 | `ZeusGateway-modern` | 21 |
-| ZeusFabric-1.21.2 through 1.21.11 | exact-version Fabric | 21 |
+No target is currently marked `supported`. Current targets remain `build-verifiable` until fresh publication evidence proves the same JAR on every exact server target.
 
 `ZeusFabric` 1.21 and 1.21.1 remain `adapter-required`: those releases used a different `ActionResult` shape, `BlockPos.iterate(Box)` overload, and `EntityAttributes` registry that the current shared source cannot reach via reflection alone. They need a per-version source set or branch-specific adapter before promotion.
 
-### ZeusGateway Modern (Paper / Spigot / Folia)
+### ZeusGateway Modern Runtime (Paper / Spigot / Folia)
 
-The modern artifact (Java 8 bytecode, runs on Java 8 through 21) auto-detects platform/runtime capabilities:
+The modern runtime inside the unified Java 8 artifact auto-detects platform/runtime capabilities:
 
-- **Paper**: Modern adapter uses Paper-exclusive events (`PrePlayerAttackEntityEvent`, `PlayerArmorChangeEvent`) alongside ProtocolLib packet listeners and standard Bukkit events.
-- **Spigot**: Modern adapter falls back to Bukkit events (`EntityDamageByEntityEvent`, inventory-close armor polling) when Paper APIs are unavailable.
-- **Folia**: Modern adapter uses a scheduler wrapper for region/entity tasks; supported target status is still governed by the manifest.
+- **Paper**: Modern adapter uses PacketEvents packet listeners and standard Bukkit events.
+- **Spigot**: Modern adapter uses PacketEvents with Bukkit event fallbacks such as `EntityDamageByEntityEvent` and inventory-close armor polling.
+- **Folia**: Modern adapter uses region/entity-owned scheduling; supported target status is still governed by the manifest.
 
-**ProtocolLib** is optional. When present and its required packet capability is available, it enables raw
-packet-level listeners. Missing capabilities are logged and use event fallbacks where they exist; movement
-and vehicle-input capture are degraded when no raw equivalent is available.
+**PacketEvents 2.13.0** is required and provides raw packet capture. Bukkit/Paper events remain only for
+server-owned state and explicit fallback paths.
 
-### ZeusGateway Legacy (Spigot 1.8 – 1.13.x)
+### ZeusGateway Legacy Runtime (Spigot 1.8.8 – 1.13.x)
 
-The legacy artifact targets servers running Java 8 on Spigot/Paper 1.8 through 1.13.x. It uses the same
-`ZeusProtocolJava` codec and emits identical wire packets as the modern artifact. Differences:
+The legacy runtime targets servers running Java 8 on Spigot/Paper 1.8.8 through 1.13.x. It uses the same
+`ZeusProtocolJava` codec and emits compatible wire packets as the modern artifact. Differences:
 
 - No Paper-exclusive events (no `PrePlayerAttackEntityEvent`, no `PlayerArmorChangeEvent`).
-- No ProtocolLib dependency — all capture is Bukkit-event-only.
+- PacketEvents raw movement, attack, and click capture; no ProtocolLib dependency.
 - Entity dimensions, block collision, and potion effects resolved via NMS reflection or material-based fallback.
 - `InventoryView` accessed via reflection to avoid class/interface mismatch across API versions.
 
 ### Version Compatibility Layer
 
-ZeusGateway-modern includes a built-in **compatibility layer** (`compat/` package) that abstracts version-sensitive APIs:
+ZeusGateway modern runtime includes a built-in **compatibility layer** (`compat/` package) that abstracts version-sensitive APIs:
 
 | Component | 1.14+ (Tier 1) | 1.8–1.13 (Tier 2) |
 |-----------|----------------|--------------------|
@@ -101,7 +89,7 @@ The shared, **platform-agnostic** packet codec library. Contains:
 - Packet ID constants (`PacketId`)
 - Base classes (`PacketBase`, `PacketBaseInfo`, `PacketEncode`, `PacketDecode`)
 - Binary serialization utilities (`ByteBufferUtil`)
-- All protocol packets through ID `0x27`
+- All protocol packets through ID `0x30`
 - Shared data types (`EntityState`, `Effect`, `Item`, `ItemStack`, `Armor`, `Armors`, `Enchantment`, etc.)
 - Enums (`Hand`, `DamageCause`, `EffectType`, `EffectFlags`, `ServerBoundPlayerCommandActions`)
 
@@ -129,7 +117,7 @@ This library has **zero** external dependencies — no Bukkit, no Fabric, no Min
 | 16 | `0x10` | `PacketPlayerAttackedByEntity` | Player was attacked by an entity |
 | 17 | `0x11` | `PacketPlayerEntityInteraction` | Player interacted with an entity |
 | 18 | `0x12` | `PacketTPSServer` | Server TPS measurement |
-| 19 | `0x13` | `PacketPlayerSurroundingBlocks` | 3×5×3 block grid around the player |
+| 19 | `0x13` | Reserved | Intentional protocol gap |
 | 20 | `0x14` | `PacketPlayerHeldItem` | Held item slot changed |
 | 21 | `0x15` | `PacketPlayerArmorsEquipment` | Armor equipment state (helmet, chest, legs, boots) |
 | 22 | `0x16` | `PacketPlayerConfirmTransaction` | Inventory transaction confirmation |
@@ -150,6 +138,15 @@ This library has **zero** external dependencies — no Bukkit, no Fabric, no Min
 | 37 | `0x25` | `PacketServerConfig` | Server combat configuration |
 | 38 | `0x26` | `PacketPlayerInventoryTransaction` | Inventory state transaction detail |
 | 39 | `0x27` | `PacketPlayerExternalForce` | Classified external movement force |
+| 40 | `0x28` | `PacketEntitySpawn` | Client-visible entity spawned |
+| 41 | `0x29` | `PacketEntityMove` | Client-visible entity moved |
+| 42 | `0x2A` | `PacketEntityDestroy` | Client-visible entities removed |
+| 43 | `0x2B` | `PacketBlockChangeEvent` | World block delta |
+| 44 | `0x2C` | `PacketPlayerInput` | Trusted or fallback player input flags |
+| 45 | `0x2D` | `PacketChunkData` | Bounded chunk terrain batch |
+| 46 | `0x2E` | `PacketUpdateAttributes` | Entity attribute update |
+| 47 | `0x2F` | `PacketPhysicsCaptureSample` | Physics capture frame |
+| 48 | `0x30` | `PacketCollisionWindow` | Collision terrain window |
 
 ---
 
@@ -157,15 +154,15 @@ This library has **zero** external dependencies — no Bukkit, no Fabric, no Min
 
 Each packet is captured through one or more data sources, depending on platform and available dependencies:
 
-| Packet | ProtocolLib Listener | Bukkit Event | Paper Event |
-|--------|---------------------|-------------|-------------|
+| Packet | PacketEvents Listener | Bukkit Event | Paper Event |
+|--------|-----------------------|-------------|-------------|
 | Join / Leave | — | `PlayerJoinEvent` / `PlayerQuitEvent` | — |
 | Position | `POSITION`, `POSITION_LOOK` | — | — |
 | KeepAlive | `KEEP_ALIVE` | — | — |
 | SwingHand | `ARM_ANIMATION`, `USE_ENTITY` | — | — |
 | PlaceBlock | `USE_ITEM` | `BlockPlaceEvent` | — |
 | DiggingBlock | `BLOCK_DIG` | `BlockBreakEvent` | — |
-| AttackEntity | — | `EntityDamageByEntityEvent` | `PrePlayerAttackEntityEvent` |
+| AttackEntity | `INTERACT_ENTITY` | `EntityDamageByEntityEvent` | — |
 | Teleport | — | `PlayerTeleportEvent` | — |
 | Effect | — | `EntityPotionEffectEvent` | — |
 | GotDamage | — | `EntityDamageEvent` | — |
@@ -175,9 +172,9 @@ Each packet is captured through one or more data sources, depending on platform 
 | AttackedByEntity | — | `EntityDamageByEntityEvent` | — |
 | EntityInteraction | — | `PlayerInteractEntityEvent` | — |
 | TPS | — | Scheduled task (BukkitScheduler / Folia) | — |
-| SurroundingBlocks | (with Position) | — | — |
+| World block/chunk state | `BLOCK_CHANGE`, `CHUNK_DATA` | — | — |
 | HeldItem | `HELD_ITEM_SLOT` | `PlayerItemHeldEvent` | — |
-| ArmorsEquipment | — | Inventory close polling | `PlayerArmorChangeEvent` |
+| ArmorsEquipment | — | Slot change + inventory close snapshots | — |
 | ConfirmTransaction | — | `InventoryClickEvent` | — |
 | OpenWindow | — | `InventoryOpenEvent` | — |
 | ClickWindow | `WINDOW_CLICK` | `InventoryClickEvent` | — |
@@ -229,11 +226,10 @@ ZeusGateway automatically detects the runtime platform and Minecraft version on 
 [ZeusGateway] Detected platform: PAPER
 [ZeusGateway] Server version: 1.21.11 (NMS: mojang-mapped)
 [ZeusGateway] Feature flags: BoundingBox=true, BlockData=true, RayTrace=true, MaterialIsAir=true, CustomModelData=true, PotionKey=true, EntityHeight=true, EntityPose=true
-[ZeusGateway] ProtocolLib v5.3.0 detected and hooked successfully.
+[ZeusGateway] PacketEvents raw capture registered.
 [ZeusGateway] Using scheduler adapter for platform: PAPER
-[ZeusGateway] Registered 12 ProtocolLib packet listeners.
+[ZeusGateway] Registered 18 PacketEvents packet listeners.
 [ZeusGateway] Registered Bukkit event listeners.
-[ZeusGateway] Registered Paper-exclusive event listeners.
 [ZeusGateway] TPS monitor and Resync task started via Bukkit scheduler.
 [ZeusGateway] Plugin enabled successfully on PAPER!
 ```
@@ -249,7 +245,7 @@ The planned legacy adapter would report capabilities like the following on a `1.
 
 ### Platform Detection Order
 1. **Folia** — checks for `io.papermc.paper.threadedregions.RegionizedServer`
-2. **Paper** — checks for `io.papermc.paper.event.player.PrePlayerAttackEntityEvent`
+2. **Paper** — checks stable Paper runtime marker classes without linking event APIs
 3. **Spigot** — fallback if neither Folia nor Paper classes are found
 
 ### Version Detection (`ServerVersion`)
@@ -274,9 +270,8 @@ build.cmd
 
 This builds:
 1. `ZeusProtocolJava` → `ZeusProtocolJava/target/ZeusProtocolJava-1.0-SNAPSHOT.jar`
-2. `ZeusGateway-modern` → `ZeusGateway/target/ZeusGateway-modern-1.0-SNAPSHOT.jar`
-3. `ZeusGateway-legacy` → `ZeusGatewayLegacy/target/ZeusGateway-legacy-1.0-SNAPSHOT.jar`
-4. All build-verifiable Fabric targets from `support-matrix.json` → `ZeusFabric/build/libs/ZeusFabric-<mc>-1.0-SNAPSHOT.jar` (if Gradle is available)
+2. Unified `ZeusGateway` → `ZeusGateway/target/ZeusGateway-1.0-SNAPSHOT.jar`
+3. All build-verifiable Fabric targets from `support-matrix.json` → `ZeusFabric/build/libs/ZeusFabric-<mc>-1.0-SNAPSHOT.jar` (if Gradle is available)
 
 ### Manual Build
 
@@ -284,11 +279,8 @@ This builds:
 # Build shared library
 mvn clean install -pl ZeusProtocolJava
 
-# Build modern Bukkit plugin (Paper/Spigot/Folia adapter)
+# Build unified Bukkit-family plugin; reactor builds and shades legacy runtime
 mvn clean package -pl ZeusGateway -am
-
-# Build Java 8 legacy Bukkit plugin foundation
-mvn clean package -pl ZeusGatewayLegacy -am
 
 # Build exact-version Fabric adapters listed by support-matrix.json
 cd ZeusFabric
@@ -317,21 +309,19 @@ bash scripts/verify_release_gate.sh
 
 The same hook exists for Fabric via `ZEUS_FABRIC_SMOKE_DIR`,
 `ZEUS_FABRIC_SMOKE_COMMAND`, and optional `ZEUS_FABRIC_SMOKE_TARGET`.
-Gateway smoke defaults to `ZeusGateway-modern`; set `ZEUS_GATEWAY_SMOKE_TARGET`
-or `ZEUS_GATEWAY_CORE_SMOKE_TARGET` to `ZeusGateway-legacy` for legacy fixtures.
+Gateway smoke defaults to `paper-1.21.11`; set `ZEUS_GATEWAY_SMOKE_TARGET` or `ZEUS_GATEWAY_CORE_SMOKE_TARGET` to any exact Gateway target. Every target deploys the same unified JAR.
 
 Core scenario smoke can be included by setting `ZEUS_GATEWAY_CORE_SMOKE_DIR`,
 `ZEUS_GATEWAY_CORE_SMOKE_COMMAND`, and optional `ZEUS_GATEWAY_SCENARIO_COMMAND`.
 Fabric uses the same pattern with the `ZEUS_FABRIC_CORE_*` variables. The
 default core profile is `compatibility-core`, which requires packet IDs `0x09`,
-`0x13`, `0x22`, `0x26`, and `0x27`.
+`0x22`, `0x26`, and `0x27`.
 
 ### Output JARs
 
 | Artifact | Deploy to | Platforms |
 |----------|----------|-----------|
-| `ZeusGateway-modern-1.0-SNAPSHOT.jar` | `plugins/` folder | Modern Gateway adapter; see manifest status |
-| `ZeusGateway-legacy-1.0-SNAPSHOT.jar` | `plugins/` folder | Legacy Gateway adapter foundation; see manifest status |
+| `ZeusGateway-1.0-SNAPSHOT.jar` | `plugins/` folder | Unified Spigot/Paper/Folia artifact; see manifest status |
 | `ZeusFabric-<mc>-1.0-SNAPSHOT.jar` | `mods/` folder | Exact-version Fabric artifact; see manifest status |
 
 ---
@@ -381,7 +371,7 @@ max-cps=0
 | Dependency | Scope | Required? |
 |-----------|-------|-----------|
 | Paper API / Spigot API | provided | Yes (one of them) |
-| ProtocolLib | provided | **Optional** — degrades gracefully |
+| PacketEvents 2.13.0 | provided | **Required** |
 | ZeusProtocolJava | shaded | Yes (included in JAR) |
 
 ### ZeusFabric
@@ -411,8 +401,7 @@ ZeusGateway/src/main/java/org/vennv/zeusGateway/
 │   └── ZeusLoader.java                     # Initializes proxy, listeners, tasks
 ├── listener/
 │   ├── event/
-│   │   ├── EventListener.java              # Cross-platform Bukkit event handlers
-│   │   └── PaperEventListener.java         # Paper-exclusive event handlers
+│   │   └── EventListener.java              # Cross-platform Bukkit event handlers
 │   └── packets/
 │       ├── PacketBlockFaceListener.java     # BLOCK_DIG direction
 │       ├── PacketClickWindowListener.java   # WINDOW_CLICK

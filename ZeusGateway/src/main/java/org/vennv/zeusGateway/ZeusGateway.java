@@ -1,25 +1,53 @@
 package org.vennv.zeusGateway;
 
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.permissions.Permission;
-import org.bukkit.permissions.PermissionDefault;
 import org.vennv.zeusGateway.debug.PacketDebugService;
-import org.vennv.zeusGateway.debug.ZeusDebugCommand;
-import org.vennv.zeusGateway.init.ZeusLoader;
-import org.vennv.zeusGateway.task.ChunkSyncTask;
-import org.vennv.zeusGateway.platform.PlatformDetector;
+import org.vennv.zeusGateway.listener.RawCaptureCapability;
 import org.vennv.zeusGateway.platform.PlatformType;
 import org.vennv.zeusGateway.platform.SchedulerAdapter;
 
 public final class ZeusGateway extends JavaPlugin {
-
-    private Object protocolManager; // Object to avoid hard dependency on ProtocolLib at class-load time
+    private Object runtime;
     private PlatformType platformType;
     private SchedulerAdapter schedulerAdapter;
-    private boolean protocolLibAvailable = false;
+    private Object packetEventsSession;
+    private Set<RawCaptureCapability> rawCapabilities = EnumSet.noneOf(RawCaptureCapability.class);
+    private final Set<UUID> packetInputPlayers = ConcurrentHashMap.newKeySet();
     private PacketDebugService packetDebugService;
+
+    @Override
+    public void onEnable() {
+        String implementation = RuntimeSelector.useLegacy(Bukkit.getBukkitVersion())
+                ? "org.vennv.zeusGatewayLegacy.LegacyGatewaySession"
+                : "org.vennv.zeusGateway.ModernGatewaySession";
+        try {
+            runtime = Class.forName(implementation)
+                    .getMethod("start", JavaPlugin.class)
+                    .invoke(null, this);
+            getLogger().info("[ZeusGateway] Plugin enabled successfully with "
+                    + (implementation.contains("Legacy") ? "legacy" : "modern") + " runtime.");
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException error) {
+            getLogger().log(Level.SEVERE, "[ZeusGateway] Runtime initialization failed.", error);
+            getServer().getPluginManager().disablePlugin(this);
+        }
+    }
+
+    @Override
+    public void onDisable() {
+        invoke(runtime, "close", new Class<?>[0]);
+        runtime = null;
+        packetEventsSession = null;
+        rawCapabilities = EnumSet.noneOf(RawCaptureCapability.class);
+        packetInputPlayers.clear();
+        if (packetDebugService != null) packetDebugService.clear();
+        packetDebugService = null;
+    }
 
     public PlatformType getPlatformType() {
         return platformType;
@@ -29,134 +57,63 @@ public final class ZeusGateway extends JavaPlugin {
         return schedulerAdapter;
     }
 
-    public boolean isProtocolLibAvailable() {
-        return protocolLibAvailable;
+    public Set<RawCaptureCapability> getRawCapabilities() {
+        return rawCapabilities.isEmpty()
+                ? EnumSet.noneOf(RawCaptureCapability.class)
+                : EnumSet.copyOf(rawCapabilities);
+    }
+
+    public boolean isPacketEventsInputAvailable() {
+        return rawCapabilities.contains(RawCaptureCapability.PLAYER_INPUT);
+    }
+
+    public void markPacketInput(UUID uuid) {
+        packetInputPlayers.add(uuid);
+    }
+
+    public void clearPacketInput(UUID uuid) {
+        packetInputPlayers.remove(uuid);
+        invoke(packetEventsSession, "clearPlayer", new Class<?>[] {UUID.class}, uuid);
+    }
+
+    public boolean hasPacketInput(UUID uuid) {
+        return packetInputPlayers.contains(uuid);
     }
 
     public PacketDebugService getPacketDebugService() {
         return packetDebugService;
     }
 
-    /**
-     * Returns the ProtocolLib ProtocolManager instance, or null if ProtocolLib is not loaded.
-     * Callers must cast to {@code com.comphenix.protocol.ProtocolManager} themselves.
-     */
-    public Object getProtocolManager() {
-        return protocolManager;
+    void configureModern(
+            PlatformType platformType,
+            SchedulerAdapter schedulerAdapter,
+            Object packetEventsSession,
+            Set<RawCaptureCapability> rawCapabilities,
+            PacketDebugService packetDebugService) {
+        this.platformType = platformType;
+        this.schedulerAdapter = schedulerAdapter;
+        this.packetEventsSession = packetEventsSession;
+        this.rawCapabilities = rawCapabilities.isEmpty()
+                ? EnumSet.noneOf(RawCaptureCapability.class)
+                : EnumSet.copyOf(rawCapabilities);
+        this.packetDebugService = packetDebugService;
     }
 
-    @Override
-    public void onLoad() {
-        // Detect platform first
-        platformType = PlatformDetector.detect(getLogger());
+    void clearModern() {
+        platformType = null;
+        schedulerAdapter = null;
+        packetEventsSession = null;
+        rawCapabilities = EnumSet.noneOf(RawCaptureCapability.class);
+        packetInputPlayers.clear();
+        packetDebugService = null;
+    }
 
-        // Try to hook into ProtocolLib (optional dependency)
+    private void invoke(Object target, String method, Class<?>[] parameterTypes, Object... arguments) {
+        if (target == null) return;
         try {
-            Class.forName("com.comphenix.protocol.ProtocolLibrary");
-            Class<?> registrar = Class.forName(
-                "org.vennv.zeusGateway.listener.packets.ProtocolLibListenerRegistrar"
-            );
-            protocolManager = registrar.getMethod("resolveProtocolManager").invoke(null);
-            protocolLibAvailable = true;
-
-            // Detect ProtocolLib major version for API compatibility
-            org.bukkit.plugin.Plugin plPlugin =
-                getServer().getPluginManager().getPlugin("ProtocolLib");
-            String plVer = (plPlugin != null)
-                ? plPlugin.getDescription().getVersion() : "unknown";
-            getLogger().info(
-                "[ZeusGateway] ProtocolLib v" + plVer + " detected and hooked successfully."
-            );
-        } catch (ClassNotFoundException e) {
-            protocolLibAvailable = false;
-            getLogger().warning(
-                "[ZeusGateway] ProtocolLib not found. Packet-level listeners will be disabled."
-            );
-            getLogger().warning(
-                "[ZeusGateway] Only Bukkit event-based listeners will be active."
-            );
-            getLogger().warning(
-                "[ZeusGateway] Install ProtocolLib for full anti-cheat coverage."
-            );
-        } catch (ReflectiveOperationException | LinkageError e) {
-            protocolLibAvailable = false;
-            getLogger().log(
-                Level.WARNING,
-                "[ZeusGateway] Failed to initialize ProtocolLib. Packet listeners disabled.",
-                e
-            );
-        }
-    }
-
-    @Override
-    public void onEnable() {
-        // Create the appropriate scheduler adapter for the detected platform
-        schedulerAdapter = SchedulerAdapter.create();
-        getLogger().info(
-            "[ZeusGateway] Using scheduler adapter for platform: " + platformType
-        );
-
-        packetDebugService = new PacketDebugService(this);
-        getServer().getPluginManager().registerEvents(packetDebugService, this);
-        registerDebugPermissions();
-        ZeusDebugCommand handler = new ZeusDebugCommand(this, packetDebugService);
-        if (PlatformDetector.isPaper() || PlatformDetector.isFolia()) {
-            registerPaperDebugCommand(handler);
-        } else {
-            PluginCommand debugCommand = getCommand("zeusdebug");
-            if (debugCommand == null) {
-                getLogger().warning("[ZeusGateway] /zeusdebug is missing from plugin.yml.");
-            } else {
-                debugCommand.setExecutor(handler);
-                debugCommand.setTabCompleter(handler);
-            }
-        }
-
-        // Initialize everything
-        ZeusLoader loader = new ZeusLoader(this);
-        loader.init();
-
-        getServer().getScheduler().runTaskTimer(this, new ChunkSyncTask(this), 60L, 60L);
-
-        // Start physics capture state poller
-        org.vennv.zeusGateway.listener.packets.PhysicsCaptureManager.start(this);
-
-        getLogger().info(
-            "[ZeusGateway] Plugin enabled successfully on " + platformType + "!");
-    }
-
-    @Override
-    public void onDisable() {
-        if (packetDebugService != null) {
-            packetDebugService.clear();
-        }
-        getLogger().info("[ZeusGateway] Plugin disabled.");
-    }
-
-    private void registerDebugPermissions() {
-        if (getServer().getPluginManager().getPermission("zeusgateway.debug.self") == null) {
-            getServer().getPluginManager().addPermission(new Permission(
-                    "zeusgateway.debug.self",
-                    "View transmitted Zeus packets for yourself",
-                    PermissionDefault.TRUE));
-        }
-        if (getServer().getPluginManager().getPermission("zeusgateway.debug.others") == null) {
-            getServer().getPluginManager().addPermission(new Permission(
-                    "zeusgateway.debug.others",
-                    "View transmitted Zeus packets for another player",
-                    PermissionDefault.OP));
-        }
-    }
-
-    private void registerPaperDebugCommand(ZeusDebugCommand handler) {
-        try {
-            Class<?> registrar = Class.forName(
-                    "org.vennv.zeusGateway.debug.PaperDebugCommandRegistrar");
-            registrar.getMethod("register", ZeusGateway.class, ZeusDebugCommand.class)
-                    .invoke(null, this, handler);
-        } catch (ReflectiveOperationException | LinkageError e) {
-            getLogger().log(Level.WARNING,
-                    "[ZeusGateway] Failed to register /zeusdebug through Paper Command API.", e);
+            target.getClass().getMethod(method, parameterTypes).invoke(target, arguments);
+        } catch (ReflectiveOperationException | LinkageError error) {
+            getLogger().log(Level.WARNING, "[ZeusGateway] Runtime " + method + " failed.", error);
         }
     }
 }

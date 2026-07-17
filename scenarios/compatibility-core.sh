@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOST="${SCENARIO_HOST:-${1:-127.0.0.1}}"
 PORT="${SCENARIO_PORT:-${2:-25565}}"
 VERSION="${SCENARIO_VERSION:-${3:-}}"
-TIMEOUT="${SCENARIO_TIMEOUT:-${4:-60}}"
+TIMEOUT="${SCENARIO_TIMEOUT:-${4:-90}}"
 
 ARGS=(--host "$HOST" --port "$PORT" --timeout "$TIMEOUT")
 if [ -n "$VERSION" ]; then

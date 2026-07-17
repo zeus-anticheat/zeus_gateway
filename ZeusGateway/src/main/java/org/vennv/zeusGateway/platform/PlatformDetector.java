@@ -45,12 +45,17 @@ public final class PlatformDetector {
     }
 
     public static boolean isPaper() {
-        try {
-            Class.forName("io.papermc.paper.event.player.PrePlayerAttackEntityEvent");
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
+        for (String marker : new String[] {
+                "io.papermc.paper.ServerBuildInfo",
+                "com.destroystokyo.paper.PaperConfig"
+        }) {
+            try {
+                Class.forName(marker);
+                return true;
+            } catch (ClassNotFoundException ignored) {
+            }
         }
+        return false;
     }
 
     public static boolean isSpigot() {

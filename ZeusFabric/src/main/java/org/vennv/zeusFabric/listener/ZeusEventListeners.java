@@ -1,7 +1,5 @@
 package org.vennv.zeusFabric.listener;
 
-import java.lang.reflect.Field;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.util.Util;
 
 import java.util.ArrayList;
@@ -12,7 +10,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.fabricmc.fabric.api.entity.event.v1.EntityElytraEvents;
+import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
@@ -23,27 +21,18 @@ import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.entity.PistonBlockEntity;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,9 +40,11 @@ import org.vennv.Effect;
 import org.vennv.EntityState;
 import org.vennv.packets.*;
 import org.vennv.utils.*;
+import org.vennv.zeusFabric.mixins.ServerCommonNetworkHandlerAccessor;
+import org.vennv.zeusFabric.provider.CaptureIdentity;
 import org.vennv.zeusFabric.provider.PacketQueue;
+import org.vennv.zeusFabric.provider.PollingPolicy;
 import org.vennv.zeusFabric.task.PlayerStateSnapshotService;
-import org.vennv.zeusFabric.utils.ItemUtil;
 import org.vennv.zeusFabric.utils.MinecraftCompat;
 
 /**
@@ -97,26 +88,15 @@ public final class ZeusEventListeners {
     private static final Logger LOGGER = LoggerFactory.getLogger("zeusfabric");
     private static final AtomicBoolean CAPTURE_ACTIVE = new AtomicBoolean(false);
     private static final AtomicBoolean CONTROL_PLANE_AVAILABLE = new AtomicBoolean(false);
+    private static final AtomicLong CONTROL_GENERATION = new AtomicLong();
+    private static final AuthoritativeTeleportDedupe TELEPORT_DEDUPE = new AuthoritativeTeleportDedupe();
+    private static volatile Thread captureControlPoller;
 
     private ZeusEventListeners() {}
 
     // ─────────────────────────────────────────────────────────────────────
     //  Tracking maps / caches for detecting state changes per-player
     // ─────────────────────────────────────────────────────────────────────
-
-    /**
-     * Tracks previous held item per player UUID so we can emit
-     * PacketPlayerHeldItem on change.
-     */
-    private static final java.util.Map<String, String> LAST_HELD_HASH =
-        new java.util.concurrent.ConcurrentHashMap<>();
-
-    /**
-     * Tracks previous armor hash per player so we can emit
-     * PacketPlayerArmorsEquipment only on change.
-     */
-    private static final java.util.Map<String, Integer> LAST_ARMOR_HASH =
-        new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * Tracks previous gamemode ordinal per player.
@@ -129,27 +109,6 @@ public final class ZeusEventListeners {
      */
     private static final java.util.Map<String, List<Effect>> LAST_EFFECTS =
         new java.util.concurrent.ConcurrentHashMap<>();
-    private static final java.util.Map<String, Integer> LAST_ENCHANTMENTS_HASH =
-        new java.util.concurrent.ConcurrentHashMap<>();
-
-    /**
-     * Tracks previous position per player for detecting teleports vs moves.
-     */
-    private static final java.util.Map<String, Vec3d> LAST_POSITION =
-        new java.util.concurrent.ConcurrentHashMap<>();
-
-    /**
-     * Tracks sneaking state per player.
-     */
-    private static final java.util.Map<String, Boolean> LAST_SNEAKING =
-        new java.util.concurrent.ConcurrentHashMap<>();
-
-    /**
-     * Tracks sprinting state per player.
-     */
-    private static final java.util.Map<String, Boolean> LAST_SPRINTING =
-        new java.util.concurrent.ConcurrentHashMap<>();
-
     /**
      * Tracks whether player was in a vehicle last tick.
      */
@@ -171,45 +130,6 @@ public final class ZeusEventListeners {
         new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
-     * Tracks flying state (elytra) per player.
-     */
-    private static final java.util.Map<String, Boolean> LAST_GLIDING =
-        new java.util.concurrent.ConcurrentHashMap<>();
-
-    /**
-     * Tracks riptide state per player.
-     */
-    private static final java.util.Map<String, Boolean> LAST_USING_RIPTIDE =
-        new java.util.concurrent.ConcurrentHashMap<>();
-
-    /**
-     * Tracks swimming/crawling pose (Pose.SWIMMING) per player.
-     */
-    private static final java.util.Map<String, Boolean> LAST_SWIMMING =
-        new java.util.concurrent.ConcurrentHashMap<>();
-
-    /**
-     * Tracks the last recorded velocity per player.
-     */
-    private static final java.util.Map<String, Vec3d> LAST_VELOCITY =
-        new java.util.concurrent.ConcurrentHashMap<>();
-    private static final java.util.Map<String, Long> LAST_CAPTURE_NANOS =
-        new java.util.concurrent.ConcurrentHashMap<>();
-
-    /**
-     * Suppresses repeat piston force packets while the same moving block
-     * continues intersecting the player over consecutive ticks.
-     */
-    private static final java.util.Map<String, String> LAST_PISTON_SIGNATURE =
-        new java.util.concurrent.ConcurrentHashMap<>();
-
-    // ─── Reflection fields for independent KeepAlive RTT measurement ────
-
-    private static Field FIELD_WAITING_FOR_KEEP_ALIVE;
-    private static Field FIELD_LAST_KEEP_ALIVE_TIME;
-    private static boolean keepAliveReflectionFailed = false;
-
-    /**
      * Tracks the last observed "waitingForKeepAlive" state per player.
      * When it transitions from true → false, the client responded.
      */
@@ -228,30 +148,6 @@ public final class ZeusEventListeners {
      */
     private static final java.util.Map<String, Long> MEASURED_RTT =
         new java.util.concurrent.ConcurrentHashMap<>();
-
-    static {
-        try {
-            // Yarn-mapped field names for Fabric 1.21+
-            FIELD_WAITING_FOR_KEEP_ALIVE =
-                ServerPlayNetworkHandler.class.getDeclaredField("waitingForKeepAlive");
-            FIELD_WAITING_FOR_KEEP_ALIVE.setAccessible(true);
-
-            FIELD_LAST_KEEP_ALIVE_TIME =
-                ServerPlayNetworkHandler.class.getDeclaredField("lastKeepAliveTime");
-            FIELD_LAST_KEEP_ALIVE_TIME.setAccessible(true);
-
-            LoggerFactory.getLogger("zeusfabric").info(
-                "[ZeusFabric] KeepAlive reflection fields resolved successfully"
-            );
-        } catch (NoSuchFieldException e) {
-            keepAliveReflectionFailed = true;
-            LoggerFactory.getLogger("zeusfabric").warn(
-                "[ZeusFabric] Could not resolve KeepAlive reflection fields: {}. "
-              + "PingSpoof detection will use getLatency() fallback.",
-                e.getMessage()
-            );
-        }
-    }
 
     // ─────────────────────────────────────────────────────────────────────
     //  Registration entry point
@@ -297,14 +193,19 @@ public final class ZeusEventListeners {
             long timestamp = System.currentTimeMillis();
 
             PacketQueue.push(new PacketPlayerLeave(timestamp, uid, name));
-            clearTracking(uid);
+            PlayerStateSnapshotService.remove(uid);
             PlayerStateSnapshotService.clear(uid);
+            TELEPORT_DEDUPE.remove(uid);
+            clearTracking(uid);
 
             LOGGER.debug("[ZeusFabric] Player left: {}", name);
         });
     }
 
-    private static boolean isCaptureActive() {
+    public static boolean isCaptureActive() {
+        if (!CaptureIdentity.hasSharedSalt()) {
+            return false;
+        }
         if (CONTROL_PLANE_AVAILABLE.get()) {
             return CAPTURE_ACTIVE.get();
         }
@@ -313,31 +214,38 @@ public final class ZeusEventListeners {
 
     /** The dashboard is the control plane; the old property-only switch is
      * retained only as a local opt-in fallback when no dashboard is running. */
-    private static void startCaptureControlPoller() {
+    private static synchronized void startCaptureControlPoller() {
+        stopCaptureControlPoller();
+        long generation = CONTROL_GENERATION.incrementAndGet();
         Thread poller = new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
+            while (zeus$isCurrentPoller(generation)) {
+                HttpURLConnection connection = null;
                 try {
                     String host = System.getenv().getOrDefault("ZEUS_DASHBOARD_HOST", "127.0.0.1");
                     String port = System.getenv().getOrDefault("ZEUS_DASHBOARD_PORT", "3000");
                     URL url = new URL("http://" + host + ":" + port + "/api/physics-capture/status");
-                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    connection = (HttpURLConnection) url.openConnection();
                     connection.setConnectTimeout(1500);
                     connection.setReadTimeout(1500);
                     connection.setRequestMethod("GET");
                     if (connection.getResponseCode() == 200) {
                         try (InputStream input = connection.getInputStream()) {
                             String body = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-                            CAPTURE_ACTIVE.set(body.contains("\"active\":true") || body.contains("\"active\": true"));
-                            CONTROL_PLANE_AVAILABLE.set(true);
+                            zeus$publishCaptureState(
+                                generation,
+                                body.contains("\"active\":true") || body.contains("\"active\": true"),
+                                true
+                            );
                         }
                     } else {
-                        CAPTURE_ACTIVE.set(false);
-                        CONTROL_PLANE_AVAILABLE.set(false);
+                        zeus$publishCaptureState(generation, false, false);
                     }
-                    connection.disconnect();
                 } catch (Exception ignored) {
-                    CAPTURE_ACTIVE.set(false);
-                    CONTROL_PLANE_AVAILABLE.set(false);
+                    zeus$publishCaptureState(generation, false, false);
+                } finally {
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
                 }
                 try {
                     Thread.sleep(5000L);
@@ -347,30 +255,94 @@ public final class ZeusEventListeners {
             }
         }, "ZeusFabric-CaptureControl");
         poller.setDaemon(true);
+        captureControlPoller = poller;
         poller.start();
+    }
+
+    private static boolean zeus$isCurrentPoller(long generation) {
+        return !Thread.currentThread().isInterrupted()
+            && PollingPolicy.isCurrentGeneration(generation, CONTROL_GENERATION.get())
+            && captureControlPoller == Thread.currentThread();
+    }
+
+    private static void zeus$publishCaptureState(long generation, boolean active, boolean available) {
+        if (zeus$isCurrentPoller(generation)) {
+            CAPTURE_ACTIVE.set(active);
+            CONTROL_PLANE_AVAILABLE.set(available);
+        }
+    }
+
+    public static synchronized void stopCaptureControlPoller() {
+        Thread poller = captureControlPoller;
+        CONTROL_GENERATION.incrementAndGet();
+        captureControlPoller = null;
+        CAPTURE_ACTIVE.set(false);
+        CONTROL_PLANE_AVAILABLE.set(false);
+        if (poller != null) {
+            poller.interrupt();
+            if (poller != Thread.currentThread()) {
+                try {
+                    poller.join(3500L);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        CAPTURE_ACTIVE.set(false);
+        CONTROL_PLANE_AVAILABLE.set(false);
     }
 
     // ─────────────────────── World Change ────────────────────────────────
     
     private static void registerWorldChange() {
-        ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> {
-            String uid = player.getUuidAsString();
-            String name = player.getName().getString();
-            long timestamp = System.currentTimeMillis();
+        ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) ->
+            authoritativeTeleport(player, AuthoritativeTeleportDedupe.Source.WORLD_CHANGE, player.age));
+    }
 
-            net.minecraft.util.math.Vec3d pos = positionOf(player);
+    public static void authoritativeTeleport(
+            ServerPlayerEntity player, double destX, double destY, double destZ, long lifecycleKey) {
+        authoritativeTeleport(player, destX, destY, destZ,
+                AuthoritativeTeleportDedupe.Source.OUTBOUND, lifecycleKey);
+    }
 
-            PacketQueue.push(
-                new PacketPlayerTeleport(
-                    timestamp,
-                    uid,
-                    name,
-                    pos.x,
-                    pos.y,
-                    pos.z
-                )
-            );
-        });
+    private static void authoritativeTeleport(
+            ServerPlayerEntity player,
+            AuthoritativeTeleportDedupe.Source source,
+            long lifecycleKey) {
+        authoritativeTeleport(player, player.getX(), player.getY(), player.getZ(), source, lifecycleKey);
+    }
+
+    private static void authoritativeTeleport(
+            ServerPlayerEntity player,
+            double destX,
+            double destY,
+            double destZ,
+            AuthoritativeTeleportDedupe.Source source,
+            long lifecycleKey) {
+        World world = MinecraftCompat.entityWorld(player);
+        if (world == null) {
+            return;
+        }
+        if (!TELEPORT_DEDUPE.shouldEmit(
+                player.getUuidAsString(),
+                world.getRegistryKey().getValue().toString(),
+                destX,
+                destY,
+                destZ,
+                player.age,
+                source,
+                lifecycleKey)) {
+            return;
+        }
+        PacketQueue.push(new PacketPlayerTeleport(
+                System.currentTimeMillis(),
+                player.getUuidAsString(),
+                player.getName().getString(),
+                destX,
+                destY,
+                destZ));
+        PlayerStateSnapshotService.invalidate(player);
+        PlayerStateSnapshotService.sendResyncSnapshot(player);
     }
 
     // ─────────────────── Attack Entity ───────────────────────────────────
@@ -487,13 +459,6 @@ public final class ZeusEventListeners {
                 new PacketPlayerBlockChangeAck(timestamp, uid, name)
             );
 
-            // PacketBlockChangeEvent — track world state for CompensatedWorld
-            String blockType = world.getBlockState(pos).toString();
-            PacketQueue.push(new PacketBlockChangeEvent(
-                timestamp, uid, name,
-                pos.getX(), pos.getY(), pos.getZ(),
-                blockType, (byte) 0x00));
-
             return ActionResult.PASS;
         });
     }
@@ -597,11 +562,6 @@ public final class ZeusEventListeners {
                     new PacketPlayerBlockChangeAck(timestamp, uid, name)
                 );
 
-                // PacketBlockChangeEvent — block was removed (AIR)
-                PacketQueue.push(new PacketBlockChangeEvent(
-                    timestamp, uid, name,
-                    pos.getX(), pos.getY(), pos.getZ(),
-                    "AIR", (byte) 0x00));
             }
         );
     }
@@ -699,6 +659,8 @@ public final class ZeusEventListeners {
                 PacketQueue.push(
                     new PacketPlayerRespawn(timestamp, uid, name)
                 );
+                PlayerStateSnapshotService.invalidate(newPlayer);
+                PlayerStateSnapshotService.sendResyncSnapshot(newPlayer);
             }
         );
     }
@@ -740,347 +702,20 @@ public final class ZeusEventListeners {
         // ── Keep Alive (piggyback on tick) ──
         tickKeepAlive(player, uid, name, timestamp);
 
-        // ── Schema-v3 physics capture (one shared Gateway/Fabric contract) ──
-        tickPhysicsCapture(player, uid, name, timestamp);
-
-        // ── Held Item ──
-        PlayerStateSnapshotService.sendHeldItemSnapshot(player, false);
-
-        // ── Armor Equipment ──
-        PlayerStateSnapshotService.sendArmorSnapshot(player, false);
-
         // ── Game Mode ──
         tickGameMode(player, uid, name, timestamp);
 
         // ── Potion Effects ──
         tickEffects(player, uid, name, timestamp);
 
-        // ── Enchantments & Attributes ──
-        PlayerStateSnapshotService.sendEnchantmentsSnapshot(player, false);
-
-        // ── Sneaking / Sprinting / Commands ──
-        tickPlayerCommands(player, uid, name, timestamp);
-
         // ── Vehicle ──
         tickVehicle(player, uid, name, timestamp);
 
         // ── Screen handler (Open/Close Window) ──
         tickScreenHandler(player, uid, name, timestamp);
-
-        // ── Block Ray Trace ──
-        tickBlockRayTrace(player, uid, name, timestamp);
-
-        // ── Velocity ──
-        tickVelocity(player, uid, name, timestamp);
-
-        // ── Environmental external force ──
-        tickEnvironmentForces(player, uid, name, timestamp);
-    }
-
-    // ─────────────────────── Position ───────────────────────────────────
-
-    private static void tickPosition(
-        ServerPlayerEntity player,
-        String uid,
-        String name,
-        long timestamp
-    ) {
-        Vec3d pos = positionOf(player);
-        Vec3d lastPos = LAST_POSITION.get(uid);
-
-        // Only send when position actually changed
-        if (lastPos != null && lastPos.squaredDistanceTo(pos) < 0.000001) {
-            return;
-        }
-
-        LAST_POSITION.put(uid, pos);
-
-        double eyeX = pos.x;
-        double eyeY = pos.y + (double) player.getStandingEyeHeight();
-        double eyeZ = pos.z;
-        float yaw = player.getYaw();
-        float pitch = player.getPitch();
-        float height = player.getHeight();
-        boolean onGround = player.isOnGround();
-
-        // Detect teleports: if distance > 8 blocks in a single tick
-        boolean isTeleport =
-            lastPos != null && lastPos.squaredDistanceTo(pos) > 64.0;
-
-        if (isTeleport) {
-            PacketQueue.push(
-                new PacketPlayerTeleport(
-                    timestamp,
-                    uid,
-                    name,
-                    pos.x,
-                    pos.y,
-                    pos.z
-                )
-            );
-        }
-
-        PacketQueue.push(
-            new PacketPlayerPosition(
-                timestamp,
-                uid,
-                name,
-                false,
-                pos.x,
-                pos.y,
-                pos.z,
-                eyeX,
-                eyeY,
-                eyeZ,
-                yaw,
-                pitch,
-                height,
-                onGround
-            )
-        );
-    }
-
-    private static void tickPhysicsCapture(
-        ServerPlayerEntity player,
-        String uid,
-        String name,
-        long timestamp
-    ) {
-        // Capture is opt-in.  Dashboard control wins whenever reachable; the
-        // legacy property is only a local fallback while the dashboard is
-        // unavailable.
-        if (!isCaptureActive()) {
-            return;
-        }
-        Vec3d pos = positionOf(player);
-        Vec3d previous = LAST_POSITION.get(uid);
-        Vec3d velocity = player.getVelocity();
-        Vec3d previousVelocity = LAST_VELOCITY.get(uid);
-        long now = System.nanoTime();
-        Long previousNanos = LAST_CAPTURE_NANOS.put(uid, now);
-        float tickDuration = previousNanos == null
-            ? Float.NaN
-            : (now - previousNanos) / 1_000_000.0f;
-        float baseSpeed;
-        try {
-            baseSpeed = (float) player.getAttributeValue(
-                net.minecraft.entity.attribute.EntityAttributes.MOVEMENT_SPEED);
-        } catch (Throwable ignored) {
-            baseSpeed = Float.NaN;
-        }
-
-        Vec3d delta = previous == null ? Vec3d.ZERO : pos.subtract(previous);
-        BlockState state = MinecraftCompat.entityWorld(player).getBlockState(player.getBlockPos());
-        String blockId = Registries.BLOCK.getId(state.getBlock()).toString();
-        String properties = state.toString();
-        String dimension = MinecraftCompat.entityWorld(player).getRegistryKey().getValue().toString();
-        boolean inWater = player.isTouchingWater();
-        boolean inLava = player.isInLava();
-        String effects = player.getStatusEffects().stream()
-            .map(effect -> Registries.STATUS_EFFECT.getId(effect.getEffectType().value()).toString()
-                + "=" + (effect.getAmplifier() + 1))
-            .sorted()
-            .collect(java.util.stream.Collectors.joining(","));
-        boolean mounted = player.hasVehicle();
-        Entity vehicle = player.getVehicle();
-        long vehicleId = vehicle == null ? 0L : vehicle.getId();
-        String vehicleType = vehicle == null ? "" : Registries.ENTITY_TYPE.getId(vehicle.getType()).toString();
-        int flags = 0;
-        if (player.isOnGround()) flags |= 0x0001;
-        if (player.isSprinting()) flags |= 0x0002;
-        if (player.isSneaking()) flags |= 0x0008;
-        if (player.isGliding()) flags |= 0x0020;
-        if (mounted) flags |= 0x1000;
-        long unknownMask = (1L << 5) | (1L << 6) | (1L << 7) | (1L << 8);
-        if (Float.isNaN(baseSpeed)) unknownMask |= 1L << 3;
-        if (previous == null) unknownMask |= 1L << 1;
-        if (previousVelocity == null) unknownMask |= 1L << 2;
-        if (Float.isNaN(tickDuration)) unknownMask |= 1L << 11;
-        int serverProtocol = serverProtocol(org.vennv.zeusFabric.ZeusFabricMod.getServer().getVersion());
-        String physicsFingerprint = System.getProperty("zeus.physics.fingerprint", "vanilla");
-        String bodyFluid = inWater ? "water" : inLava ? "lava" : "";
-        String eyeFluid = inWater && player.getEyeY() < MinecraftCompat.entityWorld(player).getSeaLevel()
-            ? "water" : "";
-
-        PacketQueue.push(new PacketPhysicsCaptureSample(
-            timestamp, player.age, serverProtocol, PacketPhysicsCaptureSample.UNKNOWN_U16,
-            org.vennv.zeusFabric.ZeusFabricMod.getServer().getVersion(), "unknown", "fabric", "fabric",
-            physicsFingerprint, physicsFingerprint,
-            captureSubjectId(player), translationBehaviorFingerprint(), "fabric",
-            hashPlayer(player),
-            pos.x, pos.y, pos.z,
-            (float) delta.x, (float) delta.y, (float) delta.z,
-            previousVelocity == null ? Float.NaN : (float) previousVelocity.x,
-            previousVelocity == null ? Float.NaN : (float) previousVelocity.y,
-            previousVelocity == null ? Float.NaN : (float) previousVelocity.z,
-            (float) velocity.x, (float) velocity.y, (float) velocity.z, baseSpeed,
-            flags, 0, flags,
-            0xffff, 0xffff, (byte) 0,
-            blockId, properties, state.toString(), "unknown", Float.NaN, Float.NaN,
-            inWater, false, inLava, inWater ? "water" : inLava ? "lava" : "air",
-            Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, bodyFluid, eyeFluid,
-            effects, baseSpeed, Float.NaN, (byte) 0, (byte) 0,
-            mounted, vehicleType, vehicleId, 0,
-            false, "", Float.NaN, Float.NaN, Float.NaN, 0L, 0,
-            tickDuration, Float.NaN, (byte) 0, 0, unknownMask, (byte) 0xff
-        ));
-    }
-
-    private static int serverProtocol(String version) {
-        if (version == null) return PacketPhysicsCaptureSample.UNKNOWN_U16;
-        if (version.contains("1.21.6")) return 771;
-        if (version.contains("1.21.5")) return 770;
-        if (version.contains("1.21.4")) return 769;
-        if (version.contains("1.21.2") || version.contains("1.21.3")) return 768;
-        if (version.contains("1.21")) return 767;
-        return PacketPhysicsCaptureSample.UNKNOWN_U16;
-    }
-
-    private static long hashPlayer(ServerPlayerEntity player) {
-        long hash = 0xcbf29ce484222325L;
-        for (byte value : player.getUuidAsString().getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
-            hash ^= value & 0xff;
-            hash *= 0x100000001b3L;
-        }
-        return hash;
-    }
-
-    private static String captureSubjectId(ServerPlayerEntity player) {
-        String salt = System.getenv().getOrDefault("ZEUS_CAPTURE_SUBJECT_SALT", "zeus-capture-subject-v1");
-        long hash = 0xcbf29ce484222325L;
-        byte[] bytes = (salt + ":" + player.getUuidAsString()).getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        for (byte value : bytes) {
-            hash ^= value & 0xffL;
-            hash *= 0x100000001b3L;
-        }
-        return "subject-" + String.format(java.util.Locale.ROOT, "%016x", hash);
-    }
-
-    private static String translationBehaviorFingerprint() {
-        return System.getenv().getOrDefault("ZEUS_TRANSLATION_BEHAVIOR_FINGERPRINT", "");
-    }
-
-    // ─────────────────────── Velocity ─────────────────────────────────────
-
-    private static void tickVelocity(
-        ServerPlayerEntity player,
-        String uid,
-        String name,
-        long timestamp
-    ) {
-        Vec3d vel = player.getVelocity();
-        Vec3d lastVel = LAST_VELOCITY.get(uid);
-
-        if (lastVel != null && lastVel.squaredDistanceTo(vel) < 1e-6) {
-            return;
-        }
-
-        LAST_VELOCITY.put(uid, vel);
-
-        PacketQueue.push(
-            new PacketPlayerVelocity(
-                timestamp,
-                uid,
-                name,
-                vel.x,
-                vel.y,
-                vel.z
-            )
-        );
-    }
-
-    private static void tickEnvironmentForces(
-        ServerPlayerEntity player,
-        String uid,
-        String name,
-        long timestamp
-    ) {
-        if (emitPistonForce(player, uid)) {
-            PlayerStateSnapshotService.sendPositionAndBlocksSnapshot(player);
-        }
-
-        BlockState feet = MinecraftCompat.entityWorld(player).getBlockState(player.getBlockPos());
-        String state = feet.toString();
-        Vec3d velocity = player.getVelocity();
-        if (state.contains("bubble_column") && Math.abs(velocity.y) > 0.02) {
-            emitExternalForce(
-                player,
-                ExternalForceType.BUBBLE_COLUMN,
-                positionOf(player),
-                new Vec3d(0.0, Math.signum(velocity.y), 0.0),
-                velocity,
-                Math.max(0.1, Math.abs(velocity.y)),
-                (short) 20,
-                ExternalForceFlags.ENVIRONMENT_BACKED
-            );
-        }
-    }
-
-    private static boolean emitPistonForce(ServerPlayerEntity player, String uid) {
-        Box playerBox = player.getBoundingBox();
-        Box searchBox = playerBox.expand(1.25);
-
-        for (BlockPos pos : BlockPos.iterate(searchBox)) {
-            BlockState state = MinecraftCompat.entityWorld(player).getBlockState(pos);
-            if (!state.isOf(Blocks.MOVING_PISTON)) {
-                continue;
-            }
-            if (!(MinecraftCompat.entityWorld(player).getBlockEntity(pos) instanceof PistonBlockEntity piston)) {
-                continue;
-            }
-
-            Direction movement = piston.getMovementDirection();
-            Box sweptBox = new Box(pos)
-                .union(new Box(pos.offset(movement.getOpposite())))
-                .expand(0.05);
-            if (!sweptBox.intersects(playerBox)) {
-                continue;
-            }
-
-            BlockState pushedBlock = piston.getPushedBlock();
-            ExternalForceType type = ExternalForceType.PISTON;
-            int flags = ExternalForceFlags.DIRECT_INTERSECT | ExternalForceFlags.ENVIRONMENT_BACKED;
-            if (pushedBlock.isOf(Blocks.SLIME_BLOCK)) {
-                type = ExternalForceType.SLIME_PISTON;
-                flags |= ExternalForceFlags.HAS_SLIME;
-            } else if (pushedBlock.isOf(Blocks.HONEY_BLOCK)) {
-                flags |= ExternalForceFlags.HAS_HONEY;
-            }
-            if (!piston.isExtending()) {
-                flags |= ExternalForceFlags.RETRACTING;
-            }
-
-            String signature = pos.asLong() + ":" + movement + ":" + flags;
-            if (signature.equals(LAST_PISTON_SIGNATURE.put(uid, signature))) {
-                return false;
-            }
-
-            Vec3d direction = new Vec3d(
-                movement.getOffsetX(),
-                movement.getOffsetY(),
-                movement.getOffsetZ()
-            );
-            emitExternalForce(
-                player,
-                type,
-                Vec3d.ofCenter(pos),
-                direction,
-                player.getVelocity(),
-                type == ExternalForceType.SLIME_PISTON ? 1.0 : 0.51,
-                (short) (type == ExternalForceType.SLIME_PISTON ? 30 : 15),
-                flags
-            );
-            return true;
-        }
-
-        LAST_PISTON_SIGNATURE.remove(uid);
-        return false;
     }
 
     // ─────────────────────── Keep Alive ─────────────────────────────────
-
-    /** We send keep-alive packets once every second (20 ticks). */
-    private static int keepAliveCounter = 0;
 
     private static void tickKeepAlive(
         ServerPlayerEntity player,
@@ -1088,42 +723,26 @@ public final class ZeusEventListeners {
         String name,
         long timestamp
     ) {
-        // ── Independent RTT measurement via reflection ──
-        // Every tick: check if "waitingForKeepAlive" transitioned true→false
-        // which means the client just responded. At that moment, calculate
-        // the real RTT = now - lastKeepAliveTime (when server sent the probe).
-        if (!keepAliveReflectionFailed) {
-            try {
-                ServerPlayNetworkHandler handler = player.networkHandler;
-                boolean waiting = FIELD_WAITING_FOR_KEEP_ALIVE.getBoolean(handler);
-                long sentTime = FIELD_LAST_KEEP_ALIVE_TIME.getLong(handler);
-
-                Boolean wasWaiting = LAST_WAITING_STATE.get(uid);
-
-                if (waiting && (wasWaiting == null || !wasWaiting)) {
-                    // Server just sent a new KeepAlive probe → record the send time
-                    KA_SENT_TIME.put(uid, sentTime);
-                } else if (!waiting && wasWaiting != null && wasWaiting) {
-                    // Client just responded → calculate real RTT
-                    Long recordedSentTime = KA_SENT_TIME.get(uid);
-                    if (recordedSentTime != null) {
-                        long now = Util.getMeasuringTimeMs();
-                        long measuredRtt = now - recordedSentTime;
-                        if (measuredRtt >= 0 && measuredRtt < 30_000) {
-                            MEASURED_RTT.put(uid, measuredRtt);
-                        }
-                    }
+        ServerCommonNetworkHandlerAccessor handler =
+            (ServerCommonNetworkHandlerAccessor) player.networkHandler;
+        boolean waiting = handler.zeus$isWaitingForKeepAlive();
+        long sentTime = handler.zeus$getLastKeepAliveTime();
+        Boolean wasWaiting = LAST_WAITING_STATE.get(uid);
+        if (waiting && (wasWaiting == null || !wasWaiting)) {
+            KA_SENT_TIME.put(uid, sentTime);
+        } else if (!waiting && Boolean.TRUE.equals(wasWaiting)) {
+            Long recordedSentTime = KA_SENT_TIME.get(uid);
+            if (recordedSentTime != null) {
+                long measuredRtt = Util.getMeasuringTimeMs() - recordedSentTime;
+                if (measuredRtt >= 0 && measuredRtt < 30_000) {
+                    MEASURED_RTT.put(uid, measuredRtt);
                 }
-
-                LAST_WAITING_STATE.put(uid, waiting);
-            } catch (Exception e) {
-                // Silently ignore — fallback to getLatency()
             }
         }
+        LAST_WAITING_STATE.put(uid, waiting);
 
         // ── Send KeepAlive packet every 20 ticks (1 second) ──
-        keepAliveCounter++;
-        if (keepAliveCounter % 20 != 0) {
+        if (!PollingPolicy.shouldSendKeepAlive(player.age)) {
             return;
         }
 
@@ -1132,60 +751,6 @@ public final class ZeusEventListeners {
 
         // Send the independently measured RTT (or server ping as fallback)
         PacketQueue.push(new PacketPlayerKeepAlive(timestamp, uid, name, measuredPing));
-    }
-
-    // ─────────────────────── Held Item ──────────────────────────────────
-
-    private static void tickHeldItem(
-        ServerPlayerEntity player,
-        String uid,
-        String name,
-        long timestamp
-    ) {
-        ItemStack stack = MinecraftCompat.selectedStack(player);
-        Item item = buildItem(stack);
-        String currentHash = item.toString();
-        String lastHash = LAST_HELD_HASH.get(uid);
-
-        if (currentHash.equals(lastHash)) {
-            return;
-        }
-
-        LAST_HELD_HASH.put(uid, currentHash);
-
-        PacketQueue.push(new PacketPlayerHeldItem(timestamp, uid, name, item));
-    }
-
-    // ─────────────────────── Armor ──────────────────────────────────────
-
-    private static void tickArmor(
-        ServerPlayerEntity player,
-        String uid,
-        String name,
-        long timestamp
-    ) {
-        int currentHash = computeArmorHash(player);
-        Integer lastHash = LAST_ARMOR_HASH.get(uid);
-
-        if (lastHash != null && lastHash == currentHash) {
-            return;
-        }
-
-        LAST_ARMOR_HASH.put(uid, currentHash);
-
-        Armor helmet = buildArmor(player.getEquippedStack(EquipmentSlot.HEAD));
-        Armor chestplate = buildArmor(
-            player.getEquippedStack(EquipmentSlot.CHEST)
-        );
-        Armor leggings = buildArmor(
-            player.getEquippedStack(EquipmentSlot.LEGS)
-        );
-        Armor boots = buildArmor(player.getEquippedStack(EquipmentSlot.FEET));
-
-        Armors armors = new Armors(helmet, chestplate, leggings, boots);
-        PacketQueue.push(
-            new PacketPlayerArmorsEquipment(timestamp, uid, name, armors)
-        );
     }
 
     // ─────────────────────── Game Mode ──────────────────────────────────
@@ -1296,147 +861,6 @@ public final class ZeusEventListeners {
         return true;
     }
 
-    private static void tickEnchantments(
-        ServerPlayerEntity player,
-        String uid,
-        String name,
-        long timestamp
-    ) {
-        java.util.List<org.vennv.utils.Enchantment> currentEnchantments = new java.util.ArrayList<>();
-        
-        // Loop through all equipped items (main hand, off hand, armor)
-        for (net.minecraft.item.ItemStack itemStack : equippedItems(player)) {
-            if (itemStack.isEmpty() || !itemStack.hasEnchantments()) continue;
-            
-            net.minecraft.component.type.ItemEnchantmentsComponent enchantmentsComponent = itemStack.getEnchantments();
-            java.util.Set<net.minecraft.registry.entry.RegistryEntry<net.minecraft.enchantment.Enchantment>> enchantmentsSet = enchantmentsComponent.getEnchantments();
-            for (net.minecraft.registry.entry.RegistryEntry<net.minecraft.enchantment.Enchantment> registryEntry : enchantmentsSet) {
-                int level = enchantmentsComponent.getLevel(registryEntry);
-                String enchantName = "unknown";
-                if (registryEntry.getKey().isPresent()) {
-                    enchantName = registryEntry.getKey().get().getValue().getPath();
-                }
-                currentEnchantments.add(new org.vennv.utils.Enchantment(enchantName, (byte) level));
-            }
-        }
-        
-        // Get entity interaction range (new attribute in Minecraft 1.21.2+)
-        float entityInteractionRange = 3.0f; // Default vanilla
-        if (player.getAttributes().hasAttribute(net.minecraft.entity.attribute.EntityAttributes.ENTITY_INTERACTION_RANGE)) {
-            entityInteractionRange = (float) player.getAttributeValue(net.minecraft.entity.attribute.EntityAttributes.ENTITY_INTERACTION_RANGE);
-        }
-
-        // Include knockback resistance attribute as an enchantment entry
-        if (player.getAttributes().hasAttribute(net.minecraft.entity.attribute.EntityAttributes.KNOCKBACK_RESISTANCE)) {
-            double kbResistance = player.getAttributeValue(net.minecraft.entity.attribute.EntityAttributes.KNOCKBACK_RESISTANCE);
-            if (kbResistance > 0.0) {
-                currentEnchantments.add(new org.vennv.utils.Enchantment(
-                    "generic.knockback_resistance",
-                    (byte) Math.round(kbResistance * 10) // 0.1 per Netherite piece → level 1-4
-                ));
-            }
-        }
-
-        // Hash both the enchantments and the reach value 
-        int currentHash = currentEnchantments.hashCode() ^ Float.hashCode(entityInteractionRange);
-
-        Integer lastHash = LAST_ENCHANTMENTS_HASH.get(uid);
-
-        if (lastHash == null || !lastHash.equals(currentHash)) {
-            PacketQueue.push(
-                new org.vennv.packets.PacketPlayerEnchantments(timestamp, uid, name, currentEnchantments, entityInteractionRange)
-            );
-
-            LAST_ENCHANTMENTS_HASH.put(uid, currentHash);
-
-            org.vennv.zeusFabric.ZeusFabricMod.LOGGER.debug(
-                "[ZeusFabric] {} change enchantments/reach -> hash:{}",
-                name,
-                currentHash
-            );
-        }
-    }
-
-    // ──────────────── Sneaking / Sprinting / Commands ──────────────────
-
-    private static void tickPlayerCommands(
-        ServerPlayerEntity player,
-        String uid,
-        String name,
-        long timestamp
-    ) {
-        // Sneaking
-        boolean sneaking = player.isSneaking();
-        Boolean wasSneaking = LAST_SNEAKING.get(uid);
-        if (wasSneaking == null || wasSneaking != sneaking) {
-            LAST_SNEAKING.put(uid, sneaking);
-            ServerBoundPlayerCommandActions action = sneaking
-                ? ServerBoundPlayerCommandActions.START_SNEAKING
-                : ServerBoundPlayerCommandActions.STOP_SNEAKING;
-            PacketQueue.push(
-                new PacketServerBoundPlayerCommand(timestamp, uid, name, action)
-            );
-        }
-
-        // Sprinting
-        boolean sprinting = player.isSprinting();
-        Boolean wasSprinting = LAST_SPRINTING.get(uid);
-        if (wasSprinting == null || wasSprinting != sprinting) {
-            LAST_SPRINTING.put(uid, sprinting);
-            ServerBoundPlayerCommandActions action = sprinting
-                ? ServerBoundPlayerCommandActions.START_SPRINTING
-                : ServerBoundPlayerCommandActions.STOP_SPRINTING;
-            PacketQueue.push(
-                new PacketServerBoundPlayerCommand(timestamp, uid, name, action)
-            );
-        }
-
-        // Elytra flying
-        boolean gliding = player.isGliding();
-        Boolean wasGliding = LAST_GLIDING.get(uid);
-        if (wasGliding == null || wasGliding != gliding) {
-            LAST_GLIDING.put(uid, gliding);
-            ServerBoundPlayerCommandActions action = gliding
-                ? ServerBoundPlayerCommandActions.START_FALL_FLYING
-                : ServerBoundPlayerCommandActions.STOP_FALL_FLYING;
-            PacketQueue.push(
-                new PacketServerBoundPlayerCommand(timestamp, uid, name, action)
-            );
-        }
-
-        // Riptide
-        boolean usingRiptide = player.isUsingRiptide();
-        Boolean wasUsingRiptide = LAST_USING_RIPTIDE.get(uid);
-        if (wasUsingRiptide == null || wasUsingRiptide != usingRiptide) {
-            LAST_USING_RIPTIDE.put(uid, usingRiptide);
-            ServerBoundPlayerCommandActions action = usingRiptide
-                ? ServerBoundPlayerCommandActions.START_RIPTIDE
-                : ServerBoundPlayerCommandActions.STOP_RIPTIDE;
-            PacketQueue.push(
-                new PacketServerBoundPlayerCommand(timestamp, uid, name, action)
-            );
-        }
-
-        // Swimming/Crawling pose (Pose.SWIMMING covers both swimming in water and crawling on land)
-        boolean swimming = (player.getPose() == net.minecraft.entity.EntityPose.SWIMMING);
-        Boolean wasSwimming = LAST_SWIMMING.get(uid);
-        if (wasSwimming == null || wasSwimming != swimming) {
-            LAST_SWIMMING.put(uid, swimming);
-            ServerBoundPlayerCommandActions action = swimming
-                ? ServerBoundPlayerCommandActions.START_SWIMMING
-                : ServerBoundPlayerCommandActions.STOP_SWIMMING;
-            PacketQueue.push(
-                new PacketServerBoundPlayerCommand(timestamp, uid, name, action)
-            );
-        }
-
-        // Sleeping
-        if (player.isSleeping()) {
-            // Sleeping is tracked but we only care about STOP_SLEEPING
-            // which we'll pick up when the player is no longer sleeping.
-        }
-    }
-
     // ─────────────────────── Vehicle ────────────────────────────────────
 
     private static void tickVehicle(
@@ -1500,38 +924,6 @@ public final class ZeusEventListeners {
                     vehicle.getPitch()
                 )
             );
-
-            // Steer vehicle — derive from movement delta (best-effort)
-            double dx = vehiclePos.x - lastVehiclePos.x;
-            double dz = vehiclePos.z - lastVehiclePos.z;
-
-            float yawRad = (float) Math.toRadians(player.getYaw());
-            float sinYaw = (float) Math.sin(yawRad);
-            float cosYaw = (float) Math.cos(yawRad);
-
-            // Project world-space delta onto player-local forward/strafe axes
-            float forward = (float) (-dx * sinYaw + dz * cosYaw);
-            float sideway = (float) (dx * cosYaw + dz * sinYaw);
-
-            // Clamp to [-1, 1] range
-            forward = Math.max(-1f, Math.min(1f, forward * 5f));
-            sideway = Math.max(-1f, Math.min(1f, sideway * 5f));
-
-            boolean jump =
-                vehicle.isOnGround() && vehiclePos.y > lastVehiclePos.y + 0.1;
-            boolean unmount = false;
-
-            PacketQueue.push(
-                new PacketPlayerSteerVehicle(
-                    timestamp,
-                    uid,
-                    name,
-                    sideway,
-                    forward,
-                    jump,
-                    unmount
-                )
-            );
         }
 
         LAST_VEHICLE_POS.put(uid, vehiclePos);
@@ -1573,77 +965,6 @@ public final class ZeusEventListeners {
         // Confirm transaction — synthesize for any click in a container
         // This is handled implicitly since modern MC (1.17+) uses state IDs
         // rather than transaction confirmation packets.
-    }
-
-    // ──────────────────── Block Ray Trace ───────────────────────────────
-
-    /** Only emit ray-trace packets every 4 ticks to reduce spam. */
-    private static int rayTraceCounter = 0;
-
-    private static void tickBlockRayTrace(
-        ServerPlayerEntity player,
-        String uid,
-        String name,
-        long timestamp
-    ) {
-        rayTraceCounter++;
-        if (rayTraceCounter % 4 != 0) {
-            return;
-        }
-
-        try {
-            Vec3d eyePos = player.getEyePos();
-            Vec3d lookVec = player.getRotationVec(1.0f);
-            Vec3d endPos = eyePos.add(lookVec.multiply(5.0));
-
-            ServerWorld world = (ServerWorld) MinecraftCompat.entityWorld(player);
-            BlockHitResult hitResult = world.raycast(
-                new RaycastContext(
-                    eyePos,
-                    endPos,
-                    RaycastContext.ShapeType.OUTLINE,
-                    RaycastContext.FluidHandling.NONE,
-                    player
-                )
-            );
-
-            boolean hitBlock = hitResult.getType() == HitResult.Type.BLOCK;
-            int blockX = 0,
-                blockY = 0,
-                blockZ = 0;
-            float hitX = 0,
-                hitY = 0,
-                hitZ = 0;
-
-            if (hitBlock) {
-                BlockPos blockPos = hitResult.getBlockPos();
-                blockX = blockPos.getX();
-                blockY = blockPos.getY();
-                blockZ = blockPos.getZ();
-
-                Vec3d hitPos = hitResult.getPos();
-                hitX = (float) hitPos.x;
-                hitY = (float) hitPos.y;
-                hitZ = (float) hitPos.z;
-            }
-
-            PacketQueue.push(
-                new PacketPlayerBlockRayTrace(
-                    timestamp,
-                    uid,
-                    name,
-                    hitBlock,
-                    blockX,
-                    blockY,
-                    blockZ,
-                    hitX,
-                    hitY,
-                    hitZ
-                )
-            );
-        } catch (Exception ignored) {
-            // Raycasting can fail if the world/chunk is not loaded
-        }
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -1744,72 +1065,15 @@ public final class ZeusEventListeners {
     }
 
     private static void clearTracking(String uid) {
-        LAST_HELD_HASH.remove(uid);
-        LAST_ARMOR_HASH.remove(uid);
         LAST_GAMEMODE.remove(uid);
         LAST_EFFECTS.remove(uid);
-        LAST_ENCHANTMENTS_HASH.remove(uid);
-        LAST_POSITION.remove(uid);
-        LAST_SNEAKING.remove(uid);
-        LAST_SPRINTING.remove(uid);
         LAST_IN_VEHICLE.remove(uid);
         LAST_IN_BOAT.remove(uid);
         LAST_VEHICLE_POS.remove(uid);
         LAST_SCREEN_HANDLER.remove(uid);
-        LAST_GLIDING.remove(uid);
-        LAST_USING_RIPTIDE.remove(uid);
-        LAST_SWIMMING.remove(uid);
-        LAST_VELOCITY.remove(uid);
-        LAST_CAPTURE_NANOS.remove(uid);
-        LAST_PISTON_SIGNATURE.remove(uid);
         LAST_WAITING_STATE.remove(uid);
         KA_SENT_TIME.remove(uid);
         MEASURED_RTT.remove(uid);
-    }
-
-    private static List<net.minecraft.item.ItemStack> equippedItems(ServerPlayerEntity player) {
-        return List.of(
-            player.getMainHandStack(),
-            player.getOffHandStack(),
-            player.getEquippedStack(EquipmentSlot.HEAD),
-            player.getEquippedStack(EquipmentSlot.CHEST),
-            player.getEquippedStack(EquipmentSlot.LEGS),
-            player.getEquippedStack(EquipmentSlot.FEET)
-        );
-    }
-
-    /**
-     * Builds a Zeus {@link Item} from a Minecraft {@link ItemStack}.
-     */
-    private static Item buildItem(ItemStack stack) {
-        return ItemUtil.item(stack);
-    }
-
-    /**
-     * Builds a Zeus {@link Armor} from a Minecraft armor {@link ItemStack}.
-     *
-     * @return the Armor object, or {@code null} if the slot is empty.
-     */
-    private static Armor buildArmor(ItemStack stack) {
-        return ItemUtil.armor(stack);
-    }
-
-    /**
-     * Computes a hash of the player's current armor for change detection.
-     */
-    private static int computeArmorHash(ServerPlayerEntity player) {
-        int hash = 17;
-        for (EquipmentSlot slot : new EquipmentSlot[] {
-            EquipmentSlot.HEAD,
-            EquipmentSlot.CHEST,
-            EquipmentSlot.LEGS,
-            EquipmentSlot.FEET,
-        }) {
-            ItemStack stack = player.getEquippedStack(slot);
-            hash =
-                31 * hash + (stack.isEmpty() ? 0 : ItemStack.hashCode(stack));
-        }
-        return hash;
     }
 
     /**

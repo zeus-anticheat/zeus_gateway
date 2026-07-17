@@ -40,20 +40,11 @@ per-tick polling.
 state at packet-receive time. The proxy does not need to compute eye position
 or height.
 
-### Surrounding Blocks (0x13)
+### World State (0x2B, 0x2D, 0x30)
 
-**Source**: Sent alongside every position packet.
-
-**Processing**:
-- Scans a 3x5x3 grid of blocks centered on the player's feet.
-- The grid spans `dx = [-1, +1]`, `dy = [-2, +2]`, `dz = [-1, +1]`.
-- Each block is represented by its relative offset and its full Minecraft
-  block-state string (e.g. `minecraft:stone`, `minecraft:oak_stairs[facing=north,half=bottom]`).
-- Total: 45 blocks per position update.
-
-**What zeus_proxy receives**: A flat list of 45 `(dx, dy, dz, block_state)`
-tuples. The proxy can use these to determine terrain context (ground type,
-nearby liquids, slippery blocks, etc.) without needing access to the world.
+Block changes (`0x2B`), bounded chunk-data batches (`0x2D`), and collision
+terrain windows (`0x30`) maintain terrain context. `0x13` remains an
+intentional protocol gap.
 
 ### Keep Alive (0x04)
 
@@ -68,8 +59,8 @@ polling (every 20 ticks).
 
 ### Attack Entity (0x09)
 
-**Source**: Paper `PrePlayerAttackEntityEvent`; Spigot
-`EntityDamageByEntityEvent`; Fabric `AttackEntityCallback`.
+**Source**: PacketEvents raw interact-entity capture; Bukkit
+`EntityDamageByEntityEvent` fallback; Fabric `AttackEntityCallback`.
 
 **Processing**:
 - Identifies the attacker as the player.
@@ -210,7 +201,7 @@ encoded with the stable item-key wire format.
 
 ### Armor Equipment (0x15)
 
-**Source**: Paper `PlayerArmorChangeEvent`; Bukkit inventory-close polling;
+**Source**: Bukkit slot-change and inventory-close snapshots;
 per-tick-with-hash-check polling (Fabric).
 
 **Processing**:

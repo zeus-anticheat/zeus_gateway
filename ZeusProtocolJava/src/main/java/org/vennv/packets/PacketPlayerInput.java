@@ -19,13 +19,15 @@ import java.io.IOException;
  *     bit 4 = jump
  *     bit 5 = shift (sneak)
  *     bit 6 = sprint
- *     bit 7 = reserved
+ *     bit 7 = trusted packet-level capture
  * </pre>
  *
  * This packet enables version-specific jump / sneak / sprint inference
  * without depending on inferring from position deltas or guesswork.
  */
 public final class PacketPlayerInput extends PacketBaseInfo {
+
+    public static final int TRUSTED_CAPTURE = 0x80;
 
     private final byte flags;
 
@@ -42,6 +44,7 @@ public final class PacketPlayerInput extends PacketBaseInfo {
     public boolean isJump()    { return (flags & 0x10) != 0; }
     public boolean isShift()   { return (flags & 0x20) != 0; }
     public boolean isSprint()  { return (flags & 0x40) != 0; }
+    public boolean isTrustedCapture() { return (flags & TRUSTED_CAPTURE) != 0; }
 
     @Override
     public byte packetId() {

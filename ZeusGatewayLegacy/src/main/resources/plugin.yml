@@ -4,3 +4,5 @@ main: org.vennv.zeusGatewayLegacy.ZeusGatewayLegacy
 description: Zeus Anti-Cheat data collector plugin - legacy Gateway artifact foundation
 authors:
   - VennDev
+depend:
+  - packetevents

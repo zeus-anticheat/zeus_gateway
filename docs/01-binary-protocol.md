@@ -199,18 +199,9 @@ This packet does NOT have the common header. It contains only:
 Note: The TPS packet has no timestamp, uid, or username. zeus_proxy must
 handle this as a special case.
 
-### 0x13 -- PacketPlayerSurroundingBlocks
+### 0x13 -- Reserved
 
-```
-[common header]
-+0    1    u8      block_count (normally 45 = 3x5x3)
-For each block:
-  +0  1    i8      dx (relative X, -1 to +1)
-  +1  1    i8      dy (relative Y, -2 to +2)
-  +2  1    i8      dz (relative Z, -1 to +1)
-  +3  2    u16     block_data_length
-  +5  var  utf8    block_data (source-platform block state string)
-```
+This byte is an intentional protocol gap and has no decoder or producer.
 
 ### 0x14 -- PacketPlayerHeldItem
 

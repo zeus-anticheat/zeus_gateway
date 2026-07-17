@@ -1,8 +1,8 @@
 {
-  "artifact": "ZeusGateway/target/ZeusGateway-modern-1.0-SNAPSHOT.jar",
-  "artifactSha256": "dd7bcdd03834c22c19283746cee8bc270c57b2b90f0bf24f17bbdeb6a713322e",
-  "artifactSizeBytes": 213404,
-  "createdAt": "2026-05-27T13:15:22.413274+00:00",
+  "artifact": "ZeusGateway/target/ZeusGateway-1.0-SNAPSHOT.jar",
+  "artifactSha256": "3a8fafe4519ff9cbfe9294b575fb830a08ee27e6e7e67fa4ff64c14f0e44776b",
+  "artifactSizeBytes": 343864,
+  "createdAt": "2026-07-13T23:57:27.712068+00:00",
   "dryRun": false,
   "gate": "artifact-build",
   "kind": "gateway",

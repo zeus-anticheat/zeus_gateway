@@ -1,59 +1,61 @@
 package org.vennv.zeusGateway.listener.packets;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-import org.bukkit.entity.Player;
+import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import com.github.retrooper.packetevents.event.PacketSendEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.player.User;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import org.vennv.packets.PacketEntityDestroy;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
 
-import java.util.ArrayList;
-import java.util.List;
-
-/**
- * Listens to server-to-client ENTITY_DESTROY to clean up tracked entities.
- */
-public final class EntityDestroyListener extends PacketAdapter {
+public final class EntityDestroyListener extends PacketListenerAbstract {
 
     public EntityDestroyListener(ZeusGateway plugin) {
-        super(plugin, ListenerPriority.MONITOR, PacketType.Play.Server.ENTITY_DESTROY);
+        super(PacketListenerPriority.MONITOR);
     }
 
     @Override
-    public void onPacketSending(PacketEvent event) {
-        if (event.isCancelled()) return;
-
-        Player player = event.getPlayer();
-        if (player == null) return;
-
-        List<Integer> entityIds = new ArrayList<>();
-        try {
-            // Depending on version, this can be an array of ints or a List of ints
-            if (event.getPacket().getIntegerArrays().size() > 0) {
-                int[] arr = event.getPacket().getIntegerArrays().read(0);
-                for (int id : arr) entityIds.add(id);
-            } else if (event.getPacket().getIntLists().size() > 0) {
-                entityIds.addAll(event.getPacket().getIntLists().read(0));
-            } else {
-                // Pre-1.17 sometimes used single integers for destruction in some packets?
-                // ENTITY_DESTROY is usually an array.
-                return;
-            }
-        } catch (Exception e) {
+    public void onPacketSend(PacketSendEvent event) {
+        if (event.getPacketType() != PacketType.Play.Server.DESTROY_ENTITIES
+                || event.isCancelled()) {
             return;
         }
-
-        if (entityIds.isEmpty()) return;
-
-        String uid = player.getUniqueId().toString();
-        String name = player.getName();
-        long timestamp = System.currentTimeMillis();
-
-        PacketEntityDestroy packet = new PacketEntityDestroy(
-            timestamp, uid, name, entityIds
-        );
-        PacketQueue.push(packet);
+        User user = event.getUser();
+        if (user == null) {
+            return;
+        }
+        UUID uuid = user.getUUID();
+        String name = user.getName();
+        if (uuid == null || name == null || name.isEmpty()) {
+            return;
+        }
+        int[] ids;
+        try {
+            ids = new WrapperPlayServerDestroyEntities(event).getEntityIds();
+        } catch (RuntimeException ignored) {
+            return;
+        }
+        if (ids == null || ids.length == 0) {
+            return;
+        }
+        List<Integer> entityIds = new ArrayList<>(ids.length);
+        for (int id : ids) {
+            if (id < 0) {
+                return;
+            }
+            EntitySpawnListener.removeEntity(uuid, id);
+            entityIds.add(id);
+        }
+        PacketQueue.push(new PacketEntityDestroy(
+                System.currentTimeMillis(),
+                uuid.toString(),
+                name,
+                entityIds
+        ));
     }
 }

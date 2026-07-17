@@ -1,6 +1,7 @@
 package org.vennv.zeusGateway.platform;
 
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -17,6 +18,17 @@ public final class BukkitSchedulerAdapter implements SchedulerAdapter {
 
     @Override
     public void runEntityTask(JavaPlugin plugin, Player player, Runnable task) {
+        Bukkit.getScheduler().runTask(plugin, task);
+    }
+
+    @Override
+    public void runEntityTaskLater(JavaPlugin plugin, Player player, Runnable task, long delayTicks) {
+        Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
+    }
+
+    @Override
+    public void runRegionTask(
+            JavaPlugin plugin, World world, int chunkX, int chunkZ, Runnable task) {
         Bukkit.getScheduler().runTask(plugin, task);
     }
 

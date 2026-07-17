@@ -1,86 +1,70 @@
 package org.vennv.zeusGateway.listener.packets;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.reflect.StructureModifier;
+import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import com.github.retrooper.packetevents.event.PacketReceiveEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.player.User;
+import com.github.retrooper.packetevents.util.Vector3d;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientVehicleMove;
+import java.util.UUID;
 import org.bukkit.entity.Player;
 import org.vennv.packets.PacketPlayerVehicleMove;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
 
-public class PacketVehicleMoveListener extends PacketAdapter {
-    private final ZeusGateway plugin;
+public class PacketVehicleMoveListener extends PacketListenerAbstract {
+    private final OrderedPlayerPacketDispatcher dispatcher;
 
-    public PacketVehicleMoveListener(ZeusGateway plugin) {
-        super(plugin, ListenerPriority.LOWEST,
-                PacketType.Play.Client.VEHICLE_MOVE);
-        this.plugin = plugin;
+    public PacketVehicleMoveListener(ZeusGateway plugin, OrderedPlayerPacketDispatcher dispatcher) {
+        super(PacketListenerPriority.LOWEST);
+        this.dispatcher = dispatcher;
     }
 
     @Override
-    public void onPacketReceiving(PacketEvent event) {
-        Player player = event.getPlayer();
-        String uid = player.getUniqueId().toString();
-        String name = player.getName();
-        long timestamp = System.currentTimeMillis();
-
-        StructureModifier<Double> doubles = event.getPacket().getDoubles();
-        if (doubles.size() < 3 && event.getPacket().getStructures().size() > 0) {
-            try {
-                if (event.getPacket().getStructures().read(0) != null
-                        && event.getPacket().getStructures().read(0).getDoubles().size() >= 3) {
-                    doubles = event.getPacket().getStructures().read(0).getDoubles();
-                }
-            } catch (Exception ignored) {
-                // Fall through to the unreadable guard below.
-            }
-        }
-
-        StructureModifier<Float> floats = event.getPacket().getFloat();
-        if (doubles.size() < 3 || floats.size() < 2) {
-            plugin.getLogger().fine(
-                    "Skipping VEHICLE_MOVE: unreadable fields, doubles=" + doubles.size()
-                            + ", floats=" + floats.size()
-                            + ", structures=" + event.getPacket().getStructures().size()
-                            + ", handle=" + event.getPacket().getHandle().getClass().getName()
-            );
+    public void onPacketReceive(PacketReceiveEvent event) {
+        if (event.getPacketType() != PacketType.Play.Client.VEHICLE_MOVE) {
             return;
         }
-
-        double x;
-        double y;
-        double z;
+        User user = event.getUser();
+        if (user == null) {
+            return;
+        }
+        UUID uuid = user.getUUID();
+        String name = user.getName();
+        if (uuid == null || name == null || name.isEmpty()) {
+            return;
+        }
+        Vector3d position;
         float yaw;
         float pitch;
         try {
-            x = doubles.read(0);
-            y = doubles.read(1);
-            z = doubles.read(2);
-            yaw = floats.read(0);
-            pitch = floats.read(1);
-        } catch (Exception e) {
-            plugin.getLogger().fine("Skipping VEHICLE_MOVE: failed to read fields: " + e.getMessage());
+            WrapperPlayClientVehicleMove move = new WrapperPlayClientVehicleMove(event);
+            position = move.getPosition();
+            yaw = move.getYaw();
+            pitch = move.getPitch();
+        } catch (RuntimeException ignored) {
             return;
         }
-
-        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)
-                || !Float.isFinite(yaw) || !Float.isFinite(pitch)) {
-            plugin.getLogger().fine("Skipping VEHICLE_MOVE: non-finite position or rotation");
+        if (position == null
+                || !Double.isFinite(position.getX())
+                || !Double.isFinite(position.getY())
+                || !Double.isFinite(position.getZ())
+                || !Float.isFinite(yaw)
+                || !Float.isFinite(pitch)) {
             return;
         }
-
+        Player player = event.getPlayer();
+        if (player == null) return;
         PacketPlayerVehicleMove packet = new PacketPlayerVehicleMove(
-                timestamp,
-                uid,
+                System.currentTimeMillis(),
+                uuid.toString(),
                 name,
-                x,
-                y,
-                z,
+                position.getX(),
+                position.getY(),
+                position.getZ(),
                 yaw,
-                pitch
-        );
-        PacketQueue.push(packet);
+                pitch);
+        dispatcher.submit(player, () -> PacketQueue.push(packet));
     }
 }
