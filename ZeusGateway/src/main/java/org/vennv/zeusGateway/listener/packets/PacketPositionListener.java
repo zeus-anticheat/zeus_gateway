@@ -214,10 +214,10 @@ public class PacketPositionListener extends PacketListenerAbstract {
         int serverProtocol = capture ? PhysicsCaptureManager.serverProtocol() : 0;
         int clientProtocol = capture ? clientProtocol(user) : 0;
         dispatcher.submit(player, () -> {
-            PacketQueue.push(position);
             if (hasPosition) {
                 chunkSyncTask.onMovement(player, sendX, sendY, sendZ);
             }
+            PacketQueue.push(position);
             if (capture) {
                 capturePhysics(
                         player, timestamp, receiveNanos, movementSequence, uuid,

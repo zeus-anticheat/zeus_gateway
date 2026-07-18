@@ -109,13 +109,13 @@ public abstract class ServerPlayNetworkHandlerMixin {
             yaw, pitch, player.getHeight(), packet.isOnGround(),
             PacketPlayerPosition.SOURCE_RAW_CLIENT, context.sequence(), context.hasPosition(), context.hasLook()
         );
+        if (context.hasPosition()) {
+            PlayerStateSnapshotService.onMovement(player, x, y, z);
+        }
         if (ZeusEventListeners.isCaptureActive()) {
             PacketQueue.pushAll(List.of(position, zeus$captureFrame(packet)));
         } else {
             PacketQueue.push(position);
-        }
-        if (context.hasPosition()) {
-            PlayerStateSnapshotService.onMovement(player, x, y, z);
         }
     }
 
