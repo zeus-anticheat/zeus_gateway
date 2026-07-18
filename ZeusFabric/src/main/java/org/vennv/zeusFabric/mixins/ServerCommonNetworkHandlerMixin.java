@@ -49,6 +49,24 @@ public abstract class ServerCommonNetworkHandlerMixin {
         if (!((Object) this instanceof ServerPlayNetworkHandler handler) || handler.player == null) {
             return;
         }
+        zeus$processOutbound(handler, packet);
+    }
+
+    /**
+     * Recursively unwraps {@link BundleS2CPacket} so that nested
+     * {@link BlockUpdateS2CPacket}, {@link ChunkDeltaUpdateS2CPacket},
+     * entity-lifetime packets, teleport, velocity, equipment, and attribute
+     * changes are all captured.  Before this fix, a block update inside a
+     * bundle was only seen by {@code zeus$entityLifecycle} — which only
+     * processes entity spawn/destroy/move — so every bundled block change
+     * was silently dropped.
+     */
+    @Unique
+    private void zeus$processOutbound(ServerPlayNetworkHandler handler, Packet<?> packet) {
+        if (packet instanceof BundleS2CPacket bundlePacket) {
+            bundlePacket.getPackets().forEach(nested -> zeus$processOutbound(handler, nested));
+            return;
+        }
         zeus$entityLifecycle(handler, packet);
         if (packet instanceof PlayerPositionLookS2CPacket teleportPacket) {
             var teleportPos = teleportPacket.change().position();
@@ -107,10 +125,6 @@ public abstract class ServerCommonNetworkHandlerMixin {
 
     @Unique
     private void zeus$entityLifecycle(ServerPlayNetworkHandler handler, Packet<?> packet) {
-        if (packet instanceof BundleS2CPacket bundlePacket) {
-            bundlePacket.getPackets().forEach(nested -> zeus$entityLifecycle(handler, nested));
-            return;
-        }
         if (!(packet instanceof EntitySpawnS2CPacket)
                 && !(packet instanceof EntitiesDestroyS2CPacket)
                 && !(packet instanceof EntityS2CPacket)

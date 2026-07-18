@@ -31,7 +31,26 @@ public final class FabricContractSourceTest {
         String captureIdentity = Files.readString(source.resolve("provider/CaptureIdentity.java"));
 
         require(snapshot.contains("new PacketServerConfig("), "0x25 producer missing");
-        require(commonMixin.contains("packet instanceof BundleS2CPacket"), "bundled tracking spawn handling missing");
+
+        // BundleS2CPacket unwrap: zeus$processOutbound recursively unwraps
+        // bundles before dispatching to entity-lifecycle, teleport, velocity,
+        // equipment, attributes, block-change, and chunk-delta handlers.
+        String outboundDispatch = section(commonMixin,
+                "private void zeus$processOutbound",
+                "private void zeus$entityLifecycle");
+        require(outboundDispatch.contains("packet instanceof BundleS2CPacket"),
+                "bundled outbound handling missing");
+        require(outboundDispatch.contains("zeus$processOutbound(handler, nested)"),
+                "bundled outbound packets bypass authoritative capture");
+        require(outboundDispatch.contains("BlockUpdateS2CPacket"),
+                "bundled block-update capture missing");
+        require(outboundDispatch.contains("ChunkDeltaUpdateS2CPacket"),
+                "bundled chunk-delta capture missing");
+        require(outboundDispatch.contains("EntityVelocityUpdateS2CPacket"),
+                "bundled velocity capture missing");
+        require(outboundDispatch.contains("PlayerPositionLookS2CPacket"),
+                "bundled teleport capture missing");
+
         require(commonMixin.contains("packet instanceof EntitySpawnS2CPacket"), "0x28 observing-recipient producer missing");
         require(commonMixin.contains("packet instanceof EntityS2CPacket"), "0x29 observing-recipient producer missing");
         require(commonMixin.contains("packet instanceof MoveMinecartAlongTrackS2CPacket"), "minecart movement producer missing");
