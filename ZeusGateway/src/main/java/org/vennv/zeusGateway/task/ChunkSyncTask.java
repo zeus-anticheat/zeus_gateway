@@ -448,9 +448,21 @@ public final class ChunkSyncTask {
             int maxHeight,
             PreparedUpdate update,
             RegionSlice region) {
-        if (!world.isChunkLoaded(region.chunkX, region.chunkZ)) return;
+        if (!world.isChunkLoaded(region.chunkX, region.chunkZ)) {
+            pluginLogger().warning("[ZeusGateway] captureRegion SKIP: chunk not loaded"
+                    + " chunk=(" + region.chunkX + "," + region.chunkZ + ")"
+                    + " center=(" + update.center.x + "," + update.center.y + "," + update.center.z + ")"
+                    + " full=" + update.full
+                    + " seq=" + update.sequence);
+            return;
+        }
         Chunk chunk = world.getChunkAt(region.chunkX, region.chunkZ);
-        if (chunk == null || !chunk.isLoaded()) return;
+        if (chunk == null || !chunk.isLoaded()) {
+            pluginLogger().warning("[ZeusGateway] captureRegion SKIP: chunk null/not loaded after getChunkAt"
+                    + " chunk=(" + region.chunkX + "," + region.chunkZ + ")"
+                    + " center=(" + update.center.x + "," + update.center.y + "," + update.center.z + ")");
+            return;
+        }
 
         for (int index : region.indices) {
             int blockY = Math.addExact(update.center.y, offsetY(index));
@@ -459,13 +471,33 @@ public final class ChunkSyncTask {
             int blockZ = Math.addExact(update.center.z, offsetZ(index));
             try {
                 Block block = chunk.getBlock(blockX & 15, blockY, blockZ & 15);
-                update.cells[index] = BlockCompat.isAir(block)
+                String dataString = BlockCompat.getBlockDataString(block);
+                boolean isAir = BlockCompat.isAir(block);
+                update.cells[index] = isAir
                         ? Cell.knownAir()
-                        : Cell.knownBlock(BlockCompat.getBlockDataString(block));
+                        : Cell.knownBlock(dataString);
+
+                // DEBUG: log honey block area
+                if (blockZ >= 362 && blockZ <= 366 && blockX >= -3 && blockX <= 0 && blockY == 4) {
+                    pluginLogger().warning("[ZeusGateway] captureRegion HONEY-ZONE"
+                            + " world=(" + blockX + "," + blockY + "," + blockZ + ")"
+                            + " center=(" + update.center.x + "," + update.center.y + "," + update.center.z + ")"
+                            + " chunk=(" + region.chunkX + "," + region.chunkZ + ")"
+                            + " local=(" + (blockX & 15) + "," + blockY + "," + (blockZ & 15) + ")"
+                            + " full=" + update.full
+                            + " seq=" + update.sequence
+                            + " isAir=" + isAir
+                            + " blockType=" + block.getType().name()
+                            + " dataString=" + dataString);
+                }
             } catch (RuntimeException exception) {
                 update.cells[index] = Cell.unknown();
             }
         }
+    }
+
+    private static java.util.logging.Logger pluginLogger() {
+        return java.util.logging.Logger.getLogger("ZeusGateway");
     }
 
     private static void reuseOverlap(
