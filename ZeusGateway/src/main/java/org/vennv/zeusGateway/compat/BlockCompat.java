@@ -31,7 +31,21 @@ public final class BlockCompat {
     public static boolean isAir(Block block) {
         if (ServerVersion.HAS_MATERIAL_IS_AIR) {
             try {
-                return block.getType().isAir();
+                boolean air = block.getType().isAir();
+                // Paper API may return AIR Material for post-1.15 blocks
+                // (e.g. honey_block) that are NOT air. Validate against
+                // the actual block-data string when getBlockData() is
+                // available.
+                if (air && ServerVersion.HAS_BLOCK_DATA) {
+                    try {
+                        String data = block.getBlockData().getAsString();
+                        if (!data.endsWith(":air") && !data.contains(":cave_air")
+                                && !data.contains(":void_air")) {
+                            return false; // data says it's a real block, not air
+                        }
+                    } catch (NoSuchMethodError | NoClassDefFoundError ignored) {}
+                }
+                return air;
             } catch (NoSuchMethodError e) {
                 // Fall through
             }
