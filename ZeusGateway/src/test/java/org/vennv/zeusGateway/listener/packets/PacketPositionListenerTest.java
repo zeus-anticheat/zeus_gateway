@@ -47,13 +47,13 @@ class PacketPositionListenerTest {
         Path path = Paths.get("src/main/java/org/vennv/zeusGateway/listener/packets/PacketPositionListener.java");
         String source = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
         int dispatch = source.indexOf("dispatcher.submit(player, () -> {");
-        int push = source.indexOf("PacketQueue.push(position)", dispatch);
-        int condition = source.indexOf("if (hasPosition)", push);
+        int condition = source.indexOf("if (hasPosition)", dispatch);
         int movement = source.indexOf("chunkSyncTask.onMovement(player, sendX, sendY, sendZ)", condition);
+        int push = source.indexOf("PacketQueue.push(position)", movement);
 
         assertTrue(dispatch >= 0);
-        assertTrue(push > dispatch);
-        assertTrue(condition > push);
+        assertTrue(condition > dispatch);
         assertTrue(movement > condition);
+        assertTrue(push > movement);
     }
 }
