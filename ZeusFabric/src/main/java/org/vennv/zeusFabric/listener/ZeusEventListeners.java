@@ -912,6 +912,7 @@ public final class ZeusEventListeners {
             lastVehiclePos != null &&
             lastVehiclePos.squaredDistanceTo(vehiclePos) > 0.000001
         ) {
+            PlayerStateSnapshotService.onMovement(player, vehiclePos.x, vehiclePos.y, vehiclePos.z);
             PacketQueue.push(
                 new PacketPlayerVehicleMove(
                     timestamp,

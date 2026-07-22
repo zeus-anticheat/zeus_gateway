@@ -800,6 +800,9 @@ public class EventListener implements Listener {
                         to.getZ(),
                         to.getYaw(),
                         to.getPitch());
+                if (chunkSyncTask != null) {
+                    chunkSyncTask.onMovement(player, to.getX(), to.getY(), to.getZ());
+                }
                 PacketQueue.push(packet);
                 break; // only first player passenger
             }

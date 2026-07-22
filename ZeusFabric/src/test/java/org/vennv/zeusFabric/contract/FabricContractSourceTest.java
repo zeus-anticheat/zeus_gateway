@@ -71,13 +71,17 @@ public final class FabricContractSourceTest {
         require(snapshot.contains("public static void remove("), "collision remove API missing");
         require(snapshot.contains("public static void clearAll("), "collision clear-all API missing");
         require(snapshot.contains("public static boolean contains("), "collision containment API missing");
-        assertOrder(section(playMixin,
+        String acceptedMovement = section(playMixin,
                 "private void zeus$emitAcceptedMovement",
-                "private CaptureFrameV3 zeus$captureFrame"),
-                "PacketQueue.pushAll(List.of(position, zeus$captureFrame(packet)))",
-                "PacketQueue.push(position)",
+                "private CaptureFrameV3 zeus$captureFrame");
+        assertOrder(acceptedMovement,
                 "if (context.hasPosition())",
-                "PlayerStateSnapshotService.onMovement(player, x, y, z)");
+                "PlayerStateSnapshotService.onMovement(player, x, y, z)",
+                "PacketQueue.pushAll(List.of(position, zeus$captureFrame(packet)))");
+        assertOrder(acceptedMovement,
+                "if (context.hasPosition())",
+                "PlayerStateSnapshotService.onMovement(player, x, y, z)",
+                "PacketQueue.push(position)");
         assertOrder(section(listeners,
                 "private static void registerJoinLeave",
                 "public static boolean isCaptureActive"),
@@ -86,6 +90,11 @@ public final class FabricContractSourceTest {
                 "PlayerStateSnapshotService.remove(uid)",
                 "PlayerStateSnapshotService.clear(uid)",
                 "clearTracking(uid)");
+        assertOrder(section(listeners,
+                "private static void tickVehicle",
+                "// ─────────────────── Screen Handler"),
+                "PlayerStateSnapshotService.onMovement(player, vehiclePos.x, vehiclePos.y, vehiclePos.z)",
+                "new PacketPlayerVehicleMove(");
         assertOrder(section(listeners,
                 "private static void registerWorldChange",
                 "private static void registerAttackEntity"),

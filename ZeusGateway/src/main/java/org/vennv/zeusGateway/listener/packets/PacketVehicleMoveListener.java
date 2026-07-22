@@ -12,13 +12,16 @@ import org.bukkit.entity.Player;
 import org.vennv.packets.PacketPlayerVehicleMove;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
+import org.vennv.zeusGateway.task.ChunkSyncTask;
 
 public class PacketVehicleMoveListener extends PacketListenerAbstract {
     private final OrderedPlayerPacketDispatcher dispatcher;
+    private final ChunkSyncTask chunkSyncTask;
 
     public PacketVehicleMoveListener(ZeusGateway plugin, OrderedPlayerPacketDispatcher dispatcher) {
         super(PacketListenerPriority.LOWEST);
         this.dispatcher = dispatcher;
+        this.chunkSyncTask = new ChunkSyncTask(plugin);
     }
 
     @Override
@@ -65,6 +68,9 @@ public class PacketVehicleMoveListener extends PacketListenerAbstract {
                 position.getZ(),
                 yaw,
                 pitch);
-        dispatcher.submit(player, () -> PacketQueue.push(packet));
+        dispatcher.submit(player, () -> {
+            chunkSyncTask.onMovement(player, position.getX(), position.getY(), position.getZ());
+            PacketQueue.push(packet);
+        });
     }
 }

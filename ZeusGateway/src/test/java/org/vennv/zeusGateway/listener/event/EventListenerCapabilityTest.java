@@ -87,6 +87,15 @@ class EventListenerCapabilityTest {
                 UUID.randomUUID(), UUID.randomUUID(), 0, 64, 0));
     }
 
+    @Test
+    void fallbackVehicleMovementRecentersCollisionBeforeQueueingPacket() throws IOException {
+        String listener = source("listener/event/EventListener.java");
+        String section = section(listener, "public void onVehicleMove", "// ──────────────── Use / Release Use Item");
+        assertOrder(section,
+                "chunkSyncTask.onMovement(player, to.getX(), to.getY(), to.getZ())",
+                "PacketQueue.push(packet)");
+    }
+
     private static String source(String relativePath) throws IOException {
         Path path = Paths.get("src/main/java/org/vennv/zeusGateway").resolve(relativePath);
         return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
