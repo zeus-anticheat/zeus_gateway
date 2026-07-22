@@ -94,7 +94,10 @@ public final class FabricContractSourceTest {
                 "private static void tickVehicle",
                 "// ─────────────────── Screen Handler"),
                 "PlayerStateSnapshotService.onMovement(player, vehiclePos.x, vehiclePos.y, vehiclePos.z)",
-                "new PacketPlayerVehicleMove(");
+                "new PacketPlayerVehicleMove(",
+                "Registries.ENTITY_TYPE.getId(vehicle.getType()).toString()",
+                "vehicle.getId()",
+                "vehicleFlags(vehicle)");
         assertOrder(section(listeners,
                 "private static void registerWorldChange",
                 "private static void registerAttackEntity"),

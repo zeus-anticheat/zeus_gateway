@@ -16,17 +16,34 @@ public final class PacketPlayerVehicleMove extends PacketBaseInfo {
     private final double y;
     private final double z;
     private final float yaw;
+    public static final int FLAG_MOUNTED = 1;
+    public static final int FLAG_IN_WATER = 1 << 1;
+    public static final int FLAG_ON_GROUND = 1 << 2;
+
     private final float pitch;
+    private final String vehicleType;
+    private final int vehicleId;
+    private final int vehicleFlags;
 
     public PacketPlayerVehicleMove(long timestamp, String uid, String username,
                                    double x, double y, double z,
                                    float yaw, float pitch) {
+        this(timestamp, uid, username, x, y, z, yaw, pitch, "", -1, 0);
+    }
+
+    public PacketPlayerVehicleMove(long timestamp, String uid, String username,
+                                   double x, double y, double z,
+                                   float yaw, float pitch,
+                                   String vehicleType, int vehicleId, int vehicleFlags) {
         super(timestamp, uid, username);
         this.x = x;
         this.y = y;
         this.z = z;
         this.yaw = yaw;
         this.pitch = pitch;
+        this.vehicleType = vehicleType == null ? "" : vehicleType;
+        this.vehicleId = vehicleId;
+        this.vehicleFlags = vehicleFlags & 0xFF;
     }
 
     public double getX() {
@@ -49,6 +66,18 @@ public final class PacketPlayerVehicleMove extends PacketBaseInfo {
         return pitch;
     }
 
+    public String getVehicleType() {
+        return vehicleType;
+    }
+
+    public int getVehicleId() {
+        return vehicleId;
+    }
+
+    public int getVehicleFlags() {
+        return vehicleFlags;
+    }
+
     @Override
     public byte packetId() {
         return PacketId.PACKET_PLAYER_VEHICLE_MOVE;
@@ -66,6 +95,16 @@ public final class PacketPlayerVehicleMove extends PacketBaseInfo {
         // Write rotation (packet_rotation) - 2 floats (8 bytes)
         ByteBufferUtil.putFloat(out, yaw);
         ByteBufferUtil.putFloat(out, pitch);
+
+        // Server-observed mount identity. Rust accepts legacy packets which
+        // omit this trailing extension, but never trusts them for boat checks.
+        byte[] typeBytes = vehicleType.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        int typeLength = Math.min(typeBytes.length, 65535);
+        out.write((typeLength >> 8) & 0xFF);
+        out.write(typeLength & 0xFF);
+        out.write(typeBytes, 0, typeLength);
+        ByteBufferUtil.putInt(out, vehicleId);
+        out.write(vehicleFlags);
     }
 
     @Override
@@ -79,6 +118,9 @@ public final class PacketPlayerVehicleMove extends PacketBaseInfo {
                 ", z=" + z +
                 ", yaw=" + yaw +
                 ", pitch=" + pitch +
+                ", vehicleType='" + vehicleType + '\'' +
+                ", vehicleId=" + vehicleId +
+                ", vehicleFlags=" + vehicleFlags +
                 '}';
     }
 }

@@ -42,6 +42,7 @@ import org.vennv.zeusGateway.compat.BlockCompat;
 import org.vennv.zeusGateway.compat.EntityCompat;
 import org.vennv.zeusGateway.compat.EffectCompat;
 import org.vennv.zeusGateway.listener.RawCaptureCapability;
+import org.vennv.zeusGateway.listener.packets.PacketVehicleMoveListener;
 import org.vennv.zeusGateway.debug.PacketDebugEnvelope;
 import org.vennv.zeusGateway.provider.PacketQueue;
 import org.vennv.zeusGateway.task.ChunkSyncTask;
@@ -799,7 +800,10 @@ public class EventListener implements Listener {
                         to.getY(),
                         to.getZ(),
                         to.getYaw(),
-                        to.getPitch());
+                        to.getPitch(),
+                        PacketVehicleMoveListener.vehicleType(vehicle),
+                        vehicle.getEntityId(),
+                        PacketVehicleMoveListener.vehicleFlags(vehicle));
                 if (chunkSyncTask != null) {
                     chunkSyncTask.onMovement(player, to.getX(), to.getY(), to.getZ());
                 }

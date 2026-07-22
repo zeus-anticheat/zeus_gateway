@@ -8,6 +8,7 @@ import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3d;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientVehicleMove;
 import java.util.UUID;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.vennv.packets.PacketPlayerVehicleMove;
 import org.vennv.zeusGateway.ZeusGateway;
@@ -59,18 +60,35 @@ public class PacketVehicleMoveListener extends PacketListenerAbstract {
         }
         Player player = event.getPlayer();
         if (player == null) return;
-        PacketPlayerVehicleMove packet = new PacketPlayerVehicleMove(
-                System.currentTimeMillis(),
-                uuid.toString(),
-                name,
-                position.getX(),
-                position.getY(),
-                position.getZ(),
-                yaw,
-                pitch);
+        long timestamp = System.currentTimeMillis();
         dispatcher.submit(player, () -> {
+            Entity vehicle = player.getVehicle();
+            if (vehicle == null) return;
+            PacketPlayerVehicleMove packet = new PacketPlayerVehicleMove(
+                    timestamp,
+                    uuid.toString(),
+                    name,
+                    position.getX(),
+                    position.getY(),
+                    position.getZ(),
+                    yaw,
+                    pitch,
+                    vehicleType(vehicle),
+                    vehicle.getEntityId(),
+                    vehicleFlags(vehicle));
             chunkSyncTask.onMovement(player, position.getX(), position.getY(), position.getZ());
             PacketQueue.push(packet);
         });
+    }
+
+    public static String vehicleType(Entity vehicle) {
+        return vehicle.getType().getKey().toString();
+    }
+
+    public static int vehicleFlags(Entity vehicle) {
+        int flags = PacketPlayerVehicleMove.FLAG_MOUNTED;
+        if (vehicle.isInWater()) flags |= PacketPlayerVehicleMove.FLAG_IN_WATER;
+        if (vehicle.isOnGround()) flags |= PacketPlayerVehicleMove.FLAG_ON_GROUND;
+        return flags;
     }
 }

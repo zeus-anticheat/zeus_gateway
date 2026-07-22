@@ -922,12 +922,22 @@ public final class ZeusEventListeners {
                     vehiclePos.y,
                     vehiclePos.z,
                     vehicle.getYaw(),
-                    vehicle.getPitch()
+                    vehicle.getPitch(),
+                    Registries.ENTITY_TYPE.getId(vehicle.getType()).toString(),
+                    vehicle.getId(),
+                    vehicleFlags(vehicle)
                 )
             );
         }
 
         LAST_VEHICLE_POS.put(uid, vehiclePos);
+    }
+
+    private static int vehicleFlags(Entity vehicle) {
+        int flags = PacketPlayerVehicleMove.FLAG_MOUNTED;
+        if (vehicle.isTouchingWater()) flags |= PacketPlayerVehicleMove.FLAG_IN_WATER;
+        if (vehicle.isOnGround()) flags |= PacketPlayerVehicleMove.FLAG_ON_GROUND;
+        return flags;
     }
 
     // ─────────────────── Screen Handler ─────────────────────────────────

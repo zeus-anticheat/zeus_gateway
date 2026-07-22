@@ -16,6 +16,7 @@ import org.vennv.packets.PacketPlayerExternalForce;
 import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPhysicsCaptureSample;
 import org.vennv.packets.PacketPlayerInput;
+import org.vennv.packets.PacketPlayerVehicleMove;
 import org.vennv.packets.PacketPlayerVelocity;
 import org.vennv.packets.PacketPlayerPosition;
 import org.vennv.packets.PacketServerConfig;
@@ -141,6 +142,20 @@ class WireContractGoldenTest {
         assertEquals("2c010203040506070800017500016e0055", hex(fallback));
         assertTrue(trusted.isTrustedCapture());
         assertTrue(!fallback.isTrustedCapture());
+    }
+
+    @Test
+    void vehicleMoveCarriesServerMountIdentity() throws Exception {
+        PacketPlayerVehicleMove packet = new PacketPlayerVehicleMove(
+                TIMESTAMP, UID, USERNAME,
+                1.0, 2.0, 3.0, 4.0f, 5.0f,
+                "minecraft:acacia_boat", 42,
+                PacketPlayerVehicleMove.FLAG_MOUNTED | PacketPlayerVehicleMove.FLAG_IN_WATER);
+
+        assertEquals("minecraft:acacia_boat", packet.getVehicleType());
+        assertEquals(42, packet.getVehicleId());
+        assertEquals(3, packet.getVehicleFlags());
+        assertTrue(hex(packet).endsWith("00156d696e6563726166743a6163616369615f626f61740000002a03"));
     }
 
     @Test

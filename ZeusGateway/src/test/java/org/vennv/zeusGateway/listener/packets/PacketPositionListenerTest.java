@@ -58,17 +58,21 @@ class PacketPositionListenerTest {
     }
 
     @Test
-    void vehicleMovementRecentersCollisionBeforeQueueingVehiclePacket() throws IOException {
+    void vehicleMovementCapturesServerMountBeforeRecenteringAndQueueing() throws IOException {
         Path path = Paths.get("src/main/java/org/vennv/zeusGateway/listener/packets/PacketVehicleMoveListener.java");
         String source = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
         int dispatch = source.indexOf("dispatcher.submit(player, () -> {");
+        int vehicle = source.indexOf("Entity vehicle = player.getVehicle()", dispatch);
+        int metadata = source.indexOf("vehicle.getEntityId()", vehicle);
         int movement = source.indexOf(
                 "chunkSyncTask.onMovement(player, position.getX(), position.getY(), position.getZ())",
-                dispatch);
+                metadata);
         int push = source.indexOf("PacketQueue.push(packet)", movement);
 
         assertTrue(dispatch >= 0);
-        assertTrue(movement > dispatch);
+        assertTrue(vehicle > dispatch);
+        assertTrue(metadata > vehicle);
+        assertTrue(movement > metadata);
         assertTrue(push > movement);
     }
 }

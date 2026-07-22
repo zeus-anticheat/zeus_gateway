@@ -92,6 +92,9 @@ class EventListenerCapabilityTest {
         String listener = source("listener/event/EventListener.java");
         String section = section(listener, "public void onVehicleMove", "// ──────────────── Use / Release Use Item");
         assertOrder(section,
+                "PacketVehicleMoveListener.vehicleType(vehicle)",
+                "vehicle.getEntityId()",
+                "PacketVehicleMoveListener.vehicleFlags(vehicle)",
                 "chunkSyncTask.onMovement(player, to.getX(), to.getY(), to.getZ())",
                 "PacketQueue.push(packet)");
     }
