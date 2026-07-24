@@ -88,6 +88,25 @@ class EventListenerCapabilityTest {
     }
 
     @Test
+    void riptideForcesStateBeforeActivation() throws IOException {
+        String listener = source("listener/event/EventListener.java");
+        String section = section(listener, "public void onPlayerRiptide", "// ──────────────── Use / Release Use Item");
+        assertOrder(section,
+                "PlayerStateSnapshotService.sendRiptideActivation(player, event.getItem())");
+
+        String snapshots = source("task/PlayerStateSnapshotService.java");
+        String riptide = section(snapshots, "public static void sendRiptideActivation", "public static void sendCommandStateSnapshot");
+        assertTrue(riptide.contains("ItemUtil.protocolItem(item)"));
+        assertTrue(riptide.contains("riptideEnchantments(item)"));
+        assertTrue(riptide.contains("riptideActivationItem"));
+        assertTrue(riptide.contains("PacketQueue.pushAll(Arrays.asList("));
+        assertOrder(riptide,
+                "new PacketPlayerHeldItem",
+                "new PacketPlayerEnchantments",
+                "ServerBoundPlayerCommandActions.START_RIPTIDE");
+    }
+
+    @Test
     void fallbackVehicleMovementRecentersCollisionBeforeQueueingPacket() throws IOException {
         String listener = source("listener/event/EventListener.java");
         String section = section(listener, "public void onVehicleMove", "// ──────────────── Use / Release Use Item");

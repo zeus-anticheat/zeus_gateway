@@ -24,6 +24,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerRiptideEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
@@ -811,6 +812,13 @@ public class EventListener implements Listener {
                 break; // only first player passenger
             }
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerRiptide(PlayerRiptideEvent event) {
+        Player player = event.getPlayer();
+        // Exact event item is authoritative; inventory main hand can be AIR here.
+        PlayerStateSnapshotService.sendRiptideActivation(player, event.getItem());
     }
 
     // ──────────────── Use / Release Use Item (Bukkit) ────────────────

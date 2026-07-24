@@ -1,5 +1,6 @@
 package org.vennv.zeusGateway.task;
 
+import java.util.Arrays;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Boat;
@@ -42,6 +43,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.logging.Logger;
 
 /**
  * Emits the current Bukkit player state as Zeus protocol packets.
@@ -50,6 +52,8 @@ import java.util.stream.Collectors;
  * resync so those paths stay behaviorally identical.
  */
 public final class PlayerStateSnapshotService {
+    private static final String RIPTIDE_ENCHANTMENT = "riptide";
+    private static final String RIPTIDE_TRIDENT = "minecraft:trident";
     private static final ConcurrentHashMap<UUID, String> HELD_HASH = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<UUID, String> ARMOR_HASH = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<UUID, String> ENCHANT_HASH = new ConcurrentHashMap<>();
@@ -75,6 +79,28 @@ public final class PlayerStateSnapshotService {
         sendHeldItem(timestamp, uid, name, player, false);
         sendArmor(timestamp, uid, name, player, false);
         sendEnchantments(timestamp, uid, name, player, false);
+    }
+
+    /**
+     * Sends one server-confirmed Riptide activation as an ordered queue group.
+     * The event item, not mutable inventory, is authoritative for launch state.
+     */
+    public static void sendRiptideActivation(Player player, org.bukkit.inventory.ItemStack item) {
+        long timestamp = System.currentTimeMillis();
+        String uid = player.getUniqueId().toString();
+        String name = player.getName();
+        List<Enchantment> enchantments = riptideEnchantments(item);
+        Item protocolItem = riptideActivationItem(ItemUtil.protocolItem(item), enchantments);
+        String details = riptideDebugDetails(player, item, protocolItem, enchantments);
+
+        boolean queued = PacketQueue.pushAll(Arrays.asList(
+                new PacketPlayerHeldItem(timestamp, uid, name, protocolItem),
+                new PacketPlayerEnchantments(
+                        timestamp, uid, name, enchantments, ServerCombatSettings.getServerReach()),
+                new PacketServerBoundPlayerCommand(
+                        timestamp, uid, name, ServerBoundPlayerCommandActions.START_RIPTIDE)));
+        Logger.getLogger("ZeusGateway").info(
+                "[Riptide] player=" + name + " queued=" + queued + details);
     }
 
     public static void sendCommandStateSnapshot(Player player) {
@@ -442,6 +468,53 @@ public final class PlayerStateSnapshotService {
                 return null;
             }
         }
+    }
+
+    private static List<Enchantment> riptideEnchantments(org.bukkit.inventory.ItemStack item) {
+        List<Enchantment> enchantments = new ArrayList<>();
+        if (item == null) {
+            return enchantments;
+        }
+        for (Map.Entry<org.bukkit.enchantments.Enchantment, Integer> entry
+                : item.getEnchantments().entrySet()) {
+            int level = Math.max(0, Math.min(255, entry.getValue()));
+            if (level > 0) {
+                enchantments.add(new Enchantment(enchantmentKey(entry.getKey()), (byte) level));
+            }
+        }
+        return enchantments;
+    }
+
+    static Item riptideActivationItem(Item eventItem, List<Enchantment> enchantments) {
+        if (!eventItem.getItemStack().isEmpty()
+                || enchantments.stream().noneMatch(enchantment -> RIPTIDE_ENCHANTMENT.equals(enchantment.getName()))) {
+            return eventItem;
+        }
+        // Paper can expose an AIR ItemStack with the authoritative Riptide enchantment here.
+        return new Item(RIPTIDE_TRIDENT, "", new ItemStack(RIPTIDE_TRIDENT, 0, (byte) 1));
+    }
+
+    private static String riptideDebugDetails(
+            Player player,
+            org.bukkit.inventory.ItemStack eventItem,
+            Item protocolItem,
+            List<Enchantment> enchantments) {
+        return " riptideEvent=" + debugItem(eventItem)
+                + " main=" + debugItem(mainHand(player))
+                + " off=" + debugItem(offHand(player))
+                + " wire=" + protocolItem
+                + " enchants=" + enchantments.stream()
+                        .map(enchantment -> enchantment.getName() + "="
+                                + Byte.toUnsignedInt(enchantment.getLevel()))
+                        .collect(Collectors.joining("|"));
+    }
+
+    private static String debugItem(org.bukkit.inventory.ItemStack item) {
+        if (item == null) {
+            return "null";
+        }
+        return item.getType().name() + "x" + item.getAmount()
+                + " enchants=" + item.getEnchantments();
     }
 
     private static List<Enchantment> currentEnchantments(Player player, float range) {
