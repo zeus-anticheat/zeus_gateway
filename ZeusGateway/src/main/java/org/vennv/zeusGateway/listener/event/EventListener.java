@@ -1146,22 +1146,9 @@ public class EventListener implements Listener {
         }
     }
 
-    // BlockRedstoneEvent is a Spigot-specific event for current/old current state
-    // We don't need to track this for CompensatedWorld - redstone component blocks
-    // (repeater/comparator) don't change actual block type, only signal state.
-    // Keep this commented handler as a placeholder in case we need to track later.
-    //
-    // @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    // public void onBlockRedstone(BlockRedstoneEvent event) {
-    //     // Redstone signal change: track for redstone-component blocks (repeater, comparator, etc.)
-    //     org.bukkit.block.Block block = event.getBlock();
-    //     long timestamp = System.currentTimeMillis();
-    //     PacketQueue.push(new PacketBlockChangeEvent(
-    //             timestamp, "world", "world",
-    //             block.getX(), block.getY(), block.getZ(),
-    //             block.getType().name(),
-    //             (byte) 0x04));
-    // }
+    // BlockRedstoneEvent is intentionally not tracked — redstone component
+    // blocks (repeater/comparator) don't change actual block type, only
+    // signal state, so they have no effect on CompensatedWorld physics.
 
 
     // ───────────────────── Block Face (Bukkit) ──────────────────────
