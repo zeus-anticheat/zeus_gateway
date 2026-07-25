@@ -139,6 +139,43 @@ public class AttributeCompat {
         }
     }
 
+    public static Double getGravity(Player player) {
+        return readAttributeOptional(player, "GRAVITY", "GENERIC_GRAVITY");
+    }
+
+    public static Double getJumpStrength(Player player) {
+        return readAttributeOptional(player, "JUMP_STRENGTH", "GENERIC_JUMP_STRENGTH");
+    }
+
+    public static Double getStepHeight(Player player) {
+        return readAttributeOptional(player, "STEP_HEIGHT", "GENERIC_STEP_HEIGHT");
+    }
+
+    public static Double getScale(Player player) {
+        return readAttributeOptional(player, "SCALE", "GENERIC_SCALE");
+    }
+
+    public static Double getSneakingSpeed(Player player) {
+        return readAttributeOptional(player, "SNEAKING_SPEED", "GENERIC_SNEAKING_SPEED");
+    }
+
+    public static Double getMovementEfficiency(Player player) {
+        return readAttributeOptional(player, "MOVEMENT_EFFICIENCY", "GENERIC_MOVEMENT_EFFICIENCY");
+    }
+
+    public static Double getWaterMovementEfficiency(Player player) {
+        return readAttributeOptional(player, "WATER_MOVEMENT_EFFICIENCY", "GENERIC_WATER_MOVEMENT_EFFICIENCY");
+    }
+
+    /** Try primary name first, then fallback name. */
+    private static Double readAttributeOptional(Player player, String primary, String fallback) {
+        Double value = readAttribute(player, primary);
+        if (value == null) {
+            value = readAttribute(player, fallback);
+        }
+        return value;
+    }
+
     private static double modifierAmount(Object modifier) {
         try {
             Object amount = modifier.getClass().getMethod("getAmount").invoke(modifier);

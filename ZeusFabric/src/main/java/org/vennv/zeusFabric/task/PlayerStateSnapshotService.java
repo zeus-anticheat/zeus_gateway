@@ -475,9 +475,27 @@ public final class PlayerStateSnapshotService {
             String name,
             ServerPlayerEntity player) {
         double movementSpeed = player.getAttributeBaseValue(EntityAttributes.MOVEMENT_SPEED);
-        if (Double.isFinite(movementSpeed) && movementSpeed > 0.0) {
-            PacketQueue.push(new PacketUpdateAttributes(timestamp, uid, name, (float) movementSpeed));
-        }
+        if (!Double.isFinite(movementSpeed) || movementSpeed <= 0.0) return;
+
+        Double gravity = readAttr(player, EntityAttributes.GRAVITY);
+        Double jumpStrength = readAttr(player, EntityAttributes.JUMP_STRENGTH);
+        Double stepHeight = readAttr(player, EntityAttributes.STEP_HEIGHT);
+        Double scale = readAttr(player, EntityAttributes.SCALE);
+        Double sneakingSpeed = readAttr(player, EntityAttributes.SNEAKING_SPEED);
+        Double movementEfficiency = readAttr(player, EntityAttributes.MOVEMENT_EFFICIENCY);
+        Double waterMovementEfficiency = readAttr(player, EntityAttributes.WATER_MOVEMENT_EFFICIENCY);
+
+        PacketQueue.push(new PacketUpdateAttributes(
+                timestamp, uid, name, (float) movementSpeed,
+                gravity, jumpStrength, stepHeight, scale,
+                sneakingSpeed, movementEfficiency, waterMovementEfficiency));
+    }
+
+    /** Returns null if the attribute is not present or the value is not finite. */
+    private static Double readAttr(ServerPlayerEntity player, net.minecraft.entity.attribute.EntityAttribute attribute) {
+        if (!player.getAttributes().hasAttribute(attribute)) return null;
+        double value = player.getAttributeBaseValue(attribute);
+        return Double.isFinite(value) ? value : null;
     }
 
     private static void sendHeldItem(
