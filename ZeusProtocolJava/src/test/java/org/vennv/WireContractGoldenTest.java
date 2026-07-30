@@ -19,6 +19,8 @@ import org.vennv.packets.PacketPlayerInput;
 import org.vennv.packets.PacketPlayerVehicleMove;
 import org.vennv.packets.PacketPlayerVelocity;
 import org.vennv.packets.PacketPlayerPosition;
+import org.vennv.packets.PacketPlayerTeleport;
+import org.vennv.packets.PacketShulkerBoxAction;
 import org.vennv.packets.PacketServerConfig;
 import org.vennv.utils.ExternalForceFlags;
 import org.vennv.utils.ExternalForceType;
@@ -41,6 +43,18 @@ class WireContractGoldenTest {
         assertEquals(0x2E, PacketId.PACKET_UPDATE_ATTRIBUTES & 0xff);
         assertEquals(0x2F, PacketId.PACKET_PHYSICS_CAPTURE_SAMPLE & 0xff);
         assertEquals(0x30, PacketId.PACKET_COLLISION_WINDOW & 0xff);
+        assertEquals(0x31, PacketId.PACKET_SHULKER_BOX_ACTION & 0xff);
+    }
+
+    @Test
+    void shulkerBoxActionKeepsBlockEventFields() throws Exception {
+        PacketShulkerBoxAction packet = new PacketShulkerBoxAction(
+                TIMESTAMP, UID, USERNAME, -34, 4, 395, (byte) 1, (byte) 0);
+        assertEquals(1, packet.getActionType());
+        assertEquals(0, packet.getViewerCount());
+        assertEquals(
+                "31010203040506070800017500016e00ffffffde000000040000018b0100",
+                hex(packet));
     }
 
     @Test
@@ -159,6 +173,46 @@ class WireContractGoldenTest {
     }
 
     @Test
+    void horseVehicleTelemetryUsesTrailingVersionedExtension() throws Exception {
+        PacketPlayerVehicleMove packet = new PacketPlayerVehicleMove(
+                TIMESTAMP, UID, USERNAME,
+                1.0, 2.0, 3.0, 4.0f, 5.0f,
+                "minecraft:horse", 20,
+                PacketPlayerVehicleMove.FLAG_MOUNTED | PacketPlayerVehicleMove.FLAG_ON_GROUND,
+                0.225f, 0.7, true, true);
+
+        assertEquals(0.225f, packet.getHorseMovementSpeed());
+        assertEquals(0.7, packet.getHorseJumpStrength());
+        assertTrue(packet.isHorseSaddleKnown());
+        assertTrue(packet.isHorseSaddled());
+        assertTrue(hex(packet).endsWith("013e6666663fe666666666666603"));
+    }
+
+    @Test
+    void legacyTeleportKeepsPositionOnlyWireShape() throws Exception {
+        PacketPlayerTeleport packet = new PacketPlayerTeleport(
+                TIMESTAMP, UID, USERNAME, 1.0, 2.0, 3.0);
+
+        assertEquals(PacketPlayerTeleport.SOURCE_SERVER_EVENT, packet.getSource());
+        assertTrue(!packet.awaitsClientConfirmation());
+        assertEquals(
+                "0a010203040506070800017500016e003ff0000000000000400000000000000040080000000000"
+                        + "00",
+                hex(packet));
+    }
+
+    @Test
+    void outboundTeleportAppendsVersionedMetadata() throws Exception {
+        PacketPlayerTeleport packet = PacketPlayerTeleport.outbound(
+                TIMESTAMP, UID, USERNAME, 1.0, 2.0, 3.0, -7);
+
+        assertEquals(PacketPlayerTeleport.SOURCE_OUTBOUND_PACKET, packet.getSource());
+        assertEquals(-7, packet.getTeleportId());
+        assertTrue(packet.awaitsClientConfirmation());
+        assertTrue(hex(packet).endsWith("0101fffffff9"));
+    }
+
+    @Test
     void velocityFixtureIsStable() throws Exception {
         assertEquals(
                 "22010203040506070800017500016e003fd0000000000000bfe00000000000003ff0000000000000",
@@ -211,16 +265,14 @@ class WireContractGoldenTest {
     }
 
     @Test
-    void serverConfigPublishesCaptureV3Handshake() throws Exception {
-        String encoded = hex(new PacketServerConfig(
-                TIMESTAMP, UID, USERNAME, 3.0f, 10.0f, (byte) 0, 0.1f,
-                767, "1.21", "paper", "paper", "vanilla", 767, "1.21",
-                "", "gateway"));
-        // PacketBaseInfo is followed by four combat fields, then extension v2
-        // and the CaptureFrameV3 schema marker.
-        assertTrue(encoded.contains("02"));
-        assertTrue(encoded.contains("03"));
-        assertTrue(encoded.contains("7a6575732d6265686176696f722d72656769737472792d7633"));
+    void serverConfigPublishesIdentityOnlyV1Extension() throws Exception {
+        assertEquals(
+                "25010203040506070800017500016e004040000041200000003dcccccd0102ff0004312e3231"
+                        + "0005706170657200057061706572000776616e696c6c6102ff0004312e32310000000767617465776179",
+                hex(new PacketServerConfig(
+                        TIMESTAMP, UID, USERNAME, 3.0f, 10.0f, (byte) 0, 0.1f,
+                        767, "1.21", "paper", "paper", "vanilla", 767, "1.21",
+                        "", "gateway")));
     }
 
     @Test

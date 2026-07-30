@@ -7,6 +7,7 @@ import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
@@ -492,7 +493,9 @@ public final class PlayerStateSnapshotService {
     }
 
     /** Returns null if the attribute is not present or the value is not finite. */
-    private static Double readAttr(ServerPlayerEntity player, net.minecraft.entity.attribute.EntityAttribute attribute) {
+    private static Double readAttr(
+            ServerPlayerEntity player,
+            RegistryEntry<net.minecraft.entity.attribute.EntityAttribute> attribute) {
         if (!player.getAttributes().hasAttribute(attribute)) return null;
         double value = player.getAttributeBaseValue(attribute);
         return Double.isFinite(value) ? value : null;

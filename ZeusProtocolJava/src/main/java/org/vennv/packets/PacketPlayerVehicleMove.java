@@ -24,17 +24,31 @@ public final class PacketPlayerVehicleMove extends PacketBaseInfo {
     private final String vehicleType;
     private final int vehicleId;
     private final int vehicleFlags;
+    private final Float horseMovementSpeed;
+    private final Double horseJumpStrength;
+    private final boolean horseSaddleKnown;
+    private final boolean horseSaddled;
 
     public PacketPlayerVehicleMove(long timestamp, String uid, String username,
                                    double x, double y, double z,
                                    float yaw, float pitch) {
-        this(timestamp, uid, username, x, y, z, yaw, pitch, "", -1, 0);
+        this(timestamp, uid, username, x, y, z, yaw, pitch, "", -1, 0, null, null, false, false);
     }
 
     public PacketPlayerVehicleMove(long timestamp, String uid, String username,
                                    double x, double y, double z,
                                    float yaw, float pitch,
                                    String vehicleType, int vehicleId, int vehicleFlags) {
+        this(timestamp, uid, username, x, y, z, yaw, pitch, vehicleType, vehicleId, vehicleFlags,
+                null, null, false, false);
+    }
+
+    public PacketPlayerVehicleMove(long timestamp, String uid, String username,
+                                   double x, double y, double z,
+                                   float yaw, float pitch,
+                                   String vehicleType, int vehicleId, int vehicleFlags,
+                                   Float horseMovementSpeed, Double horseJumpStrength,
+                                   boolean horseSaddleKnown, boolean horseSaddled) {
         super(timestamp, uid, username);
         this.x = x;
         this.y = y;
@@ -44,6 +58,18 @@ public final class PacketPlayerVehicleMove extends PacketBaseInfo {
         this.vehicleType = vehicleType == null ? "" : vehicleType;
         this.vehicleId = vehicleId;
         this.vehicleFlags = vehicleFlags & 0xFF;
+        this.horseMovementSpeed = validHorseSpeed(horseMovementSpeed) ? horseMovementSpeed : null;
+        this.horseJumpStrength = validHorseJump(horseJumpStrength) ? horseJumpStrength : null;
+        this.horseSaddleKnown = horseSaddleKnown;
+        this.horseSaddled = horseSaddleKnown && horseSaddled;
+    }
+
+    private static boolean validHorseSpeed(Float value) {
+        return value != null && Float.isFinite(value) && value >= 0.0f && value <= 1024.0f;
+    }
+
+    private static boolean validHorseJump(Double value) {
+        return value != null && Double.isFinite(value) && value >= 0.0 && value <= 32.0;
     }
 
     public double getX() {
@@ -78,6 +104,22 @@ public final class PacketPlayerVehicleMove extends PacketBaseInfo {
         return vehicleFlags;
     }
 
+    public Float getHorseMovementSpeed() {
+        return horseMovementSpeed;
+    }
+
+    public Double getHorseJumpStrength() {
+        return horseJumpStrength;
+    }
+
+    public boolean isHorseSaddleKnown() {
+        return horseSaddleKnown;
+    }
+
+    public boolean isHorseSaddled() {
+        return horseSaddled;
+    }
+
     @Override
     public byte packetId() {
         return PacketId.PACKET_PLAYER_VEHICLE_MOVE;
@@ -105,6 +147,14 @@ public final class PacketPlayerVehicleMove extends PacketBaseInfo {
         out.write(typeBytes, 0, typeLength);
         ByteBufferUtil.putInt(out, vehicleId);
         out.write(vehicleFlags);
+        if (horseMovementSpeed != null && horseJumpStrength != null) {
+            out.write(1); // horse telemetry version
+            ByteBufferUtil.putFloat(out, horseMovementSpeed);
+            ByteBufferUtil.putDouble(out, horseJumpStrength);
+            int saddleFlags = horseSaddleKnown ? 1 : 0;
+            if (horseSaddleKnown && horseSaddled) saddleFlags |= 2;
+            out.write(saddleFlags);
+        }
     }
 
     @Override

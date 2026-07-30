@@ -17,7 +17,6 @@ import org.vennv.PacketId;
  */
 public final class CaptureFrameV3 implements PacketBase, PacketEncode {
     public static final byte CAPTURE_SCHEMA_VERSION = 3;
-    public static final String BEHAVIOR_REGISTRY_HASH = "zeus-behavior-registry-v3-1.8-1.21.11";
 
     public static final long PRESENCE_IDENTITY = 1L << 0;
     public static final long PRESENCE_POSITION = 1L << 1;
@@ -37,7 +36,7 @@ public final class CaptureFrameV3 implements PacketBase, PacketEncode {
     public static final long PRESENCE_COLLISION = 1L << 15;
     public static final long KNOWN_PRESENCE_MASK = (1L << 16) - 1;
 
-    // Adapter capability bits mirror analysis::physics_profile_v3.  The
+    // Adapter capability bits describe optional capture inputs. The
     // adapter-specific defaults are deliberately conservative; deployments
     // can override them with -Dzeus.capture.capabilities when an optional
     // listener/source has been verified.
@@ -91,9 +90,9 @@ public final class CaptureFrameV3 implements PacketBase, PacketEncode {
         return conservative;
     }
 
+    /** Legacy wire field; runtime no longer consumes behavior bundles. */
     public static String configuredBehaviorBundleHash(String ignoredServerVersion) {
-        String value = System.getProperty("zeus.capture.behavior_bundle_hash", "");
-        return value.isEmpty() ? BEHAVIOR_REGISTRY_HASH : value;
+        return "";
     }
 
     public static final class NamedFloat {

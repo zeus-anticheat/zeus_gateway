@@ -96,7 +96,7 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
             batchThread = new Thread(batchSender, "ZeusGatewayLegacy-BatchSender");
             batchThread.setDaemon(true);
             batchThread.start();
-            LegacyPhysicsCaptureManager.start(plugin);
+            LegacyServerIdentity.configure(plugin);
             collisionProducer = LegacyCollisionWindowProducer.start(
                     plugin, new LegacyCollisionWindowProducer.RecoveryHandler() {
                         @Override
@@ -189,7 +189,6 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
             collisionProducer.close();
             collisionProducer = null;
         }
-        LegacyPhysicsCaptureManager.stop();
         if (batchSender != null) batchSender.shutdown();
         if (batchThread != null) {
             batchThread.interrupt();
@@ -257,7 +256,6 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
         UUID uuid = player.getUniqueId();
         LegacyPacketEventsSession current = packetEventsSession;
         if (current != null) current.resetLifecycle(uuid, requireFullChunk);
-        else LegacyPhysicsCaptureManager.reset(uuid);
         LegacyCollisionWindowProducer producer = collisionProducer;
         if (producer != null) producer.invalidate(uuid);
     }
@@ -267,8 +265,8 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
         UUID owner = player.getUniqueId();
         long timestamp = now();
         PacketEncode join = joinPacket(
-                timestamp, uid(player), player.getName(), LegacyPhysicsCaptureManager.clientProtocol(player));
-        PacketEncode config = LegacyPhysicsCaptureManager.serverConfig(player, timestamp);
+                timestamp, uid(player), player.getName(), LegacyServerIdentity.clientProtocol(player));
+        PacketEncode config = LegacyServerIdentity.serverConfig(player, timestamp);
         if (awaitWorld) {
             pushControl(owner, join);
             pushControl(owner, config);

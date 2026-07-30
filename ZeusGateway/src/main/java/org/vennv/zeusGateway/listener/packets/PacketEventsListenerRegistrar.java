@@ -37,6 +37,7 @@ public final class PacketEventsListenerRegistrar {
         OrderedPlayerPacketDispatcher dispatcher = session.dispatcher;
         OrderedWorldPacketDispatcher worldDispatcher = session.worldDispatcher;
         session.register("PacketPositionListener", () -> new PacketPositionListener(plugin, dispatcher), null);
+        session.register("PacketServerTeleportListener", () -> new PacketServerTeleportListener(plugin, dispatcher), null);
         session.register("PacketSwingHandListener", () -> new PacketSwingHandListener(plugin, dispatcher), RawCaptureCapability.SWING_HAND);
         session.register("PacketAttackEntityListener", () -> new PacketAttackEntityListener(plugin, dispatcher), RawCaptureCapability.ATTACK_ENTITY);
         session.register("PacketKeepAliveListener", () -> new PacketKeepAliveListener(plugin, dispatcher), null);
@@ -54,6 +55,7 @@ public final class PacketEventsListenerRegistrar {
         session.register("EntityMoveListener", () -> new EntityMoveListener(plugin), null);
         session.register("EntityDestroyListener", () -> new EntityDestroyListener(plugin), null);
         session.register("PacketBlockChangeListener", () -> new PacketBlockChangeListener(plugin, worldDispatcher), null);
+        session.register("PacketShulkerBoxActionListener", () -> new PacketShulkerBoxActionListener(plugin, worldDispatcher), null);
         session.register("PacketUpdateAttributesListener", () -> new PacketUpdateAttributesListener(plugin), null);
         plugin.getLogger().info("[ZeusGateway] Registered " + session.handles.size() + " PacketEvents packet listeners.");
         return session;

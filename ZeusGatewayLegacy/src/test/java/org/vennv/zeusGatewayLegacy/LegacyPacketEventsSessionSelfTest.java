@@ -2,13 +2,10 @@ package org.vennv.zeusGatewayLegacy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -20,7 +17,6 @@ import org.junit.jupiter.api.Test;
 import org.vennv.EntityState;
 import org.vennv.PacketEncode;
 import org.vennv.PacketId;
-import org.vennv.packets.CaptureFrameV3;
 import org.vennv.packets.PacketBlockChangeEvent;
 import org.vennv.packets.PacketChunkData;
 import org.vennv.packets.PacketPlayerAttackEntity;
@@ -30,6 +26,7 @@ import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerJoin;
 import org.vennv.packets.PacketPlayerRespawn;
 import org.vennv.packets.PacketPlayerTeleport;
+import org.vennv.packets.PacketShulkerBoxAction;
 import org.vennv.packets.PacketServerConfig;
 import org.vennv.utils.ItemStack;
 
@@ -153,12 +150,31 @@ final class LegacyPacketEventsSessionSelfTest {
                 Collections.<PacketChunkData.BlockData>emptyList());
         PacketBlockChangeEvent block = new PacketBlockChangeEvent(
                 1L, UID, NAME, 0, 64, 0, "minecraft:stone", (byte) 0);
+        PacketShulkerBoxAction shulker = new PacketShulkerBoxAction(
+                1L, UID, NAME, 0, 64, 0, (byte) 1, (byte) 1);
 
         assertEquals(PacketId.PACKET_PLAYER_JOIN, join.packetId());
         assertEquals(404, join.getProtocolVersion());
         assertEquals(PacketId.PACKET_SERVER_CONFIG, config.packetId());
         assertEquals(PacketId.PACKET_CHUNK_DATA, chunk.packetId());
         assertEquals(PacketId.PACKET_BLOCK_CHANGE_EVENT, block.packetId());
+        assertEquals(PacketId.PACKET_SHULKER_BOX_ACTION, shulker.packetId());
+    }
+
+    @Test
+    void shulkerBlockActionRequiresVanillaAnimationAndShulkerBlock() {
+        assertTrue(LegacyPacketEventsSession.isVanillaShulkerAction(
+                "minecraft:shulker_box", 1));
+        assertTrue(LegacyPacketEventsSession.isVanillaShulkerAction(
+                "minecraft:red_shulker_box", 1));
+        assertFalse(LegacyPacketEventsSession.isVanillaShulkerAction(
+                "minecraft:chest", 1));
+        assertFalse(LegacyPacketEventsSession.isVanillaShulkerAction(
+                "other:shulker_box", 1));
+        assertFalse(LegacyPacketEventsSession.isVanillaShulkerAction(
+                "minecraft:modded_shulker_box", 1));
+        assertFalse(LegacyPacketEventsSession.isVanillaShulkerAction(
+                "minecraft:shulker_box", 2));
     }
 
     @Test
@@ -183,26 +199,14 @@ final class LegacyPacketEventsSessionSelfTest {
 
     @Test
     void legacyServerVersionsMapToExactProtocols() {
-        assertEquals(47, LegacyPhysicsCaptureManager.serverProtocol("1.8.8"));
-        assertEquals(107, LegacyPhysicsCaptureManager.serverProtocol("1.9"));
-        assertEquals(340, LegacyPhysicsCaptureManager.serverProtocol("1.12.2"));
-        assertEquals(393, LegacyPhysicsCaptureManager.serverProtocol("1.13"));
-        assertEquals(404, LegacyPhysicsCaptureManager.serverProtocol("1.13.2"));
-        assertEquals(0.0f, LegacyPhysicsCaptureManager.cooldownTicks(47, -1.0f));
-        assertEquals(10.0f, LegacyPhysicsCaptureManager.cooldownTicks(404, -1.0f));
-        assertEquals(6.0f, LegacyPhysicsCaptureManager.cooldownTicks(47, 6.0f));
-    }
-
-    @Test
-    void playerHashIsRuntimeSaltedAndNeverRawUuidBits() {
-        UUID uuid = UUID.fromString("01234567-89ab-cdef-0123-456789abcdef");
-        long first = LegacyPhysicsCaptureManager.hashPlayer(uuid);
-        assertEquals(first, LegacyPhysicsCaptureManager.hashPlayer(uuid));
-        assertNotEquals(
-                LegacyPhysicsCaptureManager.hashPlayer(uuid, new byte[] {1}),
-                LegacyPhysicsCaptureManager.hashPlayer(uuid, new byte[] {2}));
-        assertNotEquals(uuid.getLeastSignificantBits(), first);
-        assertNotEquals(uuid.getMostSignificantBits(), first);
+        assertEquals(47, LegacyServerIdentity.serverProtocol("1.8.8"));
+        assertEquals(107, LegacyServerIdentity.serverProtocol("1.9"));
+        assertEquals(340, LegacyServerIdentity.serverProtocol("1.12.2"));
+        assertEquals(393, LegacyServerIdentity.serverProtocol("1.13"));
+        assertEquals(404, LegacyServerIdentity.serverProtocol("1.13.2"));
+        assertEquals(0.0f, LegacyServerIdentity.cooldownTicks(47, -1.0f));
+        assertEquals(10.0f, LegacyServerIdentity.cooldownTicks(404, -1.0f));
+        assertEquals(6.0f, LegacyServerIdentity.cooldownTicks(47, 6.0f));
     }
 
     @Test
@@ -273,38 +277,6 @@ final class LegacyPacketEventsSessionSelfTest {
     }
 
     @Test
-    void legacyCaptureCapabilitiesOnlyAdvertiseEmittableEvidence() throws Exception {
-        String previous = System.getProperty("zeus.capture.capabilities");
-        try {
-            LegacyPhysicsCaptureManager.configureCapabilityBitmap();
-            long capabilities = CaptureFrameV3.configuredCapabilityBitmap("legacy");
-            assertEquals(LegacyPhysicsCaptureManager.legacyCapabilities(), capabilities);
-            assertTrue((capabilities & CaptureFrameV3.CAPABILITY_POSITION) != 0L);
-            assertTrue((capabilities & CaptureFrameV3.CAPABILITY_NO_POSITION_MOVEMENT) != 0L);
-            assertTrue((capabilities & CaptureFrameV3.CAPABILITY_EFFECTS) != 0L);
-            assertTrue((capabilities & CaptureFrameV3.CAPABILITY_ATTRIBUTES) != 0L);
-            assertTrue((capabilities & CaptureFrameV3.CAPABILITY_VEHICLES) != 0L);
-            assertEquals(0L, capabilities & CaptureFrameV3.CAPABILITY_SUPPORT_BLOCK);
-            PacketEncode capture = legacyCapturePacket();
-            assertEquals(capabilities, capabilityBitmap(capture));
-            long presence = presenceMask(capture);
-            assertTrue((presence & CaptureFrameV3.PRESENCE_POSITION) != 0L);
-            assertTrue((presence & CaptureFrameV3.PRESENCE_EFFECTS) != 0L);
-            assertTrue((presence & CaptureFrameV3.PRESENCE_ATTRIBUTES) != 0L);
-            assertTrue((presence & CaptureFrameV3.PRESENCE_VEHICLE) != 0L);
-            assertEquals(0L, presence & CaptureFrameV3.PRESENCE_BLOCK_CONTEXT);
-            PacketServerConfig handshake = new PacketServerConfig(
-                    1L, UID, NAME, 3.0f, 0.0f, (byte) 0, 0.1f,
-                    47, "1.8.8", "spigot", "spigot", "unattested",
-                    47, "1.8.8", "", "legacy");
-            assertEquals(capabilities, serverConfigCapabilityBitmap(handshake));
-        } finally {
-            if (previous == null) System.clearProperty("zeus.capture.capabilities");
-            else System.setProperty("zeus.capture.capabilities", previous);
-        }
-    }
-
-    @Test
     void inventoryDiffReportsOnlyActualChangesAndCursorComparisonIsValueBased() {
         ItemStack empty = new ItemStack(ItemStack.EMPTY_ID, 0, (byte) 0);
         ItemStack stone = new ItemStack("minecraft:stone", 0, (byte) 1);
@@ -329,26 +301,15 @@ final class LegacyPacketEventsSessionSelfTest {
 
     @Test
     void platformAndPhysicsIdentityAreTruthfulAndConfigurable() {
-        assertEquals("paper", LegacyPhysicsCaptureManager.platformForBrand("Paper", "auto"));
-        assertEquals("spigot", LegacyPhysicsCaptureManager.platformForBrand("Spigot", "auto"));
-        assertEquals("bukkit", LegacyPhysicsCaptureManager.platformForBrand("CraftBukkit", "auto"));
-        assertEquals("custom", LegacyPhysicsCaptureManager.platformForBrand("Paper", "custom"));
-        assertEquals("unattested", LegacyPhysicsCaptureManager.physicsFingerprint(null, null));
-        assertEquals("operator-profile", LegacyPhysicsCaptureManager.physicsFingerprint(
+        assertEquals("paper", LegacyServerIdentity.platformForBrand("Paper", "auto"));
+        assertEquals("spigot", LegacyServerIdentity.platformForBrand("Spigot", "auto"));
+        assertEquals("bukkit", LegacyServerIdentity.platformForBrand("CraftBukkit", "auto"));
+        assertEquals("custom", LegacyServerIdentity.platformForBrand("Paper", "custom"));
+        assertEquals("unattested", LegacyServerIdentity.physicsFingerprint(null, null));
+        assertEquals("operator-profile", LegacyServerIdentity.physicsFingerprint(
                 null, "operator-profile"));
-        assertEquals("environment-profile", LegacyPhysicsCaptureManager.physicsFingerprint(
+        assertEquals("environment-profile", LegacyServerIdentity.physicsFingerprint(
                 "environment-profile", "operator-profile"));
-    }
-
-    @Test
-    void stoppedGenerationRejectsStaleCapturePoll() {
-        long stale = LegacyPhysicsCaptureManager.generation();
-        LegacyPhysicsCaptureManager.stop();
-        long current = LegacyPhysicsCaptureManager.generation();
-        assertFalse(LegacyPhysicsCaptureManager.applyPollResult(stale, true, true));
-        assertFalse(LegacyPhysicsCaptureManager.applyPollResult(current, true, false));
-        assertTrue(LegacyPhysicsCaptureManager.applyPollResult(current, false, true));
-        assertTrue(current > stale);
     }
 
     private static List<Byte> packetIds(List<PacketEncode> packets) throws Exception {
@@ -376,77 +337,4 @@ final class LegacyPacketEventsSessionSelfTest {
         }
     }
 
-    private static PacketEncode legacyCapturePacket() {
-        return new org.vennv.packets.PacketPhysicsCaptureSample(
-                1L, 1L, 47, 47, "1.8.8", "1.8.8", "spigot", "spigot",
-                "unattested", "unattested", "subject", "", "legacy", 5L,
-                0.0, 64.0, 0.0, 0.1f, 0.0f, 0.0f,
-                0.0f, 0.0f, 0.0f, 0.1f, 0.0f, 0.0f, 0.1f,
-                0, 0, 0, 0, 0, (byte) 0, "minecraft:stone", "",
-                "minecraft:stone", "", Float.NaN, Float.NaN,
-                false, false, false, "air", Float.NaN, Float.NaN,
-                Float.NaN, Float.NaN, Float.NaN, "air", "", "speed=1",
-                0.1f, Float.NaN, (byte) 0, (byte) 0, true, "minecraft:boat", 9L, 0,
-                false, "", Float.NaN, Float.NaN, Float.NaN, 0L, 0,
-                50.0f, Float.NaN, (byte) 0, 0, 0L, (byte) 0,
-                true, false, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-    }
-
-    private static long serverConfigCapabilityBitmap(PacketEncode packet) throws Exception {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        packet.encode(out);
-        ByteBuffer buffer = ByteBuffer.wrap(out.toByteArray());
-        buffer.get();
-        buffer.getLong();
-        skipString(buffer);
-        skipString(buffer);
-        buffer.get();
-        buffer.getFloat();
-        buffer.getFloat();
-        buffer.get();
-        buffer.getFloat();
-        buffer.get();
-        buffer.getShort();
-        skipString(buffer);
-        skipString(buffer);
-        skipString(buffer);
-        skipString(buffer);
-        buffer.getShort();
-        skipString(buffer);
-        skipString(buffer);
-        skipString(buffer);
-        buffer.get();
-        skipString(buffer);
-        skipString(buffer);
-        return buffer.getLong();
-    }
-
-    private static long presenceMask(PacketEncode packet) throws Exception {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        packet.encode(out);
-        ByteBuffer buffer = ByteBuffer.wrap(out.toByteArray());
-        buffer.position(10);
-        return buffer.getLong();
-    }
-
-    private static long capabilityBitmap(PacketEncode packet) throws Exception {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        packet.encode(out);
-        ByteBuffer buffer = ByteBuffer.wrap(out.toByteArray());
-        buffer.get();
-        buffer.getLong();
-        buffer.get();
-        buffer.getLong();
-        buffer.getLong();
-        skipString(buffer);
-        skipString(buffer);
-        return buffer.getLong();
-    }
-
-    private static void skipString(ByteBuffer buffer) {
-        int length = buffer.getShort() & 0xffff;
-        byte[] ignored = new byte[length];
-        buffer.get(ignored);
-        new String(ignored, StandardCharsets.UTF_8);
-    }
 }

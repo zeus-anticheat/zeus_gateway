@@ -24,7 +24,8 @@ public final class PacketDebugFilter {
             "attackentity",
             "externalforce",
             "vehiclemove",
-            "playercommand");
+            "playercommand",
+            "shulkerboxaction");
     private static final Set<String> MOVEMENT_PACKETS = setOf(
             "position", "teleport", "vehiclemove", "velocity", "externalforce");
     private static final Set<String> INVENTORY_PACKETS = setOf(
@@ -39,7 +40,7 @@ public final class PacketDebugFilter {
             "armorsequipment", "confirmtransaction", "openwindow", "clickwindow",
             "inventorytransaction", "closewindow", "useitem", "releaseuseitem", "steervehicle", "vehiclemove",
             "playercommand", "death", "customfeature", "attackedbyplayer", "velocity",
-            "externalforce", "enchantments", "respawn", "serverconfig");
+            "externalforce", "enchantments", "respawn", "serverconfig", "shulkerboxaction");
 
     private static final Map<String, String> ALIASES = createAliases();
 
@@ -126,8 +127,8 @@ public final class PacketDebugFilter {
                 "helditem", "armor", "clickwindow",
                 "placeblock", "diggingblock", "blockface", "useitem",
                 "releaseuseitem", "swinghand", "entityinteraction",
-                "attackentity", "externalforce", "vehiclemove", "playercommand", "position",
-                "teleport", "velocity", "blockraytrace", "steervehicle");
+                "attackentity", "externalforce", "vehiclemove", "playercommand", "shulkerboxaction",
+                "position", "teleport", "velocity", "blockraytrace", "steervehicle");
     }
 
     private static String normalize(String input) {
@@ -155,6 +156,7 @@ public final class PacketDebugFilter {
         aliases.put("inventorytx", "inventorytransaction");
         aliases.put("interactentity", "entityinteraction");
         aliases.put("releaseitem", "releaseuseitem");
+        aliases.put("shulker", "shulkerboxaction");
         return Collections.unmodifiableMap(aliases);
     }
 }

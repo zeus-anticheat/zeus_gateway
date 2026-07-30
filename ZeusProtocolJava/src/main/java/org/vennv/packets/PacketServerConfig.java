@@ -32,12 +32,6 @@ public final class PacketServerConfig extends PacketBaseInfo {
     private final String clientVersion;
     private final String translationBehaviorFingerprint;
     private final String identitySource;
-    private final int captureSchema;
-    private final String adapterId;
-    private final String adapterVersion;
-    private final long adapterCapabilityBitmap;
-    private final String behaviorBundleHash;
-    private final String behaviorRegistryHash;
 
     public PacketServerConfig(long timestamp, String uid, String username,
                               float serverReach, float attackCooldownTicks, byte maxCps,
@@ -56,12 +50,6 @@ public final class PacketServerConfig extends PacketBaseInfo {
         this.clientVersion = null;
         this.translationBehaviorFingerprint = null;
         this.identitySource = null;
-        this.captureSchema = 0;
-        this.adapterId = null;
-        this.adapterVersion = null;
-        this.adapterCapabilityBitmap = 0L;
-        this.behaviorBundleHash = null;
-        this.behaviorRegistryHash = null;
     }
 
     /** Extended constructor used by adapters to publish identity before the
@@ -86,12 +74,6 @@ public final class PacketServerConfig extends PacketBaseInfo {
         this.clientVersion = clientVersion;
         this.translationBehaviorFingerprint = translationBehaviorFingerprint;
         this.identitySource = identitySource;
-        this.captureSchema = CaptureFrameV3.CAPTURE_SCHEMA_VERSION;
-        this.adapterId = identitySource == null || identitySource.isEmpty() ? "unknown" : identitySource;
-        this.adapterVersion = CaptureFrameV3.configuredAdapterVersion();
-        this.adapterCapabilityBitmap = CaptureFrameV3.configuredCapabilityBitmap(identitySource);
-        this.behaviorBundleHash = CaptureFrameV3.configuredBehaviorBundleHash(serverVersion);
-        this.behaviorRegistryHash = CaptureFrameV3.BEHAVIOR_REGISTRY_HASH;
     }
 
     @Override
@@ -107,8 +89,7 @@ public final class PacketServerConfig extends PacketBaseInfo {
         ByteBufferUtil.putByte(out, maxCps);
         ByteBufferUtil.putFloat(out, movementSpeed);
         if (serverVersion != null) {
-            // Extension v2 is the coordinated CaptureFrameV3 handshake.
-            ByteBufferUtil.putByte(out, (byte) 2);
+            ByteBufferUtil.putByte(out, (byte) 1);
             ByteBufferUtil.putShort(out, (short) serverProtocol);
             ByteBufferUtil.putString(out, serverVersion);
             ByteBufferUtil.putString(out, serverBrand == null ? "unknown" : serverBrand);
@@ -118,12 +99,6 @@ public final class PacketServerConfig extends PacketBaseInfo {
             ByteBufferUtil.putString(out, clientVersion == null ? "unknown" : clientVersion);
             ByteBufferUtil.putString(out, translationBehaviorFingerprint == null ? "" : translationBehaviorFingerprint);
             ByteBufferUtil.putString(out, identitySource == null ? "unknown" : identitySource);
-            ByteBufferUtil.putByte(out, (byte) captureSchema);
-            ByteBufferUtil.putString(out, adapterId == null ? "" : adapterId);
-            ByteBufferUtil.putString(out, adapterVersion == null ? "" : adapterVersion);
-            ByteBufferUtil.putLong(out, adapterCapabilityBitmap);
-            ByteBufferUtil.putString(out, behaviorBundleHash == null ? "" : behaviorBundleHash);
-            ByteBufferUtil.putString(out, behaviorRegistryHash == null ? "" : behaviorRegistryHash);
         }
     }
 

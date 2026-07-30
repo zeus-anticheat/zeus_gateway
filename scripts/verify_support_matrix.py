@@ -26,7 +26,7 @@ GATEWAY_ARTIFACT = ROOT / "ZeusGateway" / "target" / "ZeusGateway-1.0-SNAPSHOT.j
 GATEWAY_PLUGIN_YML = ROOT / "ZeusGateway" / "src" / "main" / "resources" / "plugin.yml"
 GATEWAY_PAPER_PLUGIN_YML = ROOT / "ZeusGateway" / "src" / "main" / "resources" / "paper-plugin.yml"
 GATEWAY_PAPER_LISTENER = ROOT / "ZeusGateway" / "src" / "main" / "java" / "org" / "vennv" / "zeusGateway" / "listener" / "event" / "PaperEventListener.java"
-GATEWAY_PHYSICS_CAPTURE = ROOT / "ZeusGateway" / "src" / "main" / "java" / "org" / "vennv" / "zeusGateway" / "listener" / "packets" / "PhysicsCaptureManager.java"
+GATEWAY_SERVER_IDENTITY = ROOT / "ZeusGateway" / "src" / "main" / "java" / "org" / "vennv" / "zeusGateway" / "platform" / "ServerIdentity.java"
 GATEWAY_LEGACY_POM = ROOT / "ZeusGatewayLegacy" / "pom.xml"
 GATEWAY_LEGACY_SRC = ROOT / "ZeusGatewayLegacy" / "src" / "main"
 GATEWAY_LEGACY_PLUGIN_YML = ROOT / "ZeusGatewayLegacy" / "src" / "main" / "resources" / "plugin.yml"
@@ -612,16 +612,16 @@ def verify_gateway_build(verifier):
         verifier.check("- packetevents" in plugin_yml, "unified plugin.yml must require external PacketEvents")
     verifier.check(not GATEWAY_PAPER_PLUGIN_YML.exists(), "dead Paper descriptor must stay removed")
     verifier.check(not GATEWAY_PAPER_LISTENER.exists(), "dead direct-linked Paper listener must stay removed")
-    if not GATEWAY_PHYSICS_CAPTURE.exists():
-        verifier.fail("PhysicsCaptureManager is missing")
+    if not GATEWAY_SERVER_IDENTITY.exists():
+        verifier.fail("ServerIdentity is missing")
     else:
-        physics_capture = read_text(GATEWAY_PHYSICS_CAPTURE)
+        server_identity = read_text(GATEWAY_SERVER_IDENTITY)
         verifier.check(
-            "ClientVersion.getById(clientProtocol)" in physics_capture,
+            "ClientVersion.getById(clientProtocol)" in server_identity,
             "protocol display mapping must come from PacketEvents",
         )
         verifier.check(
-            "case 775:" not in physics_capture and "case 776:" not in physics_capture,
+            "case 775:" not in server_identity and "case 776:" not in server_identity,
             "protocol 775/776 mapping must not be hardcoded",
         )
     if not GATEWAY_LEGACY_PLUGIN_YML.exists():

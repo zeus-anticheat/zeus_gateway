@@ -10,7 +10,6 @@ import org.vennv.zeusGateway.debug.ZeusDebugCommand;
 import org.vennv.zeusGateway.init.ZeusLoader;
 import org.vennv.zeusGateway.listener.RawCaptureCapability;
 import org.vennv.zeusGateway.listener.packets.PacketEventsListenerRegistrar;
-import org.vennv.zeusGateway.listener.packets.PhysicsCaptureManager;
 import org.vennv.zeusGateway.platform.PlatformDetector;
 import org.vennv.zeusGateway.platform.PlatformType;
 import org.vennv.zeusGateway.platform.SchedulerAdapter;
@@ -52,7 +51,6 @@ public final class ModernGatewaySession implements AutoCloseable {
         plugin.configureModern(platform, scheduler, packetEvents, capabilities, debug);
         loader = new ZeusLoader(plugin);
         loader.init();
-        PhysicsCaptureManager.start(plugin);
         plugin.getLogger().info("[ZeusGateway] Modern PacketEvents capture registered: " + capabilities);
     }
 
@@ -60,7 +58,6 @@ public final class ModernGatewaySession implements AutoCloseable {
     public void close() {
         if (closed) return;
         closed = true;
-        PhysicsCaptureManager.stop();
         if (packetEvents != null) {
             packetEvents.close();
             packetEvents = null;

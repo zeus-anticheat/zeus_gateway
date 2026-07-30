@@ -7,8 +7,6 @@ public final class PollingPolicyTest {
             require(!PollingPolicy.shouldSendKeepAlive(19), "early keepalive sent");
             require(!PollingPolicy.shouldSendKeepAlive(21), "late keepalive sent");
         }
-        require(PollingPolicy.isCurrentGeneration(7L, 7L), "current poller rejected");
-        require(!PollingPolicy.isCurrentGeneration(7L, 8L), "stale poller accepted");
     }
 
     private static void require(boolean condition, String message) {

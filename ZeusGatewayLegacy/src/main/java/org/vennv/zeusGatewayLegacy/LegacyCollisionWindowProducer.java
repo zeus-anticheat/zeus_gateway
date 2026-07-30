@@ -121,7 +121,7 @@ final class LegacyCollisionWindowProducer implements AutoCloseable {
         try {
             fragments = prepared.update.toFragments(
                     timestamp, playerId.toString(), player.getName(),
-                    LegacyPhysicsCaptureManager.clientProtocol(player));
+                    LegacyServerIdentity.clientProtocol(player));
             for (PacketCollisionWindow fragment : fragments) {
                 if (fragment.encodedDatagramLength() > PacketCollisionWindow.MAX_DATAGRAM_LENGTH) {
                     invalidate(playerId);

@@ -85,7 +85,6 @@ def universalJar = layout.buildDirectory.file("libs/ZeusFabric-universal-${proje
 def selfChecks = [
     queueSelfCheck: 'org.vennv.zeusFabric.provider.PacketQueueTest',
     movementSelfCheck: 'org.vennv.zeusFabric.provider.MovementSemanticsTest',
-    captureIdentitySelfCheck: 'org.vennv.zeusFabric.provider.CaptureIdentityTest',
     pollingPolicySelfCheck: 'org.vennv.zeusFabric.provider.PollingPolicyTest',
     chunkSnapshotSelfCheck: 'org.vennv.zeusFabric.task.ChunkSnapshotSemanticsTest',
     collisionGenerationSelfCheck: 'org.vennv.zeusFabric.task.CollisionGenerationAllocatorTest',

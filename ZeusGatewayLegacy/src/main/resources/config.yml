@@ -5,9 +5,6 @@ proxy-ac:
 packets:
     batch-size: 100
 
-physics-capture:
-    enabled: false
-
 identity:
     platform: auto
     physics-fingerprint: unattested

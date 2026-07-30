@@ -30,6 +30,7 @@ import org.vennv.packets.PacketPlayerClickWindow;
 import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerPosition;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
+import org.vennv.packets.PacketShulkerBoxAction;
 import org.vennv.utils.ItemStack;
 import org.vennv.utils.ServerBoundPlayerCommandActions;
 import org.vennv.zeusGateway.ZeusGateway;
@@ -130,6 +131,21 @@ class PacketDebugTest {
         new PacketDebugEnvelope(click, " rawChanged=[12=minecraft:stonex1]").encode(wrapped);
 
         assertArrayEquals(direct.toByteArray(), wrapped.toByteArray());
+    }
+
+    @Test
+    void formatterIncludesShulkerActionPositionAndViewerCount() {
+        String message = PacketDebugFormatter.format(new PacketShulkerBoxAction(
+                1L, TARGET_ID.toString(), "Venn", -34, 4, 395, (byte) 1, (byte) 2));
+
+        assertTrue(message.contains("ShulkerBoxAction"));
+        assertTrue(message.contains("pos=-34/4/395"));
+        assertTrue(message.contains("action=1"));
+        assertTrue(message.contains("viewers=2"));
+        assertTrue(PacketDebugFilter.actions().matches(new PacketShulkerBoxAction(
+                1L, TARGET_ID.toString(), "Venn", -34, 4, 395, (byte) 1, (byte) 2)));
+        assertTrue(PacketDebugFilter.parse("shulker").matches(new PacketShulkerBoxAction(
+                1L, TARGET_ID.toString(), "Venn", -34, 4, 395, (byte) 1, (byte) 2)));
     }
 
     @Test

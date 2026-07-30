@@ -26,13 +26,14 @@ import org.vennv.packets.PacketPlayerSwingHand;
 import org.vennv.utils.ExternalForceFlags;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.platform.SchedulerAdapter;
+import org.vennv.zeusGateway.platform.ServerIdentity;
 import org.vennv.zeusGateway.provider.PacketQueue;
 
 class PacketConversionTest {
     @Test
     void packetEventsMapsCurrentProtocolNames() {
-        assertEquals("26.1", PhysicsCaptureManager.clientVersion(775));
-        assertEquals("26.2", PhysicsCaptureManager.clientVersion(776));
+        assertEquals("26.1", ServerIdentity.clientVersion(775));
+        assertEquals("26.2", ServerIdentity.clientVersion(776));
     }
 
     @Test
@@ -43,6 +44,44 @@ class PacketConversionTest {
                 false, "minecraft:stone"));
         assertEquals(false, PacketBlockChangeListener.shouldEmit(
                 UUID.randomUUID(), UUID.randomUUID(), 0, 64, 0));
+    }
+
+    @Test
+    void shulkerBlockActionRequiresVanillaAnimationAndShulkerBlock() {
+        assertTrue(PacketShulkerBoxActionListener.isVanillaShulkerAction(
+                "minecraft:shulker_box", 1));
+        assertTrue(PacketShulkerBoxActionListener.isVanillaShulkerAction(
+                "minecraft:purple_shulker_box", 1));
+        assertEquals(false, PacketShulkerBoxActionListener.isVanillaShulkerAction(
+                "minecraft:chest", 1));
+        assertEquals(false, PacketShulkerBoxActionListener.isVanillaShulkerAction(
+                "other:shulker_box", 1));
+        assertEquals(false, PacketShulkerBoxActionListener.isVanillaShulkerAction(
+                "minecraft:modded_shulker_box", 1));
+        assertEquals(false, PacketShulkerBoxActionListener.isVanillaShulkerAction(
+                "minecraft:shulker_box", 2));
+    }
+
+    @Test
+    void horseTelemetryRejectsInvalidValues() {
+        assertEquals(PacketVehicleMoveListener.HorseTelemetry.UNKNOWN.movementSpeed,
+                PacketVehicleMoveListener.horseTelemetry(null).movementSpeed);
+    }
+
+    @Test
+    void horseJumpChargeIsValidatedAndOptional() {
+        org.vennv.packets.PacketServerBoundPlayerCommand packet =
+                new org.vennv.packets.PacketServerBoundPlayerCommand(
+                        1L, "u", "n",
+                        org.vennv.utils.ServerBoundPlayerCommandActions.START_RIDING_JUMP,
+                        90);
+        assertEquals(Integer.valueOf(90), packet.getHorseJumpCharge());
+        org.vennv.packets.PacketServerBoundPlayerCommand invalid =
+                new org.vennv.packets.PacketServerBoundPlayerCommand(
+                        1L, "u", "n",
+                        org.vennv.utils.ServerBoundPlayerCommandActions.START_RIDING_JUMP,
+                        101);
+        assertNull(invalid.getHorseJumpCharge());
     }
 
     @Test
@@ -88,7 +127,7 @@ class PacketConversionTest {
     @Test
     void velocityAcknowledgementsKeepOneForceIdentityAcrossStages() {
         PacketVelocityListener.PendingVelocity velocity =
-                new PacketVelocityListener.PendingVelocity(42L, "u", "n", 0.1, 0.2, 0.3);
+                new PacketVelocityListener.PendingVelocity(42L, "u", "n", 0.1, 0.2, 0.3, null);
         PacketPlayerExternalForce first =
                 new PacketVelocityListener.Acknowledgement(velocity, false).toPacket();
         PacketPlayerExternalForce required =
@@ -100,6 +139,29 @@ class PacketConversionTest {
         assertTrue((first.getFlags() & ExternalForceFlags.VELOCITY_REQUIRED) == 0);
         assertTrue((required.getFlags() & ExternalForceFlags.VELOCITY_REQUIRED) != 0);
         assertTrue((required.getFlags() & ExternalForceFlags.VELOCITY_FIRST_BREAD) == 0);
+    }
+
+    @Test
+    void windChargeExplosionKeepsItsTypedKnockbackAcrossStages() {
+        PacketVelocityListener.PendingExplosion explosion =
+                new PacketVelocityListener.PendingExplosion(
+                        org.vennv.utils.ExternalForceType.WIND_CHARGE,
+                        1.0, 2.0, 3.0, 0.1, 0.8, -0.2);
+        PacketVelocityListener.PendingVelocity velocity =
+                new PacketVelocityListener.PendingVelocity(42L, "u", "n", 0.1, 0.8, -0.2, explosion);
+        PacketPlayerExternalForce first =
+                new PacketVelocityListener.Acknowledgement(velocity, false).toPacket();
+        PacketPlayerExternalForce required =
+                new PacketVelocityListener.Acknowledgement(velocity, true).toPacket();
+
+        assertEquals(org.vennv.utils.ExternalForceType.WIND_CHARGE, first.getForceType());
+        assertEquals(org.vennv.utils.ExternalForceType.WIND_CHARGE, required.getForceType());
+        assertEquals(1.0, first.getSourceX());
+        assertEquals(2.0, first.getSourceY());
+        assertEquals(3.0, first.getSourceZ());
+        assertEquals(0.8, first.getVelocityY());
+        assertTrue((first.getFlags() & ExternalForceFlags.VELOCITY_FIRST_BREAD) != 0);
+        assertTrue((required.getFlags() & ExternalForceFlags.VELOCITY_REQUIRED) != 0);
     }
 
     @Test

@@ -19,6 +19,7 @@ public final class FabricContractSourceTest {
         require(Byte.toUnsignedInt(PacketId.PACKET_UPDATE_ATTRIBUTES) == 0x2E, "attributes ID changed");
         require(Byte.toUnsignedInt(PacketId.PACKET_PHYSICS_CAPTURE_SAMPLE) == 0x2F, "capture ID changed");
         require(Byte.toUnsignedInt(PacketId.PACKET_COLLISION_WINDOW) == 0x30, "collision window ID changed");
+        require(Byte.toUnsignedInt(PacketId.PACKET_SHULKER_BOX_ACTION) == 0x31, "shulker action ID changed");
         Path source = Path.of("src/main/java/org/vennv/zeusFabric");
         String snapshot = Files.readString(source.resolve("task/PlayerStateSnapshotService.java"));
         String semantics = Files.readString(source.resolve("task/ChunkSnapshotSemantics.java"));
@@ -28,7 +29,6 @@ public final class FabricContractSourceTest {
         String teleportDedupe = Files.readString(source.resolve("listener/AuthoritativeTeleportDedupe.java"));
         String resync = Files.readString(source.resolve("task/ResyncTask.java"));
         String mod = Files.readString(source.resolve("ZeusFabricMod.java"));
-        String captureIdentity = Files.readString(source.resolve("provider/CaptureIdentity.java"));
 
         require(snapshot.contains("new PacketServerConfig("), "0x25 producer missing");
 
@@ -56,6 +56,8 @@ public final class FabricContractSourceTest {
         require(commonMixin.contains("packet instanceof MoveMinecartAlongTrackS2CPacket"), "minecart movement producer missing");
         require(commonMixin.contains("packet instanceof EntitiesDestroyS2CPacket"), "0x2A observing-recipient producer missing");
         require(commonMixin.contains("new PacketBlockChangeEvent("), "0x2B authoritative producer missing");
+        require(outboundDispatch.contains("BlockEventS2CPacket"), "0x31 shulker block-event capture missing");
+        require(commonMixin.contains("new PacketShulkerBoxAction("), "0x31 shulker action producer missing");
         require(!listeners.contains("new PacketBlockChangeEvent("), "listener 0x2B producer restored");
         require(playMixin.contains("new PacketPlayerInput("), "0x2C raw producer missing");
         require(snapshot.contains("CollisionWindowUpdate.full("), "0x30 full snapshot producer missing");
@@ -73,18 +75,14 @@ public final class FabricContractSourceTest {
         require(snapshot.contains("public static boolean contains("), "collision containment API missing");
         String acceptedMovement = section(playMixin,
                 "private void zeus$emitAcceptedMovement",
-                "private CaptureFrameV3 zeus$captureFrame");
-        assertOrder(acceptedMovement,
-                "if (context.hasPosition())",
-                "PlayerStateSnapshotService.onMovement(player, x, y, z)",
-                "PacketQueue.pushAll(List.of(position, zeus$captureFrame(packet)))");
+                "private static boolean zeus$isServerThread");
         assertOrder(acceptedMovement,
                 "if (context.hasPosition())",
                 "PlayerStateSnapshotService.onMovement(player, x, y, z)",
                 "PacketQueue.push(position)");
         assertOrder(section(listeners,
                 "private static void registerJoinLeave",
-                "public static boolean isCaptureActive"),
+                "private static void registerWorldChange"),
                 "PlayerStateSnapshotService.sendFullSnapshot(player)",
                 "PacketQueue.push(new PacketPlayerLeave(timestamp, uid, name))",
                 "PlayerStateSnapshotService.remove(uid)",
@@ -144,6 +142,9 @@ public final class FabricContractSourceTest {
                 "PlayerStateSnapshotService.sendResyncSnapshot(player)");
         require(teleportDedupe.contains("previous.lifecycleKey() == lifecycleKey"),
                 "stable teleport lifecycle dedupe missing");
+        require(section(listeners, "private static void authoritativeTeleport", "private static void registerAttackEntity")
+                .contains("PacketPlayerTeleport.outbound("),
+                "outbound teleport must be tagged for the engine pending-teleport queue");
         require(commonMixin.contains("state.isAir() ? \"minecraft:air\" : state.toString()"),
                 "air block-change normalization missing");
         assertOrder(section(commonMixin,
@@ -170,27 +171,16 @@ public final class FabricContractSourceTest {
         require(!semantics.contains("CHUNK_RADIUS"), "pure collision semantics contain chunk-radius scan");
         require(snapshot.contains("new PacketUpdateAttributes("), "0x2E snapshot producer missing");
         require(commonMixin.contains("new PacketUpdateAttributes("), "0x2E authoritative producer missing");
-        require(playMixin.contains("zeus$captureFrame(packet)"), "0x2F movement producer missing");
+        require(!playMixin.contains("CaptureFrameV3"), "capture frame producer restored");
+        require(!listeners.contains("/api/physics-capture/status"), "capture status polling restored");
         require(commonMixin.contains("packet instanceof EntityVelocityUpdateS2CPacket"), "0x22 authoritative event gate missing");
         require(commonMixin.contains("velocityPacket.getEntityId() == handler.player.getId()"), "0x22 player gate missing");
         require(!commonMixin.contains("handler.player.getVelocity()"), "0x22 state fallback restored");
         require(playMixin.contains("MovementSemantics.rawPacketInputFlags(flags)"), "raw input trust gate missing");
-        require(playMixin.contains("frame.movementSequence = context.sequence()"), "0x2F sequence reuse missing");
-        require(playMixin.contains("frame.inclusionFlags = context.inclusionFlags()"), "0x2F inclusion reuse missing");
-        require(playMixin.contains("getAttributeBaseValue(EntityAttributes.MOVEMENT_SPEED)"), "capture effective speed restored");
         require(snapshot.contains("getAttributeBaseValue(EntityAttributes.MOVEMENT_SPEED)"), "server config effective speed restored");
         require(!snapshot.contains("getAttributeValue(EntityAttributes.MOVEMENT_SPEED)"), "effective movement speed producer restored");
-        require(playMixin.contains("CaptureIdentity.captureSubjectId(player.getUuidAsString())"), "session-salted subject missing");
-        require(playMixin.contains("CaptureIdentity.playerHash(player.getUuidAsString())"), "process-salted hash missing");
-        require(captureIdentity.contains("new SecureRandom().nextBytes(PROCESS_SALT)"), "process salt not random");
-        require(!captureIdentity.contains("zeus-capture-subject-v1"), "public capture salt restored");
-        require(listeners.contains("if (!CaptureIdentity.hasSharedSalt())"), "capture does not fail closed");
         require(listeners.contains("PollingPolicy.shouldSendKeepAlive(player.age)"), "per-player keepalive clock missing");
         require(!listeners.contains("keepAliveCounter"), "global keepalive counter restored");
-        require(listeners.contains("CONTROL_GENERATION.incrementAndGet()"), "poller generation invalidation missing");
-        require(listeners.contains("PollingPolicy.isCurrentGeneration(generation, CONTROL_GENERATION.get())"), "stale poller publication gate missing");
-        require(listeners.contains("connection.disconnect()"), "poller connection cleanup missing");
-        require(listeners.contains("poller.join(3500L)"), "poller stop join missing");
         require(!listeners.contains("tickPhysicsCapture("), "physics polling restored");
         require(!listeners.contains("tickVelocity("), "velocity polling restored");
         require(!listeners.contains("tickBlockRayTrace("), "ray scan polling restored");

@@ -1,16 +1,11 @@
 package org.vennv.zeusFabric.provider;
 
-import org.vennv.packets.CaptureFrameV3;
 import org.vennv.packets.PacketPlayerInput;
 
 import java.util.Optional;
 
 public final class MovementSemantics {
-    public record PacketContext(long sequence, boolean hasPosition, boolean hasLook) {
-        public byte inclusionFlags() {
-            return MovementSemantics.inclusionFlags(hasPosition, hasLook);
-        }
-    }
+    public record PacketContext(long sequence, boolean hasPosition, boolean hasLook) {}
 
     public static final class EmissionGate {
         private long sequence;
@@ -71,16 +66,6 @@ public final class MovementSemantics {
 
     public static double eyeZ(double z) {
         return z;
-    }
-
-    public static byte inclusionFlags(boolean hasPosition, boolean hasLook) {
-        int flags = hasPosition
-                ? CaptureFrameV3.INCLUSION_POSITION
-                : CaptureFrameV3.INCLUSION_NO_POSITION_MOVEMENT;
-        if (hasLook) {
-            flags |= CaptureFrameV3.INCLUSION_LOOK;
-        }
-        return (byte) flags;
     }
 
     public static byte rawPacketInputFlags(int directionalFlags) {

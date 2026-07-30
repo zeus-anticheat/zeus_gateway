@@ -7,7 +7,4 @@ public final class PollingPolicy {
         return Math.floorMod(playerAge, 20) == 0;
     }
 
-    public static boolean isCurrentGeneration(long expected, long current) {
-        return expected == current;
-    }
 }

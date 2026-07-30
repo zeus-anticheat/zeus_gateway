@@ -89,7 +89,7 @@ The shared, **platform-agnostic** packet codec library. Contains:
 - Packet ID constants (`PacketId`)
 - Base classes (`PacketBase`, `PacketBaseInfo`, `PacketEncode`, `PacketDecode`)
 - Binary serialization utilities (`ByteBufferUtil`)
-- All protocol packets through ID `0x30`
+- All protocol packets through ID `0x31`
 - Shared data types (`EntityState`, `Effect`, `Item`, `ItemStack`, `Armor`, `Armors`, `Enchantment`, etc.)
 - Enums (`Hand`, `DamageCause`, `EffectType`, `EffectFlags`, `ServerBoundPlayerCommandActions`)
 
@@ -145,8 +145,9 @@ This library has **zero** external dependencies — no Bukkit, no Fabric, no Min
 | 44 | `0x2C` | `PacketPlayerInput` | Trusted or fallback player input flags |
 | 45 | `0x2D` | `PacketChunkData` | Bounded chunk terrain batch |
 | 46 | `0x2E` | `PacketUpdateAttributes` | Entity attribute update |
-| 47 | `0x2F` | `PacketPhysicsCaptureSample` | Physics capture frame |
+| 47 | `0x2F` | `PacketPhysicsCaptureSample` | Legacy replay compatibility |
 | 48 | `0x30` | `PacketCollisionWindow` | Collision terrain window |
+| 49 | `0x31` | `PacketShulkerBoxAction` | Recipient-visible vanilla Shulker animation state |
 
 ---
 

@@ -5,12 +5,6 @@ import net.minecraft.util.Util;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
@@ -23,7 +17,10 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.passive.AbstractHorseEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -41,7 +38,6 @@ import org.vennv.EntityState;
 import org.vennv.packets.*;
 import org.vennv.utils.*;
 import org.vennv.zeusFabric.mixins.ServerCommonNetworkHandlerAccessor;
-import org.vennv.zeusFabric.provider.CaptureIdentity;
 import org.vennv.zeusFabric.provider.PacketQueue;
 import org.vennv.zeusFabric.provider.PollingPolicy;
 import org.vennv.zeusFabric.task.PlayerStateSnapshotService;
@@ -86,11 +82,7 @@ import org.vennv.zeusFabric.utils.MinecraftCompat;
 public final class ZeusEventListeners {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("zeusfabric");
-    private static final AtomicBoolean CAPTURE_ACTIVE = new AtomicBoolean(false);
-    private static final AtomicBoolean CONTROL_PLANE_AVAILABLE = new AtomicBoolean(false);
-    private static final AtomicLong CONTROL_GENERATION = new AtomicLong();
     private static final AuthoritativeTeleportDedupe TELEPORT_DEDUPE = new AuthoritativeTeleportDedupe();
-    private static volatile Thread captureControlPoller;
 
     private ZeusEventListeners() {}
 
@@ -157,7 +149,6 @@ public final class ZeusEventListeners {
      * Registers all Fabric event callbacks. Called once from the mod initialiser.
      */
     public static void registerAll() {
-        startCaptureControlPoller();
         registerJoinLeave();
         registerAttackEntity();
         registerAttackBlock();
@@ -202,96 +193,6 @@ public final class ZeusEventListeners {
         });
     }
 
-    public static boolean isCaptureActive() {
-        if (!CaptureIdentity.hasSharedSalt()) {
-            return false;
-        }
-        if (CONTROL_PLANE_AVAILABLE.get()) {
-            return CAPTURE_ACTIVE.get();
-        }
-        return Boolean.parseBoolean(System.getProperty("zeus.capture.active", "false"));
-    }
-
-    /** The dashboard is the control plane; the old property-only switch is
-     * retained only as a local opt-in fallback when no dashboard is running. */
-    private static synchronized void startCaptureControlPoller() {
-        stopCaptureControlPoller();
-        long generation = CONTROL_GENERATION.incrementAndGet();
-        Thread poller = new Thread(() -> {
-            while (zeus$isCurrentPoller(generation)) {
-                HttpURLConnection connection = null;
-                try {
-                    String host = System.getenv().getOrDefault("ZEUS_DASHBOARD_HOST", "127.0.0.1");
-                    String port = System.getenv().getOrDefault("ZEUS_DASHBOARD_PORT", "3000");
-                    URL url = new URL("http://" + host + ":" + port + "/api/physics-capture/status");
-                    connection = (HttpURLConnection) url.openConnection();
-                    connection.setConnectTimeout(1500);
-                    connection.setReadTimeout(1500);
-                    connection.setRequestMethod("GET");
-                    if (connection.getResponseCode() == 200) {
-                        try (InputStream input = connection.getInputStream()) {
-                            String body = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-                            zeus$publishCaptureState(
-                                generation,
-                                body.contains("\"active\":true") || body.contains("\"active\": true"),
-                                true
-                            );
-                        }
-                    } else {
-                        zeus$publishCaptureState(generation, false, false);
-                    }
-                } catch (Exception ignored) {
-                    zeus$publishCaptureState(generation, false, false);
-                } finally {
-                    if (connection != null) {
-                        connection.disconnect();
-                    }
-                }
-                try {
-                    Thread.sleep(5000L);
-                } catch (InterruptedException interrupted) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        }, "ZeusFabric-CaptureControl");
-        poller.setDaemon(true);
-        captureControlPoller = poller;
-        poller.start();
-    }
-
-    private static boolean zeus$isCurrentPoller(long generation) {
-        return !Thread.currentThread().isInterrupted()
-            && PollingPolicy.isCurrentGeneration(generation, CONTROL_GENERATION.get())
-            && captureControlPoller == Thread.currentThread();
-    }
-
-    private static void zeus$publishCaptureState(long generation, boolean active, boolean available) {
-        if (zeus$isCurrentPoller(generation)) {
-            CAPTURE_ACTIVE.set(active);
-            CONTROL_PLANE_AVAILABLE.set(available);
-        }
-    }
-
-    public static synchronized void stopCaptureControlPoller() {
-        Thread poller = captureControlPoller;
-        CONTROL_GENERATION.incrementAndGet();
-        captureControlPoller = null;
-        CAPTURE_ACTIVE.set(false);
-        CONTROL_PLANE_AVAILABLE.set(false);
-        if (poller != null) {
-            poller.interrupt();
-            if (poller != Thread.currentThread()) {
-                try {
-                    poller.join(3500L);
-                } catch (InterruptedException interrupted) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        }
-        CAPTURE_ACTIVE.set(false);
-        CONTROL_PLANE_AVAILABLE.set(false);
-    }
-
     // ─────────────────────── World Change ────────────────────────────────
     
     private static void registerWorldChange() {
@@ -334,13 +235,16 @@ public final class ZeusEventListeners {
                 lifecycleKey)) {
             return;
         }
-        PacketQueue.push(new PacketPlayerTeleport(
-                System.currentTimeMillis(),
-                player.getUuidAsString(),
-                player.getName().getString(),
-                destX,
-                destY,
-                destZ));
+        long timestamp = System.currentTimeMillis();
+        String uid = player.getUuidAsString();
+        String name = player.getName().getString();
+        // An outbound PLAYER_POSITION_AND_LOOK only becomes authoritative once the
+        // client echoes it back, so it is tagged for the engine's pending-teleport
+        // queue. A world change is already applied server-side.
+        PacketQueue.push(source == AuthoritativeTeleportDedupe.Source.OUTBOUND
+                ? PacketPlayerTeleport.outbound(
+                        timestamp, uid, name, destX, destY, destZ, (int) lifecycleKey)
+                : new PacketPlayerTeleport(timestamp, uid, name, destX, destY, destZ));
         PlayerStateSnapshotService.invalidate(player);
         PlayerStateSnapshotService.sendResyncSnapshot(player);
     }
@@ -925,7 +829,11 @@ public final class ZeusEventListeners {
                     vehicle.getPitch(),
                     Registries.ENTITY_TYPE.getId(vehicle.getType()).toString(),
                     vehicle.getId(),
-                    vehicleFlags(vehicle)
+                    vehicleFlags(vehicle),
+                    horseMovementSpeed(vehicle),
+                    horseJumpStrength(vehicle),
+                    horseSaddleKnown(vehicle),
+                    horseSaddled(vehicle)
                 )
             );
         }
@@ -938,6 +846,26 @@ public final class ZeusEventListeners {
         if (vehicle.isTouchingWater()) flags |= PacketPlayerVehicleMove.FLAG_IN_WATER;
         if (vehicle.isOnGround()) flags |= PacketPlayerVehicleMove.FLAG_ON_GROUND;
         return flags;
+    }
+
+    private static Float horseMovementSpeed(Entity vehicle) {
+        if (!(vehicle instanceof AbstractHorseEntity horse)) return null;
+        double value = horse.getAttributeValue(EntityAttributes.MOVEMENT_SPEED);
+        return Double.isFinite(value) && value > 0.0 && value <= 1024.0 ? (float) value : null;
+    }
+
+    private static Double horseJumpStrength(Entity vehicle) {
+        if (!(vehicle instanceof AbstractHorseEntity horse)) return null;
+        double value = horse.getAttributeValue(EntityAttributes.JUMP_STRENGTH);
+        return Double.isFinite(value) && value >= 0.0 && value <= 32.0 ? value : null;
+    }
+
+    private static boolean horseSaddleKnown(Entity vehicle) {
+        return vehicle instanceof AbstractHorseEntity;
+    }
+
+    private static boolean horseSaddled(Entity vehicle) {
+        return vehicle instanceof AbstractHorseEntity horse && horse.hasStackEquipped(EquipmentSlot.SADDLE);
     }
 
     // ─────────────────── Screen Handler ─────────────────────────────────

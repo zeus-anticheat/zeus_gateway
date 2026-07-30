@@ -189,6 +189,12 @@ public final class PacketDebugFormatter {
         } else if (packet instanceof PacketBlockChangeEvent) {
             PacketBlockChangeEvent bc = (PacketBlockChangeEvent) packet;
             message.append(" block_change=").append(bc.getBlockType());
+        } else if (packet instanceof PacketShulkerBoxAction) {
+            PacketShulkerBoxAction action = (PacketShulkerBoxAction) packet;
+            message.append(" pos=").append(action.getWorldX()).append('/')
+                    .append(action.getWorldY()).append('/').append(action.getWorldZ())
+                    .append(" action=").append(Byte.toUnsignedInt(action.getActionType()))
+                    .append(" viewers=").append(Byte.toUnsignedInt(action.getViewerCount()));
         } else if (packet instanceof PacketPlayerCustomFeature) {
             PacketPlayerCustomFeature feature = (PacketPlayerCustomFeature) packet;
             message.append(" category=").append(feature.getCategoryId())

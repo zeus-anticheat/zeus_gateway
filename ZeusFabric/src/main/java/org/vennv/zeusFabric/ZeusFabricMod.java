@@ -123,7 +123,6 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
 
     private void onServerStopping(MinecraftServer minecraftServer) {
         LOGGER.info("[ZeusFabric] Server stopping – shutting down Zeus...");
-        ZeusEventListeners.stopCaptureControlPoller();
 
         if (batchSender != null) {
             batchSender.stop();

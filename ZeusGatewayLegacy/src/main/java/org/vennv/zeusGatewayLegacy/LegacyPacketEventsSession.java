@@ -18,9 +18,11 @@ import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientClickWindow;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerFlying;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockAction;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockChange;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerMultiBlockChange;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -43,10 +45,18 @@ import org.vennv.packets.PacketBlockChangeEvent;
 import org.vennv.packets.PacketChunkData;
 import org.vennv.packets.PacketPlayerClickWindow;
 import org.vennv.packets.PacketPlayerPosition;
+import org.vennv.packets.PacketShulkerBoxAction;
 
 final class LegacyPacketEventsSession implements AutoCloseable {
     static final int MAX_PENDING = 4096;
     private static final int MAX_TASKS_PER_DRAIN = 128;
+    private static final Set<String> VANILLA_SHULKER_PATHS = new HashSet<String>(Arrays.asList(
+            "shulker_box", "white_shulker_box", "orange_shulker_box",
+            "magenta_shulker_box", "light_blue_shulker_box", "yellow_shulker_box",
+            "lime_shulker_box", "pink_shulker_box", "gray_shulker_box",
+            "light_gray_shulker_box", "cyan_shulker_box", "purple_shulker_box",
+            "blue_shulker_box", "brown_shulker_box", "green_shulker_box",
+            "red_shulker_box", "black_shulker_box"));
     static final int MAX_WORLD_PENDING = 16;
     private static final long WARNING_INTERVAL_MS = 5000L;
 
@@ -122,7 +132,6 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         discontinuities.add(uuid);
         worldGeneration(uuid).incrementAndGet();
         LegacyPacketQueue.drop(uuid);
-        LegacyPhysicsCaptureManager.reset(uuid);
         if (requireFullChunk) {
             worldReady.remove(uuid);
             AtomicLong counter = worldCounter(uuid);
@@ -175,7 +184,6 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         worldSequences.remove(uuid);
         worldGenerations.remove(uuid);
         failedWorldAt.remove(uuid);
-        LegacyPhysicsCaptureManager.remove(player);
         LegacyPacketQueue.pushControl(uuid, new org.vennv.packets.PacketPlayerLeave(
                 timestamp, uuid.toString(), player.getName()));
     }
@@ -242,7 +250,6 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         if (uuid == null) return;
         orderedTasks.fail(uuid);
         discontinuities.add(uuid);
-        LegacyPhysicsCaptureManager.reset(uuid);
     }
 
     private void recover(UUID uuid) {
@@ -277,7 +284,6 @@ final class LegacyPacketEventsSession implements AutoCloseable {
             drainScheduled.set(false);
             for (UUID uuid : orderedTasks.failAllAndClear()) {
                 discontinuities.add(uuid);
-                LegacyPhysicsCaptureManager.reset(uuid);
             }
             warn("Failed to schedule packet drain: " + error.getMessage());
         }
@@ -398,6 +404,21 @@ final class LegacyPacketEventsSession implements AutoCloseable {
                 if (block == null) throw new IllegalStateException("PacketEvents returned a null changed block");
                 emitBlock(timestamp, uuid, name, block.getX(), block.getY(), block.getZ(), block.getBlockState(version));
             }
+            return false;
+        }
+        if (type == PacketType.Play.Server.BLOCK_ACTION) {
+            WrapperPlayServerBlockAction action = new WrapperPlayServerBlockAction(event);
+            WrappedBlockState block = action.getBlockType();
+            String blockType = block == null || block.getType() == null
+                    ? null
+                    : block.getType().getName();
+            if (!isVanillaShulkerAction(blockType, action.getActionId())) return false;
+            Vector3i position = action.getBlockPosition();
+            if (position == null) throw new IllegalStateException("PacketEvents returned an empty block action position");
+            emitShulkerAction(
+                    timestamp, uuid, name,
+                    position.getX(), position.getY(), position.getZ(),
+                    action.getActionId(), action.getActionData());
         }
         return false;
     }
@@ -448,6 +469,43 @@ final class LegacyPacketEventsSession implements AutoCloseable {
             throw new IllegalStateException("output queue rejected block change");
         }
         plugin.collisionBlockChanged(uuid);
+    }
+
+    private static boolean isVanillaShulkerAction(PacketSendEvent event) {
+        PacketSendEvent probe = null;
+        try {
+            probe = event.clone();
+            WrapperPlayServerBlockAction action = new WrapperPlayServerBlockAction(probe);
+            WrappedBlockState block = action.getBlockType();
+            String blockType = block == null || block.getType() == null
+                    ? null
+                    : block.getType().getName();
+            return isVanillaShulkerAction(blockType, action.getActionId());
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        } finally {
+            if (probe != null) probe.cleanUp();
+        }
+    }
+
+    static boolean isVanillaShulkerAction(String blockType, int actionId) {
+        if (actionId != 1 || blockType == null) return false;
+        String normalized = blockType.toLowerCase(java.util.Locale.ROOT);
+        int separator = normalized.indexOf(':');
+        if (separator >= 0 && !normalized.startsWith("minecraft:")) return false;
+        String path = separator < 0 ? normalized : normalized.substring(separator + 1);
+        return VANILLA_SHULKER_PATHS.contains(path);
+    }
+
+    private synchronized void emitShulkerAction(
+            long timestamp, UUID uuid, String name,
+            int x, int y, int z, int actionId, int viewerCount) {
+        if (!currentWorld(uuid)) throw new IllegalStateException("stale world packet generation");
+        if (!LegacyPacketQueue.push(uuid, new PacketShulkerBoxAction(
+                timestamp, uuid.toString(), name, x, y, z,
+                (byte) actionId, (byte) viewerCount))) {
+            throw new IllegalStateException("output queue rejected shulker action");
+        }
     }
 
     private synchronized void completeWorld(UUID uuid, long sequence, boolean fullChunk) {
@@ -547,10 +605,13 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         public void onPacketSend(PacketSendEvent event) {
             if (session.closed || event.isCancelled()) return;
             PacketTypeCommon type = event.getPacketType();
-            if (type == PacketType.Play.Server.BLOCK_CHANGE
-                    || type == PacketType.Play.Server.MULTI_BLOCK_CHANGE) {
-                session.submitWorld(event);
+            if (type == PacketType.Play.Server.BLOCK_ACTION) {
+                if (!isVanillaShulkerAction(event)) return;
+            } else if (type != PacketType.Play.Server.BLOCK_CHANGE
+                    && type != PacketType.Play.Server.MULTI_BLOCK_CHANGE) {
+                return;
             }
+            session.submitWorld(event);
         }
     }
 
@@ -624,9 +685,6 @@ final class LegacyPacketEventsSession implements AutoCloseable {
                     }
                     if (player != null) {
                         session.plugin.captureCollisionMovement(player, state.x, state.y, state.z);
-                        LegacyPhysicsCaptureManager.capture(
-                                player, timestamp, sequence, state.x, state.y, state.z,
-                                hasPosition, hasLook, state.yaw, state.pitch);
                     }
                 }
             });

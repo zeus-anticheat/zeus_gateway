@@ -11,6 +11,7 @@ import com.github.retrooper.packetevents.util.Vector3d;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPong;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientWindowConfirmation;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityVelocity;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerExplosion;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPing;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWindowConfirmation;
 import java.util.Map;
@@ -37,34 +38,36 @@ final class PacketVelocityListener extends PacketListenerAbstract {
 
     @Override
     public void onPacketSend(PacketSendEvent event) {
-        if (event.isCancelled() || event.getPacketType() != PacketType.Play.Server.ENTITY_VELOCITY) return;
+        if (event.isCancelled()) return;
         User user = event.getUser();
         if (user == null || user.getUUID() == null || user.getName() == null) return;
+        UUID uuid = user.getUUID();
+
+        if (event.getPacketType() == PacketType.Play.Server.EXPLOSION) {
+            // Grim handles this packet directly: its knockback vector is exact
+            // per-recipient explosion impulse. Do not infer force from item use,
+            // projectile spawn, or a later entity-velocity packet.
+            WrapperPlayServerExplosion explosion = new WrapperPlayServerExplosion(event);
+            Vector3d knockback = explosion.getKnockback();
+            Vector3d source = explosion.getPosition();
+            if (!nonZero(knockback) || source == null) return;
+            ExternalForceType forceType = isWindChargeExplosion(explosion)
+                    ? ExternalForceType.WIND_CHARGE : ExternalForceType.EXPLOSION;
+            enqueueVelocity(event, user, uuid, new PendingVelocity(
+                    nextForceTimestamp(), uuid.toString(), user.getName(),
+                    knockback.getX(), knockback.getY(), knockback.getZ(),
+                    new PendingExplosion(forceType, source.getX(), source.getY(), source.getZ(),
+                            knockback.getX(), knockback.getY(), knockback.getZ())));
+            return;
+        }
+        if (event.getPacketType() != PacketType.Play.Server.ENTITY_VELOCITY) return;
         WrapperPlayServerEntityVelocity wrapper = new WrapperPlayServerEntityVelocity(event);
         if (wrapper.getEntityId() != user.getEntityId()) return;
         Vector3d velocity = wrapper.getVelocity();
         if (velocity == null) return;
-
-        UUID uuid = user.getUUID();
-        PendingVelocity pending = new PendingVelocity(
+        enqueueVelocity(event, user, uuid, new PendingVelocity(
                 nextForceTimestamp(), uuid.toString(), user.getName(),
-                velocity.getX(), velocity.getY(), velocity.getZ());
-        boolean modern = event.getServerVersion().isNewerThanOrEquals(ServerVersion.V_1_17);
-        int beforeId = nextAcknowledgementId(modern);
-        int afterId = nextAcknowledgementId(modern);
-        Map<Integer, Acknowledgement> playerAcks = acknowledgements.computeIfAbsent(
-                uuid, ignored -> new ConcurrentHashMap<>());
-        playerAcks.put(beforeId, new Acknowledgement(pending, false));
-        playerAcks.put(afterId, new Acknowledgement(pending, true));
-
-        if (modern) {
-            user.writePacket(new WrapperPlayServerPing(beforeId));
-            event.getTasksAfterSend().add(() -> user.writePacket(new WrapperPlayServerPing(afterId)));
-        } else {
-            user.writePacket(new WrapperPlayServerWindowConfirmation(0, (short) beforeId, false));
-            event.getTasksAfterSend().add(() -> user.writePacket(
-                    new WrapperPlayServerWindowConfirmation(0, (short) afterId, false)));
-        }
+                velocity.getX(), velocity.getY(), velocity.getZ(), null));
     }
 
     @Override
@@ -93,6 +96,37 @@ final class PacketVelocityListener extends PacketListenerAbstract {
 
     void clear() {
         acknowledgements.clear();
+    }
+
+    private void enqueueVelocity(
+            PacketSendEvent event, User user, UUID uuid, PendingVelocity pending) {
+        boolean modern = event.getServerVersion().isNewerThanOrEquals(ServerVersion.V_1_17);
+        int beforeId = nextAcknowledgementId(modern);
+        int afterId = nextAcknowledgementId(modern);
+        Map<Integer, Acknowledgement> playerAcks = acknowledgements.computeIfAbsent(
+                uuid, ignored -> new ConcurrentHashMap<>());
+        playerAcks.put(beforeId, new Acknowledgement(pending, false));
+        playerAcks.put(afterId, new Acknowledgement(pending, true));
+
+        if (modern) {
+            user.writePacket(new WrapperPlayServerPing(beforeId));
+            event.getTasksAfterSend().add(() -> user.writePacket(new WrapperPlayServerPing(afterId)));
+        } else {
+            user.writePacket(new WrapperPlayServerWindowConfirmation(0, (short) beforeId, false));
+            event.getTasksAfterSend().add(() -> user.writePacket(
+                    new WrapperPlayServerWindowConfirmation(0, (short) afterId, false)));
+        }
+    }
+
+    private static boolean isWindChargeExplosion(WrapperPlayServerExplosion explosion) {
+        return explosion.getExplosionSound() != null
+                && explosion.getExplosionSound().getSoundId() != null
+                && "minecraft:entity.wind_charge.wind_burst".equals(
+                        explosion.getExplosionSound().getSoundId().toString());
+    }
+
+    private static boolean nonZero(Vector3d vector) {
+        return vector != null && (vector.getX() != 0.0 || vector.getY() != 0.0 || vector.getZ() != 0.0);
     }
 
     private Acknowledgement remove(UUID uuid, int id) {
@@ -134,11 +168,38 @@ final class PacketVelocityListener extends PacketListenerAbstract {
         final double x;
         final double y;
         final double z;
+        final PendingExplosion explosion;
 
-        PendingVelocity(long timestamp, String uid, String username, double x, double y, double z) {
+        PendingVelocity(
+                long timestamp, String uid, String username,
+                double x, double y, double z, PendingExplosion explosion) {
             this.timestamp = timestamp;
             this.uid = uid;
             this.username = username;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.explosion = explosion;
+        }
+    }
+
+    static final class PendingExplosion {
+        final ExternalForceType forceType;
+        final double sourceX;
+        final double sourceY;
+        final double sourceZ;
+        final double x;
+        final double y;
+        final double z;
+
+        PendingExplosion(
+                ExternalForceType forceType,
+                double sourceX, double sourceY, double sourceZ,
+                double x, double y, double z) {
+            this.forceType = forceType;
+            this.sourceX = sourceX;
+            this.sourceY = sourceY;
+            this.sourceZ = sourceZ;
             this.x = x;
             this.y = y;
             this.z = z;
@@ -159,13 +220,20 @@ final class PacketVelocityListener extends PacketListenerAbstract {
                     | (required
                     ? ExternalForceFlags.VELOCITY_REQUIRED
                     : ExternalForceFlags.VELOCITY_FIRST_BREAD);
+            PendingExplosion explosion = velocity.explosion;
+            double sourceX = explosion == null ? 0.0 : explosion.sourceX;
+            double sourceY = explosion == null ? 0.0 : explosion.sourceY;
+            double sourceZ = explosion == null ? 0.0 : explosion.sourceZ;
+            double dirX = explosion == null ? 0.0 : explosion.x;
+            double dirY = explosion == null ? 0.0 : explosion.y;
+            double dirZ = explosion == null ? 0.0 : explosion.z;
             return new PacketPlayerExternalForce(
                     velocity.timestamp,
                     velocity.uid,
                     velocity.username,
-                    ExternalForceType.GENERIC,
-                    0.0, 0.0, 0.0,
-                    0.0, 0.0, 0.0,
+                    explosion == null ? ExternalForceType.GENERIC : explosion.forceType,
+                    sourceX, sourceY, sourceZ,
+                    dirX, dirY, dirZ,
                     velocity.x, velocity.y, velocity.z,
                     Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z),
                     (short) 1,

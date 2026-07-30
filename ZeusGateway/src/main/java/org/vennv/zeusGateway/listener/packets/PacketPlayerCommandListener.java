@@ -27,6 +27,9 @@ public class PacketPlayerCommandListener extends PacketListenerAbstract {
         long timestamp = System.currentTimeMillis();
         WrapperPlayClientEntityAction wrapper = new WrapperPlayClientEntityAction(event);
         ServerBoundPlayerCommandActions action = mapPlayerAction(wrapper.getAction());
+        Integer horseJumpCharge = "START_JUMPING_WITH_HORSE".equals(
+                wrapper.getAction() == null ? null : wrapper.getAction().name())
+                ? validJumpCharge(wrapper.getJumpBoost()) : null;
         if (action == null || event.getUser().getUUID() == null || event.getUser().getName() == null) {
             return;
         }
@@ -37,8 +40,13 @@ public class PacketPlayerCommandListener extends PacketListenerAbstract {
                 timestamp,
                 event.getUser().getUUID().toString(),
                 event.getUser().getName(),
-                action);
+                action,
+                horseJumpCharge);
         dispatcher.submit(player, () -> PacketQueue.push(packet));
+    }
+
+    private static Integer validJumpCharge(int value) {
+        return value >= 0 && value <= 100 ? value : null;
     }
 
     private ServerBoundPlayerCommandActions mapPlayerAction(

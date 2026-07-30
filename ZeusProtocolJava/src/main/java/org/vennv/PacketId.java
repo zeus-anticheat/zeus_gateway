@@ -47,4 +47,5 @@ public class PacketId {
     public static final byte PACKET_UPDATE_ATTRIBUTES = 0x2E;
     public static final byte PACKET_PHYSICS_CAPTURE_SAMPLE = 0x2F;
     public static final byte PACKET_COLLISION_WINDOW = 0x30;
+    public static final byte PACKET_SHULKER_BOX_ACTION = 0x31;
 }

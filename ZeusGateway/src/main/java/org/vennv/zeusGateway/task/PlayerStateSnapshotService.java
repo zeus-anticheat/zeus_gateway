@@ -31,8 +31,8 @@ import org.vennv.zeusGateway.compat.AttributeCompat;
 import org.vennv.zeusGateway.compat.EffectCompat;
 import org.vennv.zeusGateway.compat.EntityCompat;
 import org.vennv.zeusGateway.platform.ServerCombatSettings;
+import org.vennv.zeusGateway.platform.ServerIdentity;
 import org.vennv.zeusGateway.platform.ServerVersion;
-import org.vennv.zeusGateway.listener.packets.PhysicsCaptureManager;
 import org.vennv.zeusGateway.provider.PacketQueue;
 import org.vennv.zeusGateway.utils.ItemUtil;
 
@@ -160,7 +160,7 @@ public final class PlayerStateSnapshotService {
         String name = player.getName();
 
         PacketQueue.push(new PacketPlayerJoin(
-                timestamp, uid, name, PhysicsCaptureManager.serverProtocol()));
+                timestamp, uid, name, ServerIdentity.serverProtocol()));
         PacketQueue.push(serverConfig(timestamp, uid, name, player));
         PacketQueue.push(new PacketPlayerChangeMode(
                 timestamp,
@@ -206,16 +206,16 @@ public final class PlayerStateSnapshotService {
                 cooldown,
                 ServerCombatSettings.getMaxCps(),
                 movementSpeed,
-                PhysicsCaptureManager.serverProtocol(),
-                PhysicsCaptureManager.serverVersion(),
-                PhysicsCaptureManager.serverBrand(),
-                PhysicsCaptureManager.platform(),
-                PhysicsCaptureManager.physicsFingerprint(),
-                PhysicsCaptureManager.clientProtocol(player),
-                PhysicsCaptureManager.clientVersion(PhysicsCaptureManager.clientProtocol(player)),
-                PhysicsCaptureManager.translationBehaviorFingerprint(
+                ServerIdentity.serverProtocol(),
+                ServerIdentity.serverVersion(),
+                ServerIdentity.serverBrand(),
+                ServerIdentity.platform(),
+                ServerIdentity.physicsFingerprint(),
+                ServerIdentity.clientProtocol(player),
+                ServerIdentity.clientVersion(ServerIdentity.clientProtocol(player)),
+                ServerIdentity.translationBehaviorFingerprint(
                         player.getUniqueId(),
-                        PhysicsCaptureManager.clientProtocol(player)),
+                        ServerIdentity.clientProtocol(player)),
                 "gateway");
     }
 

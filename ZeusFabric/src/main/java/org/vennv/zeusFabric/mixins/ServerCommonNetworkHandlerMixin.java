@@ -2,6 +2,7 @@ package org.vennv.zeusFabric.mixins;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.BlockEventS2CPacket;
 import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.BundleS2CPacket;
 import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
@@ -18,6 +19,7 @@ import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerCommonNetworkHandler;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
+import net.minecraft.block.ShulkerBoxBlock;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,6 +32,7 @@ import org.vennv.packets.PacketEntityDestroy;
 import org.vennv.packets.PacketEntityMove;
 import org.vennv.packets.PacketEntitySpawn;
 import org.vennv.packets.PacketPlayerVelocity;
+import org.vennv.packets.PacketShulkerBoxAction;
 import org.vennv.packets.PacketUpdateAttributes;
 import org.vennv.zeusFabric.listener.ZeusEventListeners;
 import org.vennv.zeusFabric.provider.PacketQueue;
@@ -142,6 +145,21 @@ public abstract class ServerCommonNetworkHandlerMixin {
                     sneakingSpeed, movementEfficiency, waterMovementEfficiency
                 ));
             }
+        }
+        if (packet instanceof BlockEventS2CPacket blockEvent
+                && blockEvent.getBlock() instanceof ShulkerBoxBlock
+                && blockEvent.getType() == 1) {
+            BlockPos pos = blockEvent.getPos();
+            PacketQueue.push(new PacketShulkerBoxAction(
+                System.currentTimeMillis(),
+                handler.player.getUuidAsString(),
+                handler.player.getName().getString(),
+                pos.getX(),
+                pos.getY(),
+                pos.getZ(),
+                (byte) blockEvent.getType(),
+                (byte) blockEvent.getData()
+            ));
         }
         if (packet instanceof BlockUpdateS2CPacket blockPacket) {
             zeus$blockChange(

@@ -1,18 +1,12 @@
 package org.vennv.zeusFabric.provider;
 
-import org.vennv.packets.CaptureFrameV3;
 import org.vennv.packets.PacketPlayerInput;
 
 public final class MovementSemanticsTest {
     public static void main(String[] args) {
         MovementSemantics.PacketContext positionLook = MovementSemantics.packetContext(7L, true, true);
         require(positionLook.sequence() == 7L, "sequence changed");
-        require(positionLook.inclusionFlags() == (CaptureFrameV3.INCLUSION_POSITION | CaptureFrameV3.INCLUSION_LOOK),
-                "position/look inclusion mismatch");
-
-        MovementSemantics.PacketContext lookOnly = MovementSemantics.packetContext(8L, false, true);
-        require(lookOnly.inclusionFlags() == (CaptureFrameV3.INCLUSION_NO_POSITION_MOVEMENT | CaptureFrameV3.INCLUSION_LOOK),
-                "look-only inclusion mismatch");
+        require(positionLook.hasPosition() && positionLook.hasLook(), "movement metadata changed");
 
         require(MovementSemantics.eyeX(12.5) == 12.5, "eye X mismatch");
         require(MovementSemantics.eyeY(64.0, 1.62) == 65.62, "eye Y mismatch");
