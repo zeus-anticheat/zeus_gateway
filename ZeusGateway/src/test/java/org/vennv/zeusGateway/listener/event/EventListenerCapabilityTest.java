@@ -88,6 +88,16 @@ class EventListenerCapabilityTest {
     }
 
     @Test
+    void pistonForcesClassifyMovedMaterialByStableEnumName() throws IOException {
+        String listener = source("listener/event/EventListener.java");
+        String section = section(listener, "private void emitPistonForces", "/**\n     * Emit PacketBlockChangeEvent");
+        assertTrue(section.contains("String blockName = block.getType().name()"));
+        assertTrue(section.contains("blockName.equals(\"SLIME_BLOCK\")"));
+        assertTrue(section.contains("type = ExternalForceType.SLIME_PISTON"));
+        assertTrue(section.contains("blockName.equals(\"HONEY_BLOCK\")"));
+    }
+
+    @Test
     void riptideForcesStateBeforeActivation() throws IOException {
         String listener = source("listener/event/EventListener.java");
         String section = section(listener, "public void onPlayerRiptide", "// ──────────────── Use / Release Use Item");

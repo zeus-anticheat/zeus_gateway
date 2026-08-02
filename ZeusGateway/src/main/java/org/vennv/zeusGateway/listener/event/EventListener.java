@@ -1219,8 +1219,8 @@ public class EventListener implements Listener {
                     continue;
                 }
 
-        String blockName = BlockCompat.getBlockDataString(block);
-        int flags = ExternalForceFlags.DIRECT_INTERSECT | ExternalForceFlags.ENVIRONMENT_BACKED;
+                String blockName = block.getType().name();
+                int flags = ExternalForceFlags.DIRECT_INTERSECT | ExternalForceFlags.ENVIRONMENT_BACKED;
                 ExternalForceType type = ExternalForceType.PISTON;
                 if (blockName.equals("SLIME_BLOCK")) {
                     flags |= ExternalForceFlags.HAS_SLIME;
