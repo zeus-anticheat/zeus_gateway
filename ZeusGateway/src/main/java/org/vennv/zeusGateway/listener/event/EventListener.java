@@ -1117,13 +1117,13 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPistonExtend(BlockPistonExtendEvent event) {
-        emitPistonForces(event.getBlocks(), event.getDirection(), false);
+        emitPistonForces(event.getBlock(), event.getBlocks(), event.getDirection(), false);
         emitPistonBlockChanges(event.getBlocks(), event.getDirection(), false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPistonRetract(BlockPistonRetractEvent event) {
-        emitPistonForces(event.getBlocks(), event.getDirection(), true);
+        emitPistonForces(event.getBlock(), event.getBlocks(), event.getDirection(), true);
         emitPistonBlockChanges(event.getBlocks(), event.getDirection(), true);
     }
     // ─────────────────── Block Change Events (CompensatedWorld) ──────────────────
@@ -1185,15 +1185,22 @@ public class EventListener implements Listener {
     // ───────────────────────── Helpers ────────────────────────────────
 
     private void emitPistonForces(
+            Block base,
             java.util.List<Block> movedBlocks,
             org.bukkit.block.BlockFace direction,
             boolean retracting) {
-        if (movedBlocks == null || movedBlocks.isEmpty() || direction == null) {
+        if (direction == null) {
+            return;
+        }
+        World world = base != null
+                ? base.getWorld()
+                : (movedBlocks == null || movedBlocks.isEmpty() ? null : movedBlocks.get(0).getWorld());
+        if (world == null) {
             return;
         }
 
         Vector dir = direction.getDirection();
-        for (Player player : movedBlocks.get(0).getWorld().getPlayers()) {
+        for (Player player : world.getPlayers()) {
             Location playerLocation = player.getLocation();
             double halfWidth = EntityCompat.getPlayerWidth(player) / 2.0;
             double[] playerBox = new double[] {
@@ -1204,46 +1211,85 @@ public class EventListener implements Listener {
                     playerLocation.getY() + EntityCompat.getPlayerHeight(player),
                     playerLocation.getZ() + halfWidth
             };
-            for (Block block : movedBlocks) {
-                Vector offset = retracting ? new Vector(0, 0, 0) : dir;
-                Location dest = block.getLocation().add(offset);
-                double[] movedBox = new double[] {
-                        dest.getX(),
-                        dest.getY(),
-                        dest.getZ(),
-                        dest.getX() + 1.0,
-                        dest.getY() + 1.0,
-                        dest.getZ() + 1.0
-                };
-                if (!overlaps(playerBox, movedBox)) {
-                    continue;
-                }
+            boolean emitted = false;
+            if (movedBlocks != null) {
+                for (Block block : movedBlocks) {
+                    Vector offset = retracting ? new Vector(0, 0, 0) : dir;
+                    Location dest = block.getLocation().add(offset);
+                    double[] movedBox = new double[] {
+                            dest.getX(),
+                            dest.getY(),
+                            dest.getZ(),
+                            dest.getX() + 1.0,
+                            dest.getY() + 1.0,
+                            dest.getZ() + 1.0
+                    };
+                    if (!overlaps(playerBox, movedBox)) {
+                        continue;
+                    }
 
-                String blockName = block.getType().name();
-                int flags = ExternalForceFlags.DIRECT_INTERSECT | ExternalForceFlags.ENVIRONMENT_BACKED;
-                ExternalForceType type = ExternalForceType.PISTON;
-                if (blockName.equals("SLIME_BLOCK")) {
-                    flags |= ExternalForceFlags.HAS_SLIME;
-                    type = ExternalForceType.SLIME_PISTON;
-                } else if (blockName.equals("HONEY_BLOCK")) {
-                    flags |= ExternalForceFlags.HAS_HONEY;
-                }
-                if (retracting) {
-                    flags |= ExternalForceFlags.RETRACTING;
-                }
+                    String blockName = block.getType().name();
+                    int flags = ExternalForceFlags.DIRECT_INTERSECT | ExternalForceFlags.ENVIRONMENT_BACKED;
+                    ExternalForceType type = ExternalForceType.PISTON;
+                    if (blockName.equals("SLIME_BLOCK")) {
+                        flags |= ExternalForceFlags.HAS_SLIME;
+                        type = ExternalForceType.SLIME_PISTON;
+                    } else if (blockName.equals("HONEY_BLOCK")) {
+                        flags |= ExternalForceFlags.HAS_HONEY;
+                    }
+                    if (retracting) {
+                        flags |= ExternalForceFlags.RETRACTING;
+                    }
 
-                emitExternalForce(
-                        player,
-                        type,
-                        block.getLocation().add(0.5, 0.5, 0.5),
-                        dir,
-                        player.getVelocity(),
-                        Math.max(1.0, player.getVelocity().length()),
-                        (short) (type == ExternalForceType.SLIME_PISTON ? 30 : 15),
-                        flags);
-                PlayerStateSnapshotService.sendPositionAndBlocksSnapshot(player);
-                break;
+                    emitExternalForce(
+                            player,
+                            type,
+                            block.getLocation().add(0.5, 0.5, 0.5),
+                            dir,
+                            player.getVelocity(),
+                            Math.max(1.0, player.getVelocity().length()),
+                            (short) (type == ExternalForceType.SLIME_PISTON ? 30 : 15),
+                            flags);
+                    PlayerStateSnapshotService.sendPositionAndBlocksSnapshot(player);
+                    emitted = true;
+                    break;
+                }
             }
+            if (emitted || base == null) {
+                continue;
+            }
+
+            // Bukkit getBlocks() excludes the piston head itself. Vanilla still
+            // pushes entities intersecting the head volume, so a sticky piston
+            // extending/retracting with no attached blocks can still displace a
+            // player standing in the head path.
+            Vector headOffset = retracting ? dir.clone().multiply(-1.0) : dir;
+            Location headDest = base.getLocation().add(headOffset);
+            double[] headBox = new double[] {
+                    headDest.getX(),
+                    headDest.getY(),
+                    headDest.getZ(),
+                    headDest.getX() + 1.0,
+                    headDest.getY() + 1.0,
+                    headDest.getZ() + 1.0
+            };
+            if (!overlaps(playerBox, headBox)) {
+                continue;
+            }
+            int flags = ExternalForceFlags.DIRECT_INTERSECT | ExternalForceFlags.ENVIRONMENT_BACKED;
+            if (retracting) {
+                flags |= ExternalForceFlags.RETRACTING;
+            }
+            emitExternalForce(
+                    player,
+                    ExternalForceType.PISTON,
+                    headDest.clone().add(0.5, 0.5, 0.5),
+                    dir,
+                    player.getVelocity(),
+                    Math.max(1.0, player.getVelocity().length()),
+                    (short) 15,
+                    flags);
+            PlayerStateSnapshotService.sendPositionAndBlocksSnapshot(player);
         }
     }
     /**

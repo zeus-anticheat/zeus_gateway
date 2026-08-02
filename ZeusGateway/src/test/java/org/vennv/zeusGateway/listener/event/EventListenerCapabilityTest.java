@@ -98,6 +98,17 @@ class EventListenerCapabilityTest {
     }
 
     @Test
+    void pistonHeadOnlyPushEmittedWithBaseAndHeadBox() throws IOException {
+        String listener = source("listener/event/EventListener.java");
+        String section = section(listener, "private void emitPistonForces", "/**\n     * Emit PacketBlockChangeEvent");
+        assertTrue(section.contains("Block base,"));
+        assertTrue(section.contains("headDest = base.getLocation().add(headOffset)"));
+        assertTrue(section.contains("ExternalForceType.PISTON"));
+        assertTrue(section.contains("emitExternalForce("));
+        assertTrue(section.contains("sendPositionAndBlocksSnapshot(player)"));
+    }
+
+    @Test
     void riptideForcesStateBeforeActivation() throws IOException {
         String listener = source("listener/event/EventListener.java");
         String section = section(listener, "public void onPlayerRiptide", "// ──────────────── Use / Release Use Item");
