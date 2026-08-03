@@ -1,6 +1,6 @@
 {
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/support-matrix.json": {
-    "mtime": 1784298225.597085,
+    "mtime": 1785376398.0135431,
     "ast_hash": "60e020f1671b3e496a12b0a3a842aa85",
     "semantic_hash": ""
   },
@@ -15,8 +15,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/build.gradle": {
-    "mtime": 1784293071.711255,
-    "ast_hash": "7f157f4a98de17b0970fc40879705528",
+    "mtime": 1785126502.0993981,
+    "ast_hash": "681d79215221b4d436078a1f10e7f25c",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/settings.gradle": {
@@ -29,19 +29,9 @@
     "ast_hash": "780b1d3e23a3b82154795f73df943a14",
     "semantic_hash": ""
   },
-  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/test.java": {
-    "mtime": 1775924502.0198588,
-    "ast_hash": "53b96081aeb95f38e2b8020cfc76a78c",
-    "semantic_hash": ""
-  },
-  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/TestP.java": {
-    "mtime": 1776540847.791781,
-    "ast_hash": "8dfa3b2315a24682c2c1ed5bc030dcdb",
-    "semantic_hash": ""
-  },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/ZeusFabricMod.java": {
-    "mtime": 1784271936.4679236,
-    "ast_hash": "67f6f81ac395fe3ab5d3d1b2c2f977d3",
+    "mtime": 1785125981.9457846,
+    "ast_hash": "9a17b67541d5d1665d3a5d6026323eec",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/ServerCombatSettings.java": {
@@ -49,14 +39,9 @@
     "ast_hash": "75edf0a6dabf13a126990c31873ce072",
     "semantic_hash": ""
   },
-  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/listener/test_enchantment.java": {
-    "mtime": 1775924474.3373687,
-    "ast_hash": "d041d55aad2b6b7ef617d41276f3ece1",
-    "semantic_hash": ""
-  },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/listener/ZeusEventListeners.java": {
-    "mtime": 1784690296.9699671,
-    "ast_hash": "bd06ebad882a8c29a4f7daf28e074651",
+    "mtime": 1785419615.801103,
+    "ast_hash": "24ff251425b390ee894f47d501ef2a3c",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/network/ProxyClient.java": {
@@ -80,8 +65,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/task/PlayerStateSnapshotService.java": {
-    "mtime": 1784297884.3930562,
-    "ast_hash": "f7b6a9adf13090ae0c7de29ebb951ef2",
+    "mtime": 1785311147.147068,
+    "ast_hash": "e44ab17686c5ca0dd05f9a9c550aed33",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/utils/ItemUtil.java": {
@@ -100,8 +85,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerPlayNetworkHandlerMixin.java": {
-    "mtime": 1784334947.9866188,
-    "ast_hash": "d1b45def2affa186b38ce595191d517c",
+    "mtime": 1785389814.6640522,
+    "ast_hash": "d131a2d9a145a1e49170de3a0a2fea28",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/resources/fabric.mod.json": {
@@ -130,8 +115,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/event/EventListener.java": {
-    "mtime": 1784690280.971794,
-    "ast_hash": "060632a705009af2b811d69f814aec16",
+    "mtime": 1785642965.7567556,
+    "ast_hash": "5bb671fb355afe18eda8c8a347d22702",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketBlockFaceListener.java": {
@@ -155,13 +140,13 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketPlayerCommandListener.java": {
-    "mtime": 1784122509.6221068,
-    "ast_hash": "f83d3251e3058b07d3c76c046c7e886a",
+    "mtime": 1785389741.0261145,
+    "ast_hash": "bcc8ba425e86942842082ce95561b1e7",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketPositionListener.java": {
-    "mtime": 1784334947.770615,
-    "ast_hash": "dac85a1f6d39dd45c6963a07bc455fbc",
+    "mtime": 1785419515.7138386,
+    "ast_hash": "ab1b5f9ebade242e34721eb76a867e62",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketSteerVehicleListener.java": {
@@ -180,8 +165,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketVehicleMoveListener.java": {
-    "mtime": 1784690253.309496,
-    "ast_hash": "c1096bebcc288212df0f6cb768279f6d",
+    "mtime": 1785413751.5107949,
+    "ast_hash": "93dc8c55067308ddb0d0c271893c6ad3",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketAttackEntityListener.java": {
@@ -220,18 +205,13 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketUpdateAttributesListener.java": {
-    "mtime": 1783907407.3144212,
-    "ast_hash": "7cfb6293807edffed8903340bff6ad6f",
-    "semantic_hash": ""
-  },
-  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PhysicsCaptureManager.java": {
-    "mtime": 1783985553.4462144,
-    "ast_hash": "513ba9d181ef75b1aa9236a4b77541f2",
+    "mtime": 1784932059.9525034,
+    "ast_hash": "156e1864ef8444fa22d4f7f4363ca4be",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketEventsListenerRegistrar.java": {
-    "mtime": 1784293238.7320998,
-    "ast_hash": "c56fb823d82fdd405b211ebceb8c695d",
+    "mtime": 1785462621.0832021,
+    "ast_hash": "16a65396a64762d70b30e885bfab0166",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/network/ProxyClient.java": {
@@ -300,8 +280,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/task/PlayerStateSnapshotService.java": {
-    "mtime": 1783961746.6625535,
-    "ast_hash": "5ed671eb71a9951550f10c8d8831b2e1",
+    "mtime": 1785125911.211455,
+    "ast_hash": "61e73a7d4ed91bfd3c883123cb6e2a8d",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/task/ChunkSyncTask.java": {
@@ -345,8 +325,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/compat/AttributeCompat.java": {
-    "mtime": 1781472434.3832457,
-    "ast_hash": "c69cda55262c6adfc5873113f68d470e",
+    "mtime": 1784931891.4739528,
+    "ast_hash": "917159c71f560f9ec423ec325acc36c1",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/compat/InventoryViewCompat.java": {
@@ -360,13 +340,13 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/debug/PacketDebugFilter.java": {
-    "mtime": 1781655257.704862,
-    "ast_hash": "59ea7b0a307efa63a3052a64cb4ac81b",
+    "mtime": 1785375986.6839228,
+    "ast_hash": "504574a55f95feb60cd279817a0a964f",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/debug/PacketDebugFormatter.java": {
-    "mtime": 1781656746.463756,
-    "ast_hash": "ac67ed2cf8daa252756b0907b66b51b2",
+    "mtime": 1785375096.157577,
+    "ast_hash": "1520fb5525af87ad9780b938fe2701a1",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/debug/PacketDebugService.java": {
@@ -395,13 +375,13 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/test/java/org/vennv/zeusGateway/listener/event/EventListenerCapabilityTest.java": {
-    "mtime": 1784690325.5142782,
-    "ast_hash": "0d8dda512d52ffae1fbb636b7d5304b3",
+    "mtime": 1785642739.38347,
+    "ast_hash": "1f3900396aaf1699fbcf3f67015991b3",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/test/java/org/vennv/zeusGateway/listener/packets/PacketConversionTest.java": {
-    "mtime": 1784297538.7216413,
-    "ast_hash": "eabbbce0ce523dbd34a88f56ea844753",
+    "mtime": 1785465405.7236679,
+    "ast_hash": "c268c64d89d8539d5e5298a3494602f9",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/test/java/org/vennv/zeusGateway/listener/packets/PacketPositionListenerTest.java": {
@@ -410,8 +390,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/test/java/org/vennv/zeusGateway/debug/PacketDebugTest.java": {
-    "mtime": 1781791279.2607124,
-    "ast_hash": "d20edbc2579953b3b892fb7d46e341c9",
+    "mtime": 1785375995.5690446,
+    "ast_hash": "a4de4be92f874f634a35680443b28235",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/test/java/org/vennv/zeusGateway/debug/ZeusDebugCommandTest.java": {
@@ -440,8 +420,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/Main.java": {
-    "mtime": 1773015142.524886,
-    "ast_hash": "f76478a30b1ebc2d62176c679d6d15c4",
+    "mtime": 1785002902.7284112,
+    "ast_hash": "4970360763793eb6ad7f1e76b8e67104",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/PacketBase.java": {
@@ -465,8 +445,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/PacketId.java": {
-    "mtime": 1784230823.917949,
-    "ast_hash": "f686ea75bf02365012d26069a7bb5572",
+    "mtime": 1785310709.5138047,
+    "ast_hash": "4642558abbcb86b2c70831bbd6538f28",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketPlayerArmorsEquipment.java": {
@@ -580,8 +560,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketPlayerTeleport.java": {
-    "mtime": 1773015142.525208,
-    "ast_hash": "889a07bd74e4b71637ca076303b40eee",
+    "mtime": 1785419718.2903984,
+    "ast_hash": "85d3a391b68e327c73a2b2617b161345",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketPlayerUseItem.java": {
@@ -590,13 +570,13 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketPlayerVehicleMove.java": {
-    "mtime": 1784690468.9598687,
-    "ast_hash": "aa125b628f0a611f4bc696b245915363",
+    "mtime": 1785389581.0060766,
+    "ast_hash": "01fbd0fa8c6de1d767d222507bc15e79",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketServerBoundPlayerCommand.java": {
-    "mtime": 1773015142.525208,
-    "ast_hash": "97837a9a89858c8d649d47086db49155",
+    "mtime": 1785389757.502324,
+    "ast_hash": "cc30d3262cd124719fbf04f19f0184fa",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketTPSServer.java": {
@@ -635,8 +615,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketServerConfig.java": {
-    "mtime": 1783643933.229855,
-    "ast_hash": "db00d0fa9d6754645e3490a389e65482",
+    "mtime": 1785133976.0928912,
+    "ast_hash": "0bd2960a5652128a338633d647f594f9",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketPlayerInventoryTransaction.java": {
@@ -680,8 +660,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketUpdateAttributes.java": {
-    "mtime": 1783003474.4797027,
-    "ast_hash": "158701fa12573b9d42736b4c1ad785aa",
+    "mtime": 1784931811.334751,
+    "ast_hash": "95ef73d3900e1a04ccc2f7aa2b864c1e",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketPhysicsCaptureSample.java": {
@@ -690,8 +670,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/CaptureFrameV3.java": {
-    "mtime": 1783680966.742722,
-    "ast_hash": "a872412336476085691afaabe3b76970",
+    "mtime": 1785182868.2844598,
+    "ast_hash": "d091513efe75f1effaa4c6aff2f228cf",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/utils/Armor.java": {
@@ -770,13 +750,13 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/resources/zeus-protocol-contract.json": {
-    "mtime": 1784298232.0642166,
+    "mtime": 1785376314.2584004,
     "ast_hash": "187a11e60df5ea11b4ec4d30d6a14fb7",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/test/java/org/vennv/WireContractGoldenTest.java": {
-    "mtime": 1784690499.5942137,
-    "ast_hash": "0f3a72fc12664ddc969e4f39252343d5",
+    "mtime": 1785419734.321601,
+    "ast_hash": "a63e5bd109c07dd9cfadef243dbcc728",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/scripts/render_support_matrix.py": {
@@ -815,8 +795,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/scripts/verify_support_matrix.py": {
-    "mtime": 1784298267.040927,
-    "ast_hash": "4af069ceef76d2c938daa7c07e721eea",
+    "mtime": 1785376299.1881948,
+    "ast_hash": "8df4d2f045853c07658d7c0490437110",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/scripts/run_core_scenario_smoke.py": {
@@ -1164,11 +1144,6 @@
     "ast_hash": "3331ff48550ae8f8b8164bb0bda88961",
     "semantic_hash": ""
   },
-  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGatewayLegacy/src/main/java/org/vennv/zeusGatewayLegacy/LegacyPhysicsCaptureManager.java": {
-    "mtime": 1783996074.1074336,
-    "ast_hash": "b0cc26dfe7f5e2d41954eaf0a49fd8e8",
-    "semantic_hash": ""
-  },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/scenarios/package.json": {
     "mtime": 1784005353.7761765,
     "ast_hash": "7de4e5a8982cd9f1f35e9290c66ccf59",
@@ -1210,8 +1185,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/README.md": {
-    "mtime": 1784298294.3984814,
-    "ast_hash": "ebc4bd785ccfc3e64c10a603755ce9be",
+    "mtime": 1785375380.909572,
+    "ast_hash": "43c8746ce416424add23a5e591e54a73",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/build_log.txt": {
@@ -1275,12 +1250,12 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/docs/generated/support-matrix.md": {
-    "mtime": 1784298337.1293995,
+    "mtime": 1785376347.04182,
     "ast_hash": "53bbb5b2a931b58e17f9ccd0806ca4b1",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/docs/generated/support-readiness.md": {
-    "mtime": 1784298337.3114696,
+    "mtime": 1785376759.5525053,
     "ast_hash": "82ac2a1f66ff26c727fc6f7e38146109",
     "semantic_hash": ""
   },
@@ -1295,8 +1270,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGatewayLegacy/src/main/resources/config.yml": {
-    "mtime": 1783994709.9270713,
-    "ast_hash": "bd133e6873cb9ae199d1022a762a62e5",
+    "mtime": 1785125981.9437845,
+    "ast_hash": "9eb114ad86073fcf1441f4ee2a4de3c9",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/RuntimeSelector.java": {
@@ -1305,8 +1280,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/ModernGatewaySession.java": {
-    "mtime": 1784246287.980418,
-    "ast_hash": "14b35d047cd5e1d4acee94dece3ccfa3",
+    "mtime": 1785125861.5235162,
+    "ast_hash": "f16fec9a573e7fc27c188d0e9f32d0b3",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/test/java/org/vennv/zeusGateway/RuntimeSelectorTest.java": {
@@ -1330,23 +1305,23 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGatewayLegacy/src/main/java/org/vennv/zeusGatewayLegacy/LegacyPacketEventsSession.java": {
-    "mtime": 1784297631.6626766,
-    "ast_hash": "a3e07d101c7d98a9e7d0aacb593c3dbe",
+    "mtime": 1785376220.5991218,
+    "ast_hash": "c10b72d77a514d54de0cc6c41f097ed0",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGatewayLegacy/src/main/java/org/vennv/zeusGatewayLegacy/LegacyGatewaySession.java": {
-    "mtime": 1784297606.9731395,
-    "ast_hash": "85e9489d7e5fb5dd982517e03fd73f25",
+    "mtime": 1785125911.3484576,
+    "ast_hash": "528b5586522fd08b3c686ffb11a00739",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/provider/MovementSemantics.java": {
-    "mtime": 1784003703.7409496,
-    "ast_hash": "4b66b86f075d93cbe3a328663e4e44e2",
+    "mtime": 1785126391.0483632,
+    "ast_hash": "c8640cb13bc722946ff221732350807c",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/mixins/ServerCommonNetworkHandlerMixin.java": {
-    "mtime": 1784413911.8219159,
-    "ast_hash": "98a633d0bc9afcbdd3fa6ec1d4b71e10",
+    "mtime": 1785310735.7031434,
+    "ast_hash": "e0b19b96ce5b9f1a1f870ed8a1a442c8",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/provider/PacketQueueTest.java": {
@@ -1395,23 +1370,18 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGatewayLegacy/src/test/java/org/vennv/zeusGatewayLegacy/LegacyPacketEventsSessionSelfTest.java": {
-    "mtime": 1784293438.499441,
-    "ast_hash": "73042e19ae6b4733139b82e71e874242",
+    "mtime": 1785375066.6811593,
+    "ast_hash": "177368397ae4e5fe7a5e1e5e13cbee23",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/tests/test_support_profiles.py": {
-    "mtime": 1783976829.866489,
+    "mtime": 1785376321.9535055,
     "ast_hash": "3029888e85870162d2b677e1061249cf",
     "semantic_hash": ""
   },
-  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/provider/CaptureIdentity.java": {
-    "mtime": 1784004023.1781368,
-    "ast_hash": "92daaabeb9f63b949b9db25b4526e2a7",
-    "semantic_hash": ""
-  },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/provider/PollingPolicy.java": {
-    "mtime": 1784004528.5242963,
-    "ast_hash": "705a41562caba713b46a6cd091a59583",
+    "mtime": 1785126390.9513614,
+    "ast_hash": "98d4ac394332e54340bd18c94833ad54",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/main/java/org/vennv/zeusFabric/task/ChunkSnapshotSemantics.java": {
@@ -1425,18 +1395,13 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/provider/MovementSemanticsTest.java": {
-    "mtime": 1784005053.0068762,
-    "ast_hash": "6a5b6a7959a3d2f705177a97f0d4e0d4",
-    "semantic_hash": ""
-  },
-  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/provider/CaptureIdentityTest.java": {
-    "mtime": 1784004555.7200298,
-    "ast_hash": "55090435829cff9cf05b99a81bf3b8b5",
+    "mtime": 1785126390.9923623,
+    "ast_hash": "4fcdab904bb6d3656687b734ef801876",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/provider/PollingPolicyTest.java": {
-    "mtime": 1784004536.1295028,
-    "ast_hash": "3e71148df31bfca16b08a8ac76b1d739",
+    "mtime": 1785126390.9513614,
+    "ast_hash": "cddff926ae6cdbd48b1237cd10cabea6",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/task/BatchSenderTest.java": {
@@ -1450,8 +1415,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/contract/FabricContractSourceTest.java": {
-    "mtime": 1784690332.0653498,
-    "ast_hash": "94a0cfc66de6fe85516cff1bd5526bde",
+    "mtime": 1785419693.1890812,
+    "ast_hash": "519b5487b8b7f0e430f65ed888d88874",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusFabric/src/test/java/org/vennv/zeusFabric/contract/FabricLoaderSelectionTest.java": {
@@ -1480,8 +1445,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketVelocityListener.java": {
-    "mtime": 1784161839.0312095,
-    "ast_hash": "0f86380db6d3c4adb1593929a7b64891",
+    "mtime": 1785037548.462552,
+    "ast_hash": "76d5272f5c2aacd0b774c34577e13b05",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/test/java/org/vennv/zeusGateway/listener/packets/PacketDispatcherSaturationTest.java": {
@@ -1530,8 +1495,8 @@
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGatewayLegacy/src/main/java/org/vennv/zeusGatewayLegacy/LegacyCollisionWindowProducer.java": {
-    "mtime": 1784293738.7613807,
-    "ast_hash": "20ab03d74d3767e37a3c83e9be184bf8",
+    "mtime": 1785125911.2724562,
+    "ast_hash": "104f7ff3dadcc8b9df1165748a94d407",
     "semantic_hash": ""
   },
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGatewayLegacy/src/test/java/org/vennv/zeusGatewayLegacy/LegacyCollisionWindowProducerTest.java": {
@@ -1542,6 +1507,36 @@
   "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/physics_profiles/runtime_policy.json": {
     "mtime": 1784573139.9961996,
     "ast_hash": "ade4401d952c06498ff8444f49a3db3e",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/platform/ServerIdentity.java": {
+    "mtime": 1785125738.7671776,
+    "ast_hash": "67bccdd761ecc81c0ce53ca8488f8a95",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/test/java/org/vennv/zeusGateway/task/PlayerStateSnapshotServiceTest.java": {
+    "mtime": 1784762678.5384755,
+    "ast_hash": "7bf01077b3a7816ee7d1c5ae9dc4e805",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGatewayLegacy/src/main/java/org/vennv/zeusGatewayLegacy/LegacyServerIdentity.java": {
+    "mtime": 1785125738.8691795,
+    "ast_hash": "4ec1c0bda48fcebd6747b32b1726cb49",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketShulkerBoxActionListener.java": {
+    "mtime": 1785465399.8045638,
+    "ast_hash": "0243d145dca064fc8a7b5e2924132d7d",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusGateway/src/main/java/org/vennv/zeusGateway/listener/packets/PacketServerTeleportListener.java": {
+    "mtime": 1785419540.6511538,
+    "ast_hash": "b0f86e56baccf096fbcbe19a98990bb7",
+    "semantic_hash": ""
+  },
+  "/home/vennv/Documents/GIT/zeus_platform/zeus_plugins/ZeusProtocolJava/src/main/java/org/vennv/packets/PacketShulkerBoxAction.java": {
+    "mtime": 1785310724.2519953,
+    "ast_hash": "b05cf626aedf335c038cf2adb9971aa8",
     "semantic_hash": ""
   }
 }

@@ -1,16 +1,16 @@
-# Graph Report - zeus_plugins  (2026-07-22)
+# Graph Report - zeus_plugins  (2026-08-02)
 
 ## Corpus Check
-- 302 files · ~193,796 words
+- 301 files · ~193,013 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5637 nodes · 10407 edges · 315 communities (279 shown, 36 thin omitted)
-- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 1221 edges (avg confidence: 0.8)
+- 5719 nodes · 10610 edges · 321 communities (281 shown, 40 thin omitted)
+- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 1225 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `abb0bd65`
+- Built from commit: `4e2d2edf`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -327,16 +327,22 @@
 - [[_COMMUNITY_Community 312|Community 312]]
 - [[_COMMUNITY_Community 313|Community 313]]
 - [[_COMMUNITY_Community 314|Community 314]]
+- [[_COMMUNITY_Community 315|Community 315]]
+- [[_COMMUNITY_Community 316|Community 316]]
+- [[_COMMUNITY_Community 317|Community 317]]
+- [[_COMMUNITY_Community 318|Community 318]]
+- [[_COMMUNITY_Community 319|Community 319]]
+- [[_COMMUNITY_Community 320|Community 320]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `PacketBaseInfo` - 103 edges
+1. `PacketBaseInfo` - 105 edges
 2. `PacketCollisionWindow` - 63 edges
-3. `EventListener` - 60 edges
-4. `LegacyGatewaySession` - 57 edges
-5. `ZeusEventListeners` - 54 edges
+3. `EventListener` - 61 edges
+4. `ZeusEventListeners` - 58 edges
+5. `LegacyGatewaySession` - 57 edges
 6. `PacketPhysicsCaptureSample` - 51 edges
-7. `LegacyPacketEventsSession` - 45 edges
-8. `PlayerStateSnapshotService` - 42 edges
+7. `LegacyPacketEventsSession` - 47 edges
+8. `PlayerStateSnapshotService` - 43 edges
 9. `ChunkSyncTask` - 42 edges
 10. `Packet Definitions` - 41 edges
 
@@ -352,39 +358,35 @@
 - `PacketBaseInfo` --implements--> `PacketBase`  [EXTRACTED]
   ZeusProtocolJava/src/main/java/org/vennv/PacketBaseInfo.java → ZeusProtocolJava/src/main/java/org/vennv/PacketBase.java
 
-## Communities (315 total, 36 thin omitted)
+## Communities (321 total, 40 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.24
+Cohesion: 0.25
 Nodes (3): Player, String, PlayerStateSnapshotService
 
 ### Community 1 - "Community 1"
-Cohesion: 0.07
+Cohesion: 0.08
 Nodes (20): RecoveryHandler, CellSource, Center, LegacyCollisionWindowProducer, Prepared, RecoveryHandler, State, Cell (+12 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.10
-Nodes (8): CellUpdate, PacketCollisionWindow, Reader, ByteArrayOutputStream, Integer, List, Long, String
+Nodes (7): CellUpdate, PacketCollisionWindow, ByteArrayOutputStream, Integer, List, Long, String
 
 ### Community 3 - "Community 3"
-Cohesion: 0.21
-Nodes (11): PacketClickWindowListener, WrapperPlayClientClickWindow, ChangedSlot, ItemStack, List, OrderedPlayerPacketDispatcher, Override, PacketPlayerInventoryTransaction (+3 more)
-
-### Community 4 - "Community 4"
-Cohesion: 0.06
-Nodes (4): NamedLevel, PacketPhysicsCaptureSample, List, String
+Cohesion: 0.15
+Nodes (16): PacketPlayerInventoryTransaction, PacketClickWindowListener, Short, WindowClickType, WrapperPlayClientClickWindow, ChangedSlot, ItemStack, List (+8 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.24
-Nodes (11): Consumer, FoliaSchedulerAdapter, Class, Consumer, JavaPlugin, Object, Override, Player (+3 more)
+Cohesion: 0.23
+Nodes (12): Consumer, FoliaSchedulerAdapter, Class, Consumer, JavaPlugin, Method, Object, Override (+4 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.11
-Nodes (24): PacketPlayerExternalForce, PlayerMoveEvent, BlockPistonExtendEvent, Entity, EntityDamageByEntityEvent, EntityDamageEvent, EntityState, EventHandler (+16 more)
+Cohesion: 0.10
+Nodes (24): PlayerMoveEvent, BlockPistonExtendEvent, Entity, EntityDamageByEntityEvent, EntityDamageEvent, EntityState, EventHandler, ExternalForceType (+16 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.14
-Nodes (5): ZeusGatewayLegacy, LegacyPhysicsCaptureManager, Player, String, UUID
+Cohesion: 0.31
+Nodes (4): DamageSource, DamageCause, ExternalForceType, Vec3d
 
 ### Community 8 - "Community 8"
 Cohesion: 0.20
@@ -447,12 +449,12 @@ Cohesion: 0.05
 Nodes (40): artifact, artifactSha256, captureSeconds, command, configPath, deployedArtifact, dryRun, durationSeconds (+32 more)
 
 ### Community 23 - "Community 23"
-Cohesion: 0.30
-Nodes (4): CaptureFrameV3, ByteArrayOutputStream, List, Override
+Cohesion: 0.14
+Nodes (10): Builder, CaptureFrameV3, Force, NamedFloat, NamedLevel, ByteArrayOutputStream, List, Override (+2 more)
 
 ### Community 24 - "Community 24"
-Cohesion: 0.07
-Nodes (24): EventListener, InventoryCloseEvent, PlayerAnimationEvent, PlayerChangedWorldEvent, PlayerGameModeChangeEvent, PlayerInteractEntityEvent, PlayerInteractEvent, PlayerItemConsumeEvent (+16 more)
+Cohesion: 0.11
+Nodes (12): EntityToggleGlideEvent, PlayerAnimationEvent, PlayerGameModeChangeEvent, PlayerInteractEntityEvent, PlayerInteractEvent, PlayerItemConsumeEvent, PlayerToggleFlightEvent, PlayerToggleSneakEvent (+4 more)
 
 ### Community 25 - "Community 25"
 Cohesion: 0.17
@@ -464,15 +466,15 @@ Nodes (33): command, configPath, deployedGateway, deployedLab, durationSeconds, 
 
 ### Community 27 - "Community 27"
 Cohesion: 0.09
-Nodes (18): DatagramPacket, InetSocketAddress, ProxyClientTest, TestSocket, PacketPlayerJoin, ProxyClient, PacketEncode, String (+10 more)
+Nodes (17): DatagramPacket, InetSocketAddress, ProxyClientTest, TestSocket, ProxyClient, PacketEncode, String, DatagramSocket (+9 more)
 
 ### Community 28 - "Community 28"
-Cohesion: 0.27
-Nodes (6): MinecraftCompat, ClickSlotC2SPacket, ClickSlotC2SPacket, Integer, Object, String
+Cohesion: 0.13
+Nodes (4): Direction, ZeusEventListeners, EntityState, Source
 
 ### Community 29 - "Community 29"
-Cohesion: 0.12
-Nodes (15): PacketDebugService, Status, Subscription, Listener, PacketPlayerTeleport, PacketTransmitObserver, EventHandler, Override (+7 more)
+Cohesion: 0.14
+Nodes (11): PacketDebugService, Status, Subscription, PacketTransmitObserver, EventHandler, PacketDebugFilter, Player, PlayerQuitEvent (+3 more)
 
 ### Community 30 - "Community 30"
 Cohesion: 0.08
@@ -483,27 +485,27 @@ Cohesion: 0.16
 Nodes (8): DamageCause, Entity, EntityDamageByEntityEvent, EntityDamageEvent, ExternalForceType, Location, SuppressWarnings, Vector
 
 ### Community 32 - "Community 32"
-Cohesion: 0.14
-Nodes (8): InputStream, PhysicsCaptureManager, InputStream, Player, String, UUID, ZeusGateway, PacketServerConfig
+Cohesion: 0.08
+Nodes (13): ServerIdentity, ServerVersion, Player, String, UUID, Class, Logger, String (+5 more)
 
 ### Community 33 - "Community 33"
 Cohesion: 0.07
 Nodes (27): Armor Equipment (0x15), Attack Entity (0x09), Attacked By Entity (0x10) and Attacked By Player (0x21), Block Face (0x0D), Block Ray Trace (0x0E), Click Window (0x18), Custom Feature (0x20), Data Collection -- What Physical Processing zeus_plugins Does (+19 more)
 
 ### Community 34 - "Community 34"
-Cohesion: 0.11
-Nodes (7): ByteBufferUtil, Effect, ByteArrayOutputStream, String, ByteArrayOutputStream, Override, Override
+Cohesion: 0.10
+Nodes (8): PacketEntitySpawn, ByteBufferUtil, ByteArrayOutputStream, String, Override, ByteArrayOutputStream, Override, String
 
 ### Community 35 - "Community 35"
-Cohesion: 0.09
-Nodes (16): ZeusLoader, JavaPlugin, ZeusGateway, Class, Object, Override, PacketDebugService, PlatformType (+8 more)
+Cohesion: 0.11
+Nodes (14): PlayerQuitEvent, Class, Object, Override, PacketDebugService, PlatformType, RawCaptureCapability, SchedulerAdapter (+6 more)
 
 ### Community 36 - "Community 36"
-Cohesion: 0.22
-Nodes (9): EntityPotionEffectEvent, Material, Armor, Item, ItemStack, Material, String, ItemUtil (+1 more)
+Cohesion: 0.32
+Nodes (7): Material, Armor, Item, ItemStack, Material, String, ItemUtil
 
 ### Community 37 - "Community 37"
-Cohesion: 0.20
+Cohesion: 0.19
 Nodes (12): Command, CommandExecutor, CommandSender, ZeusDebugCommand, TabCompleter, List, Override, PacketDebugFilter (+4 more)
 
 ### Community 38 - "Community 38"
@@ -571,8 +573,8 @@ Cohesion: 0.08
 Nodes (25): artifact, artifactSha256, command, deployedArtifact, dryRun, durationSeconds, exitCode, externalDependencyPattern (+17 more)
 
 ### Community 54 - "Community 54"
-Cohesion: 0.09
-Nodes (9): PacketPlayerBlockRayTrace, PacketPlayerExternalForce, ByteArrayOutputStream, Override, String, ByteArrayOutputStream, ExternalForceType, Override (+1 more)
+Cohesion: 0.10
+Nodes (8): PacketPlayerBlockRayTrace, PacketPlayerExternalForce, Override, String, ByteArrayOutputStream, ExternalForceType, Override, String
 
 ### Community 55 - "Community 55"
 Cohesion: 0.15
@@ -580,10 +582,14 @@ Nodes (20): activateNearby(), args, attackNearest(), bot, botOpts, clearControls
 
 ### Community 56 - "Community 56"
 Cohesion: 0.14
-Nodes (10): ChunkSyncTaskTest, AfterEach, Cell, CellType, Center, List, PacketCollisionWindow, String (+2 more)
+Nodes (9): PreparedUpdate, ChunkSyncTaskTest, Cell, CellType, Center, List, PacketCollisionWindow, Test (+1 more)
+
+### Community 57 - "Community 57"
+Cohesion: 0.10
+Nodes (4): PacketPlayerPosition, ByteArrayOutputStream, Override, String
 
 ### Community 58 - "Community 58"
-Cohesion: 0.13
+Cohesion: 0.14
 Nodes (8): ChangedSlot, PacketPlayerInventoryTransaction, ByteArrayOutputStream, ChangedSlot, ItemStack, List, Override, String
 
 ### Community 59 - "Community 59"
@@ -591,12 +597,12 @@ Cohesion: 0.15
 Nodes (10): PlayerPacket, AfterEach, ByteArrayOutputStream, List, Override, PacketCollisionWindow, EmptyPacket, PacketQueueTest (+2 more)
 
 ### Community 60 - "Community 60"
-Cohesion: 0.06
-Nodes (29): EntityMetadata, EntityType, EntityDestroyListener, EntityMoveListener, EntityMetadata, EntitySpawnListener, EntityState, PacketAttackEntityListener (+21 more)
+Cohesion: 0.14
+Nodes (11): EntityMetadata, EntityType, EntityMetadata, EntitySpawnListener, EntityState, EntityType, Override, PacketSendEvent (+3 more)
 
 ### Community 61 - "Community 61"
-Cohesion: 0.05
-Nodes (17): PacketPlayerInput, PacketPlayerInputListener, PacketPlayerVehicleMove, WireContractGoldenTest, WrapperPlayClientPlayerInput, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent (+9 more)
+Cohesion: 0.17
+Nodes (4): PacketPlayerInput, ByteArrayOutputStream, Override, String
 
 ### Community 62 - "Community 62"
 Cohesion: 0.10
@@ -604,15 +610,15 @@ Nodes (19): authors, contact, depends, fabric-api, fabricloader, java, minecraft
 
 ### Community 63 - "Community 63"
 Cohesion: 0.06
-Nodes (32): 0x01 -- PacketPlayerJoin, 0x02 -- PacketPlayerLeave, 0x04 -- PacketPlayerKeepAlive, 0x05 -- PacketPlayerChangeMode, 0x06 -- PacketPlayerSwingHand, 0x07 -- PacketPlayerPlaceBlock, 0x09 -- PacketPlayerAttackEntity, 0x0B -- PacketPlayerEffect (+24 more)
+Nodes (32): 0x01 -- PacketPlayerJoin, 0x03 -- PacketPlayerPosition, 0x04 -- PacketPlayerKeepAlive, 0x05 -- PacketPlayerChangeMode, 0x07 -- PacketPlayerPlaceBlock, 0x08 -- PacketPlayerDiggingBlock, 0x09 -- PacketPlayerAttackEntity, 0x0A -- PacketPlayerTeleport (+24 more)
 
 ### Community 64 - "Community 64"
 Cohesion: 0.22
 Nodes (16): copy_plugin(), display_path(), drain(), handle_scenario_line(), main(), read_manifest(), run(), run_scenario() (+8 more)
 
 ### Community 65 - "Community 65"
-Cohesion: 0.13
-Nodes (4): EntityState, EntityState, ByteArrayOutputStream, String
+Cohesion: 0.14
+Nodes (3): EntityState, ByteArrayOutputStream, String
 
 ### Community 66 - "Community 66"
 Cohesion: 0.04
@@ -643,8 +649,8 @@ Cohesion: 0.19
 Nodes (5): Armor, ByteArrayOutputStream, ByteBuffer, Override, String
 
 ### Community 73 - "Community 73"
-Cohesion: 0.07
-Nodes (21): PacketListenerAbstract, PacketKeepAliveListener, PacketSwingHandListener, PacketUpdateAttributesListener, PacketUseItemListener, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent (+13 more)
+Cohesion: 0.08
+Nodes (18): PacketListenerAbstract, EntityDestroyListener, PacketSwingHandListener, PacketUseItemListener, Override, PacketSendEvent, ZeusGateway, OrderedPlayerPacketDispatcher (+10 more)
 
 ### Community 74 - "Community 74"
 Cohesion: 0.12
@@ -720,11 +726,11 @@ Nodes (5): PacketPlayerClickWindow, ByteArrayOutputStream, ItemStack, Override, 
 
 ### Community 92 - "Community 92"
 Cohesion: 0.07
-Nodes (31): BlockPos, ServerCommonNetworkHandlerMixin, Packet, ServerPlayNetworkHandler, EffectType(), fromKey(), fromValue(), toString() (+23 more)
+Nodes (27): BlockPos, EntityAttribute, ServerCommonNetworkHandlerMixin, Packet, RegistryEntry, ServerPlayNetworkHandler, CallbackInfo, Entity (+19 more)
 
 ### Community 93 - "Community 93"
-Cohesion: 0.20
-Nodes (7): PacketDebugFilter, Mode, List, Map, PacketEncode, Set, String
+Cohesion: 0.23
+Nodes (8): PacketDebugFilter, Map, Mode, List, Map, PacketEncode, Set, String
 
 ### Community 94 - "Community 94"
 Cohesion: 0.19
@@ -735,40 +741,40 @@ Cohesion: 0.13
 Nodes (14): Binary Format, Categories, code:block1 ([common header]), code:java (import org.vennv.packets.PacketPlayerCustomFeature;), code:java (import org.vennv.packets.PacketPlayerCustomFeature;), Custom Feature Packets, Design Decisions, Feature ID (+6 more)
 
 ### Community 96 - "Community 96"
-Cohesion: 0.18
-Nodes (8): test_enchantment, PacketPlayerEnchantments, ItemStack, ByteArrayOutputStream, Enchantment, List, Override, String
+Cohesion: 0.23
+Nodes (6): PacketPlayerEnchantments, ByteArrayOutputStream, Enchantment, List, Override, String
 
 ### Community 97 - "Community 97"
-Cohesion: 0.13
-Nodes (8): Optional, EmissionGate, inclusionFlags(), MovementSemantics, MovementSemanticsTest, PacketContext, PacketContext, String
+Cohesion: 0.06
+Nodes (33): CaptureFrameV3, ClientCommandC2SPacket, EntityVelocityUpdateS2CPacket, ServerPlayNetworkHandlerMixin, Optional, PlayerInputC2SPacket, PlayerMoveC2SPacket, EmissionGate (+25 more)
 
 ### Community 98 - "Community 98"
-Cohesion: 0.33
-Nodes (3): PacketDebugTest, String, Test
+Cohesion: 0.27
+Nodes (4): PacketDebugTest, ByteBuffer, String, Test
 
 ### Community 99 - "Community 99"
-Cohesion: 0.21
-Nodes (7): LegacyGatewaySession, BlockPistonExtendEvent, EventHandler, PacketEncode, Player, UUID, World
+Cohesion: 0.22
+Nodes (6): LegacyGatewaySession, EventHandler, PacketEncode, Player, String, UUID
 
 ### Community 100 - "Community 100"
-Cohesion: 0.20
-Nodes (4): PacketPlayerSteerVehicle, ByteArrayOutputStream, Override, String
+Cohesion: 0.19
+Nodes (8): PacketSteerVehicleListener, Entity, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent, Player, String, ZeusGateway
 
 ### Community 101 - "Community 101"
 Cohesion: 0.31
 Nodes (13): artifact_build_evidence(), artifact_path(), assert_wire_test(), buildable_targets(), evidence_path(), load_manifest(), main(), now() (+5 more)
 
 ### Community 102 - "Community 102"
-Cohesion: 0.30
-Nodes (4): Batch, PacketQueueTest, PacketQueueTest, String
+Cohesion: 0.23
+Nodes (14): FabricLoaderSelectionTest, DependencyOverrides, InputStream, JarEntry, JarFile, LoaderModMetadata, ModCandidateImpl, Path (+6 more)
 
 ### Community 103 - "Community 103"
 Cohesion: 0.32
 Nodes (4): PacketPlayerJoin, ByteArrayOutputStream, Override, String
 
 ### Community 104 - "Community 104"
-Cohesion: 0.25
-Nodes (4): InventoryClickEvent, Armor, InventoryClickEvent, ItemStack
+Cohesion: 0.20
+Nodes (5): InventoryClickEvent, InventoryOpenEvent, Armor, InventoryClickEvent, ItemStack
 
 ### Community 105 - "Community 105"
 Cohesion: 0.37
@@ -779,28 +785,28 @@ Cohesion: 0.23
 Nodes (4): PacketPlayerConfirmTransaction, ByteArrayOutputStream, Override, String
 
 ### Community 107 - "Community 107"
-Cohesion: 0.21
-Nodes (5): PacketTPSServer, PacketBase, ByteArrayOutputStream, ByteArrayOutputStream, Override
+Cohesion: 0.25
+Nodes (4): PacketTPSServer, PacketBase, ByteArrayOutputStream, Override
 
 ### Community 108 - "Community 108"
 Cohesion: 0.17
 Nodes (11): artifact, artifactSha256, artifactSizeBytes, createdAt, dryRun, gate, kind, result (+3 more)
 
 ### Community 109 - "Community 109"
-Cohesion: 0.13
-Nodes (4): EncodedPayload, Encoding(), fromWire(), Kind()
+Cohesion: 0.10
+Nodes (5): CollisionWindowUpdate, EncodedPayload, Encoding(), fromWire(), Kind()
 
 ### Community 110 - "Community 110"
-Cohesion: 0.23
-Nodes (5): Builder, Force, NamedFloat, NamedLevel, String
+Cohesion: 0.18
+Nodes (4): WireContractGoldenTest, PacketEncode, String, Test
 
 ### Community 111 - "Community 111"
 Cohesion: 0.19
 Nodes (15): BaseChunk, BlockData, Column, PacketChunkListener, BaseChunk, BlockData, Column, List (+7 more)
 
 ### Community 112 - "Community 112"
-Cohesion: 0.16
-Nodes (10): BlockCompat, MathUtil, Block, String, List, Location, Player, RelativeBlock (+2 more)
+Cohesion: 0.33
+Nodes (4): BlockCompat, Block, String, CellType
 
 ### Community 113 - "Community 113"
 Cohesion: 0.27
@@ -815,8 +821,8 @@ Cohesion: 0.08
 Nodes (25): artifact, artifactSha256, command, deployedArtifact, dryRun, durationSeconds, exitCode, externalDependencyPattern (+17 more)
 
 ### Community 116 - "Community 116"
-Cohesion: 0.23
-Nodes (8): Action, PacketPlayerCommandListener, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent, Player, ServerBoundPlayerCommandActions, ZeusGateway
+Cohesion: 0.20
+Nodes (9): Action, PacketPlayerCommandListener, Integer, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent, Player, ServerBoundPlayerCommandActions (+1 more)
 
 ### Community 117 - "Community 117"
 Cohesion: 0.18
@@ -831,8 +837,8 @@ Cohesion: 0.18
 Nodes (4): PacketBlockChangeEvent, ByteArrayOutputStream, Override, String
 
 ### Community 120 - "Community 120"
-Cohesion: 0.12
-Nodes (11): Acknowledgement, Acknowledgement, PacketVelocityListener, PendingVelocity, OrderedPlayerPacketDispatcher, Override, PacketPlayerExternalForce, PacketReceiveEvent (+3 more)
+Cohesion: 0.14
+Nodes (12): Acknowledgement, PacketVelocityListener, PendingExplosion, PendingVelocity, WrapperPlayServerExplosion, ExternalForceType, OrderedPlayerPacketDispatcher, Override (+4 more)
 
 ### Community 121 - "Community 121"
 Cohesion: 0.31
@@ -906,9 +912,13 @@ Nodes (5): Armor, Item, ItemStack, String, ItemUtil
 Cohesion: 0.08
 Nodes (25): artifact, artifactSha256, command, deployedArtifact, dryRun, durationSeconds, exitCode, externalDependencyPattern (+17 more)
 
+### Community 139 - "Community 139"
+Cohesion: 0.18
+Nodes (3): PacketChunkData, PacketEncode, PacketGroup
+
 ### Community 140 - "Community 140"
-Cohesion: 0.10
-Nodes (11): EmitTask, LegacyPacketEventsSessionSelfTest, Integer, Long, AfterEach, Byte, ByteBuffer, List (+3 more)
+Cohesion: 0.09
+Nodes (14): OverflowHandler, PacketPlayerDeath, PacketPlayerJoin, PacketPlayerRespawn, PacketPlayerTeleport, EmitTask, LegacyPacketEventsSessionSelfTest, AfterEach (+6 more)
 
 ### Community 141 - "Community 141"
 Cohesion: 0.20
@@ -923,15 +933,15 @@ Cohesion: 0.18
 Nodes (10): 1. BatchSender (Network Layer), 2. UpdateTPS (Performance Monitoring), 3. ResyncTask (State Recovery), Background Tasks, How it works:, How it works:, Summary Table, Why it exists: (+2 more)
 
 ### Community 144 - "Community 144"
-Cohesion: 0.05
-Nodes (27): Accessor, Box, DamageSource, ZeusEventListeners, ServerCommonNetworkHandlerAccessor, PollingPolicy, PollingPolicyTest, StatusEffectInstance (+19 more)
+Cohesion: 0.26
+Nodes (3): ServerPlayerEntity, String, World
 
 ### Community 145 - "Community 145"
 Cohesion: 0.18
 Nodes (11): manifest, exists, firstStation, lastStation, origin, path, stationCount, world (+3 more)
 
 ### Community 146 - "Community 146"
-Cohesion: 0.29
+Cohesion: 0.31
 Nodes (5): PacketPlayerGotDamage, ByteArrayOutputStream, DamageCause, Override, String
 
 ### Community 147 - "Community 147"
@@ -943,12 +953,12 @@ Cohesion: 0.12
 Nodes (15): createdAt, dryRun, fixtureTest, gate, kind, protocolArtifact, protocolArtifactSha256, requiredFixtureTokens (+7 more)
 
 ### Community 149 - "Community 149"
-Cohesion: 0.22
+Cohesion: 0.18
 Nodes (4): PacketPlayerTeleport, ByteArrayOutputStream, Override, String
 
 ### Community 150 - "Community 150"
-Cohesion: 0.13
-Nodes (10): PacketServerBoundPlayerCommand, PacketBaseInfo, ByteArrayOutputStream, Override, String, ByteArrayOutputStream, ByteArrayOutputStream, Override (+2 more)
+Cohesion: 0.24
+Nodes (6): PacketServerBoundPlayerCommand, ByteArrayOutputStream, Integer, Override, ServerBoundPlayerCommandActions, String
 
 ### Community 151 - "Community 151"
 Cohesion: 0.29
@@ -967,8 +977,8 @@ Cohesion: 0.12
 Nodes (15): createdAt, dryRun, fixtureTest, gate, kind, protocolArtifact, protocolArtifactSha256, requiredFixtureTokens (+7 more)
 
 ### Community 155 - "Community 155"
-Cohesion: 0.20
-Nodes (4): Direction, PacketPlayerPosition, PacketConversionTest, Test
+Cohesion: 0.18
+Nodes (3): PacketPlayerPosition, PacketConversionTest, Test
 
 ### Community 156 - "Community 156"
 Cohesion: 0.29
@@ -984,15 +994,15 @@ Nodes (6): PacketEntityDestroy, ByteArrayOutputStream, Integer, List, Override, 
 
 ### Community 159 - "Community 159"
 Cohesion: 0.13
-Nodes (9): PermissionDefault, PlatformDetector, ModernGatewaySession, JavaPlugin, Override, String, ZeusGateway, Logger (+1 more)
+Nodes (10): PermissionDefault, PlatformDetector, SchedulerAdapter, ModernGatewaySession, JavaPlugin, Override, String, ZeusGateway (+2 more)
 
 ### Community 160 - "Community 160"
 Cohesion: 0.07
 Nodes (29): movement-attributes, recording, trusted-input, capabilityPacketIds, requiredPacketIds, fabric, defaultTarget, targets (+21 more)
 
 ### Community 161 - "Community 161"
-Cohesion: 0.11
-Nodes (15): BatchSenderTest, PlayerPacket, List, PacketCollisionWindow, String, BatchSenderTest, AfterEach, ByteArrayOutputStream (+7 more)
+Cohesion: 0.16
+Nodes (10): PlayerPacket, AfterEach, ByteArrayOutputStream, List, Override, PacketCollisionWindow, String, BatchSenderTest (+2 more)
 
 ### Community 162 - "Community 162"
 Cohesion: 0.29
@@ -1011,12 +1021,12 @@ Cohesion: 0.16
 Nodes (10): PacketDebugEnvelope, PacketEncode, EmptyPacket, SizedPacket, ByteArrayOutputStream, Override, EmptyPacket, ByteArrayOutputStream (+2 more)
 
 ### Community 166 - "Community 166"
-Cohesion: 0.33
-Nodes (4): PacketPlayerDeath, ByteArrayOutputStream, Override, String
+Cohesion: 0.13
+Nodes (9): PacketPlayerDeath, PacketPlayerRespawn, String, ByteArrayOutputStream, Override, String, ByteArrayOutputStream, Override (+1 more)
 
 ### Community 167 - "Community 167"
-Cohesion: 0.14
-Nodes (14): ClientVersion, ChunkBatch, MovementState, WorldListener, BaseChunk, BlockData, Column, List (+6 more)
+Cohesion: 0.12
+Nodes (14): ClientVersion, ClickListener, MovementState, PendingTask, BaseChunk, Column, ItemStack, PacketEncode (+6 more)
 
 ### Community 168 - "Community 168"
 Cohesion: 0.29
@@ -1027,15 +1037,15 @@ Cohesion: 0.14
 Nodes (10): ClickSlotC2SPacket, Entity, EntityVelocityUpdateS2CPacket, Integer, ItemStack, List, ServerPlayerEntity, MinecraftVersionAccess (+2 more)
 
 ### Community 170 - "Community 170"
-Cohesion: 0.25
-Nodes (4): PacketPlayerBlockFace, ByteArrayOutputStream, Override, String
+Cohesion: 0.17
+Nodes (5): Accessor, ServerCommonNetworkHandlerAccessor, PollingPolicy, PollingPolicyTest, String
 
 ### Community 171 - "Community 171"
-Cohesion: 0.08
+Cohesion: 0.09
 Nodes (11): BlockBurnEvent, BlockFadeEvent, BlockFormEvent, BlockGrowEvent, EntityExplodeEvent, StructureGrowEvent, Block, BlockBreakEvent (+3 more)
 
 ### Community 172 - "Community 172"
-Cohesion: 0.25
+Cohesion: 0.28
 Nodes (4): PacketPlayerSwingHand, ByteArrayOutputStream, Override, String
 
 ### Community 173 - "Community 173"
@@ -1047,20 +1057,20 @@ Cohesion: 0.17
 Nodes (11): artifact, artifactSha256, artifactSizeBytes, createdAt, dryRun, gate, kind, result (+3 more)
 
 ### Community 175 - "Community 175"
-Cohesion: 0.26
-Nodes (3): Object, PacketQueue, String
+Cohesion: 0.20
+Nodes (4): List, Object, PacketQueue, String
 
 ### Community 176 - "Community 176"
 Cohesion: 0.20
 Nodes (9): requiredPacketIds, PacketCollisionWindow, PacketPlayerAttackEntity, PacketPlayerExternalForce, PacketPlayerInventoryTransaction, PacketPlayerSurroundingBlocks, PacketPlayerVelocity, schemaVersion (+1 more)
 
 ### Community 177 - "Community 177"
-Cohesion: 0.19
+Cohesion: 0.20
 Nodes (8): InventoryViewCompat, HumanEntity, Inventory, InventoryEvent, InventoryType, InventoryEvent, ItemStack, Object
 
 ### Community 178 - "Community 178"
-Cohesion: 0.33
-Nodes (5): PlayerInputC2SPacket, PlayerMoveC2SPacket, UpdateSelectedSlotC2SPacket, CallbackInfo, Inject
+Cohesion: 0.13
+Nodes (5): PacketPlayerVehicleMove, Double, Float, Override, String
 
 ### Community 179 - "Community 179"
 Cohesion: 0.17
@@ -1068,19 +1078,19 @@ Nodes (6): Armors, Armor, ByteArrayOutputStream, ByteBuffer, Override, String
 
 ### Community 180 - "Community 180"
 Cohesion: 0.15
-Nodes (6): AtomicLong, LegacyGatewaySession, LegacyPacketEventsSession, WorldTask, Player, UUID
+Nodes (7): AtomicLong, LegacyPacketEventsSession, WorldTask, Long, PacketSendEvent, String, UUID
 
 ### Community 181 - "Community 181"
-Cohesion: 0.19
-Nodes (7): PacketDebugFormatter, StringBuilder, Armor, Item, ItemStack, PacketEncode, String
+Cohesion: 0.15
+Nodes (10): PacketDebugFormatter, StringBuilder, Armor, EntityState, Item, ItemStack, PacketEncode, String (+2 more)
 
 ### Community 182 - "Community 182"
 Cohesion: 0.25
 Nodes (8): scenarioResult, command, cwd, durationSeconds, exitCode, outputTail, sampleTeleports, timedOut
 
 ### Community 183 - "Community 183"
-Cohesion: 0.13
-Nodes (11): CollisionMetadata, size(), Collection, List, PacketCollisionWindow, PacketEncode, PacketGroup, PacketQueue (+3 more)
+Cohesion: 0.07
+Nodes (27): Batch, CollisionMetadata, Predicate, size(), EmptyPacket, PacketQueueTest, TimeUnit, Collection (+19 more)
 
 ### Community 184 - "Community 184"
 Cohesion: 0.25
@@ -1095,15 +1105,15 @@ Cohesion: 0.32
 Nodes (4): PacketPlayerLeave, ByteArrayOutputStream, Override, String
 
 ### Community 187 - "Community 187"
-Cohesion: 0.26
-Nodes (6): ChunkBatch, BlockData, PacketChunkData, ByteArrayOutputStream, List, String
+Cohesion: 0.27
+Nodes (5): PacketUpdateAttributesListener, Property, Override, PacketSendEvent, ZeusGateway
 
 ### Community 188 - "Community 188"
 Cohesion: 0.11
-Nodes (15): BlockBreakEvent, BlockFromToEvent, BlockPistonRetractEvent, BlockPlaceEvent, InventoryOpenEvent, PlayerDeathEvent, BlockBreakEvent, BlockFromToEvent (+7 more)
+Nodes (14): BlockBreakEvent, BlockFromToEvent, BlockPlaceEvent, PlayerDeathEvent, PlayerRiptideEvent, VehicleEnterEvent, VehicleExitEvent, BlockBreakEvent (+6 more)
 
 ### Community 189 - "Community 189"
-Cohesion: 0.15
+Cohesion: 0.14
 Nodes (10): ClickSlotC2SPacket, Entity, EntityVelocityUpdateS2CPacket, Integer, ItemStack, List, ServerPlayerEntity, MinecraftVersionAccess (+2 more)
 
 ### Community 190 - "Community 190"
@@ -1115,12 +1125,12 @@ Cohesion: 0.29
 Nodes (6): Artifact Model, Fabric Version Boundary, Frozen Wire Contract, Gateway Capture Capabilities, Platform Compatibility And Release Gate, Preserved Representation Differences
 
 ### Community 192 - "Community 192"
-Cohesion: 0.21
-Nodes (8): PacketVehicleMoveListener, VehicleMoveEvent, Entity, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent, String, ZeusGateway
+Cohesion: 0.13
+Nodes (12): EventListener, InventoryCloseEvent, PlayerChangedWorldEvent, PlayerItemHeldEvent, PlayerRespawnEvent, PlayerTeleportEvent, Player, PlayerChangedWorldEvent (+4 more)
 
 ### Community 193 - "Community 193"
-Cohesion: 0.25
-Nodes (5): File, ChunkSyncTask, Player, String, ZeusGateway
+Cohesion: 0.31
+Nodes (4): File, PreparedUpdate, ChunkSyncTask, String
 
 ### Community 194 - "Community 194"
 Cohesion: 0.18
@@ -1167,23 +1177,23 @@ Cohesion: 0.33
 Nodes (5): Current Publication State, Fabric Exact-Version Artifacts, Gateway Artifacts, Gateway Exact-Version Verification Targets, Verified Support Matrix
 
 ### Community 208 - "Community 208"
-Cohesion: 0.09
-Nodes (18): LegacyProxyClient, PacketSender, QueuedPacket, LegacyBatchSender, PacketSender, LegacyPacketQueue, OverflowHandler, PacketGroup (+10 more)
+Cohesion: 0.10
+Nodes (17): LegacyProxyClient, PacketSender, QueuedPacket, LegacyBatchSender, PacketSender, LegacyPacketQueue, OverflowHandler, PacketGroup (+9 more)
 
 ### Community 209 - "Community 209"
 Cohesion: 0.29
 Nodes (4): PacketPlayerOpenWindow, ByteArrayOutputStream, Override, String
 
 ### Community 210 - "Community 210"
-Cohesion: 0.32
-Nodes (4): PacketPlayerChangeMode, ByteArrayOutputStream, Override, String
+Cohesion: 0.07
+Nodes (18): PacketPlayerBlockFace, PacketPlayerChangeMode, PacketPlayerKeepAlive, PacketBaseInfo, ByteArrayOutputStream, Override, ByteArrayOutputStream, Override (+10 more)
 
 ### Community 211 - "Community 211"
-Cohesion: 0.29
-Nodes (4): EntityToggleGlideEvent, EventListenerCapabilityTest, String, Test
+Cohesion: 0.36
+Nodes (3): EventListenerCapabilityTest, String, Test
 
 ### Community 212 - "Community 212"
-Cohesion: 0.14
+Cohesion: 0.15
 Nodes (10): ClickSlotC2SPacket, Entity, EntityVelocityUpdateS2CPacket, Integer, ItemStack, List, ServerPlayerEntity, MinecraftVersionAccess (+2 more)
 
 ### Community 213 - "Community 213"
@@ -1203,12 +1213,12 @@ Cohesion: 0.83
 Nodes (3): main(), render(), required_packet_ids()
 
 ### Community 227 - "Community 227"
-Cohesion: 0.29
-Nodes (6): AttributeCompat, Double, ItemStack, Object, Player, String
+Cohesion: 0.25
+Nodes (7): AttributeCompat, Double, Double, ItemStack, Object, Player, String
 
 ### Community 228 - "Community 228"
-Cohesion: 0.15
-Nodes (9): ClickListener, MovementListener, PendingTask, ItemStack, Override, PacketReceiveEvent, Runnable, Short (+1 more)
+Cohesion: 0.13
+Nodes (17): Listener, PacketPlayerExternalForce, Entity, EntityDamageByEntityEvent, EntityDamageEvent, EntityState, ExternalForceType, Location (+9 more)
 
 ### Community 229 - "Community 229"
 Cohesion: 0.12
@@ -1216,15 +1226,15 @@ Nodes (15): createdAt, dryRun, fixtureTest, gate, kind, protocolArtifact, protoc
 
 ### Community 230 - "Community 230"
 Cohesion: 0.14
-Nodes (15): Entity, EntityDamageByEntityEvent, EntityDamageEvent, EntityState, ExternalForceType, Location, PacketPlayerExternalForce, PlayerChangedWorldEvent (+7 more)
+Nodes (10): EntityPotionEffectEvent, EffectType(), fromKey(), fromValue(), toString(), Effect, ByteArrayOutputStream, Deprecated (+2 more)
 
 ### Community 231 - "Community 231"
 Cohesion: 0.38
 Nodes (6): BukkitSchedulerAdapter, JavaPlugin, Override, Player, Runnable, World
 
 ### Community 232 - "Community 232"
-Cohesion: 0.17
-Nodes (5): CaptureIdentity, CaptureIdentityTest, String, String, String
+Cohesion: 0.16
+Nodes (13): HorseTelemetry, HorseTelemetry, PacketVehicleMoveListener, Class, Double, Entity, Float, Method (+5 more)
 
 ### Community 233 - "Community 233"
 Cohesion: 0.17
@@ -1235,8 +1245,8 @@ Cohesion: 0.21
 Nodes (5): Method, NmsEntityAccess, UpdateTPS, Entity, Override
 
 ### Community 235 - "Community 235"
-Cohesion: 0.25
-Nodes (8): 0x13 -- PacketPlayerSurroundingBlocks, 0x14 -- PacketPlayerHeldItem, 0x15 -- PacketPlayerArmorsEquipment, 0x16 -- PacketPlayerConfirmTransaction, code:block20 ([common header]), code:block21 ([common header]), code:block22 ([common header]), code:block23 ([common header])
+Cohesion: 0.14
+Nodes (14): 0x13 -- PacketPlayerSurroundingBlocks, 0x14 -- PacketPlayerHeldItem, 0x15 -- PacketPlayerArmorsEquipment, 0x16 -- PacketPlayerConfirmTransaction, 0x17 -- PacketPlayerOpenWindow, 0x18 -- PacketPlayerClickWindow, 0x19 -- PacketPlayerCloseWindow, code:block20 ([common header]) (+6 more)
 
 ### Community 236 - "Community 236"
 Cohesion: 0.29
@@ -1247,48 +1257,40 @@ Cohesion: 0.27
 Nodes (4): RuntimeSelector, RuntimeSelectorTest, String, Test
 
 ### Community 239 - "Community 239"
-Cohesion: 0.20
-Nodes (10): 0x17 -- PacketPlayerOpenWindow, 0x18 -- PacketPlayerClickWindow, 0x19 -- PacketPlayerCloseWindow, 0x1A -- PacketPlayerUseItem, 0x1B -- PacketPlayerReleaseUseItem, code:block24 ([common header]), code:block25 ([common header]), code:block26 ([common header]) (+2 more)
+Cohesion: 0.25
+Nodes (8): 0x1A -- PacketPlayerUseItem, 0x1B -- PacketPlayerReleaseUseItem, 0x1C -- PacketPlayerSteerVehicle, 0x1D -- PacketPlayerVehicleMove, code:block27 ([common header]), code:block28 ([common header]), code:block29 ([common header]), code:block30 ([common header])
 
 ### Community 241 - "Community 241"
 Cohesion: 0.18
-Nodes (11): 0x1F -- PacketPlayerDeath, 0x20 -- PacketPlayerCustomFeature, 0x21 -- PacketPlayerAttackedByPlayer, 0x22 -- PacketPlayerVelocity, 0x23 -- PacketPlayerEnchantments, 0x24 -- PacketPlayerRespawn, code:block32 ([common header]), code:block33 ([common header]) (+3 more)
+Nodes (11): 0x1E -- PacketServerBoundPlayerCommand, 0x1F -- PacketPlayerDeath, 0x20 -- PacketPlayerCustomFeature, 0x21 -- PacketPlayerAttackedByPlayer, 0x22 -- PacketPlayerVelocity, 0x23 -- PacketPlayerEnchantments, code:block31 ([common header]), code:block32 ([common header]) (+3 more)
 
 ### Community 242 - "Community 242"
-Cohesion: 0.29
-Nodes (7): 0x25 -- PacketServerConfig, 0x26 -- PacketPlayerInventoryTransaction, 0x27 -- PacketPlayerExternalForce, code:block37 ([common header]), code:block38 ([common header]), code:block39 ([common header]), code:block40 (+0    2    u16     eid_length)
+Cohesion: 0.22
+Nodes (9): 0x24 -- PacketPlayerRespawn, 0x25 -- PacketServerConfig, 0x26 -- PacketPlayerInventoryTransaction, 0x27 -- PacketPlayerExternalForce, code:block36 ([common header]), code:block37 ([common header]), code:block38 ([common header]), code:block39 ([common header]) (+1 more)
 
 ### Community 243 - "Community 243"
 Cohesion: 0.22
 Nodes (9): Building, code:bat (build.cmd), code:bash (# Build shared library), code:bash (bash scripts/verify_release_gate.sh), code:bash (ZEUS_SMOKE_ACCEPT_EULA=true \), Manual Build, Output JARs, Prerequisites (+1 more)
 
 ### Community 244 - "Community 244"
-Cohesion: 0.31
-Nodes (10): code:block11 (ZeusGateway/src/main/java/org/vennv/zeusGateway/), code:block12 (ZeusFabric/src/main/java/org/vennv/zeusFabric/), Project Structure, ZeusFabric, ZeusFabric, ZeusFabric, ZeusFabric, ZeusGateway (+2 more)
+Cohesion: 0.29
+Nodes (11): code:block11 (ZeusGateway/src/main/java/org/vennv/zeusGateway/), code:block12 (ZeusFabric/src/main/java/org/vennv/zeusFabric/), Project Structure, ZeusFabric, ZeusFabric, ZeusFabric, ZeusFabric, ZeusGateway (+3 more)
 
 ### Community 245 - "Community 245"
-Cohesion: 0.10
-Nodes (14): CollisionWindowUpdate, PendingToken, ProducerState, Assembly, BlockOverride, Center, PendingToken, PreparedUpdate (+6 more)
-
-### Community 246 - "Community 246"
-Cohesion: 0.18
-Nodes (3): ProducerState, Center, UUID
+Cohesion: 0.21
+Nodes (7): Assembly, BlockOverride, RegionCapture, Cell, CollisionWindowUpdate, Runnable, World
 
 ### Community 247 - "Community 247"
-Cohesion: 0.32
-Nodes (4): PacketEntitySpawn, ByteArrayOutputStream, Override, String
+Cohesion: 0.20
+Nodes (11): PacketBlockChangeEvent, PacketBlockChangeListener, WrappedBlockState, List, OrderedWorldPacketDispatcher, Override, PacketSendEvent, String (+3 more)
 
 ### Community 248 - "Community 248"
-Cohesion: 0.23
-Nodes (5): DedicatedServerModInitializer, MinecraftServer, Override, ProxyClient, ZeusFabricMod
+Cohesion: 0.18
+Nodes (9): ChunkBatch, BlockData, PacketChunkData, ChunkBatch, BlockData, List, ByteArrayOutputStream, List (+1 more)
 
 ### Community 249 - "Community 249"
 Cohesion: 0.29
 Nodes (7): Support Status, Version Compatibility Layer, ZeusFabric, ZeusGateway Legacy Runtime (Spigot 1.8.8 – 1.13.x), ZeusGateway Legacy (Spigot 1.8 – 1.13.x), ZeusGateway Modern (Paper / Spigot / Folia), ZeusGateway Modern Runtime (Paper / Spigot / Folia)
-
-### Community 250 - "Community 250"
-Cohesion: 0.40
-Nodes (4): Short, WindowClickType, Short, WindowClickType
 
 ### Community 251 - "Community 251"
 Cohesion: 0.40
@@ -1299,60 +1301,56 @@ Cohesion: 0.40
 Nodes (5): code:block3 ([ZeusGateway] Detected platform: PAPER), code:block4 ([ZeusGateway] Detected platform: SPIGOT), Platform Detection Order, Platform & Version Detection, Version Detection (`ServerVersion`)
 
 ### Community 253 - "Community 253"
-Cohesion: 0.40
-Nodes (5): Dependencies, ZeusFabric, ZeusFabric, ZeusFabric, ZeusGateway
+Cohesion: 0.33
+Nodes (6): Dependencies, ZeusFabric, ZeusFabric, ZeusFabric, ZeusFabric, ZeusGateway
 
 ### Community 254 - "Community 254"
 Cohesion: 0.32
 Nodes (5): SchedulerAdapter, JavaPlugin, Player, Runnable, World
 
 ### Community 255 - "Community 255"
-Cohesion: 0.24
-Nodes (4): ServerVersion, Class, Logger, String
+Cohesion: 0.19
+Nodes (8): EntityMoveListener, RelativeFlag, Vector3d, Override, PacketSendEvent, UUID, ZeusGateway, EntityState
 
-### Community 256 - "Community 256"
-Cohesion: 0.29
-Nodes (3): CollisionKey, PacketGroup, List
+### Community 264 - "Community 264"
+Cohesion: 0.26
+Nodes (5): DedicatedServerModInitializer, MinecraftServer, Override, ProxyClient, ZeusFabricMod
 
 ### Community 266 - "Community 266"
 Cohesion: 0.24
-Nodes (13): FabricLoaderSelectionTest, DependencyOverrides, JarEntry, JarFile, LoaderModMetadata, ModCandidateImpl, Path, VersionOverrides (+5 more)
+Nodes (7): PacketAttackEntityListener, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent, Player, String, ZeusGateway
 
 ### Community 269 - "Community 269"
-Cohesion: 0.16
-Nodes (6): Kind, PacketChunkData, CollisionKey, QueuedPacket, Override, PacketGroup
+Cohesion: 0.22
+Nodes (6): CollisionWindowUpdate, Kind, CollisionKey, QueuedPacket, Override, PacketCollisionWindow
 
 ### Community 270 - "Community 270"
-Cohesion: 0.20
-Nodes (11): PacketBlockChangeEvent, PacketBlockChangeListener, WrappedBlockState, List, OrderedWorldPacketDispatcher, Override, PacketSendEvent, String (+3 more)
+Cohesion: 0.22
+Nodes (6): StatusEffectInstance, Armor, Effect, Item, ItemStack, List
 
 ### Community 271 - "Community 271"
-Cohesion: 0.28
-Nodes (3): ChunkCoordinate, Object, Override
+Cohesion: 0.16
+Nodes (4): Center, ChunkCoordinate, Object, Override
 
 ### Community 272 - "Community 272"
-Cohesion: 0.26
+Cohesion: 0.23
 Nodes (5): InventoryView, ChangedSlot, ItemStack, List, PacketPlayerInventoryTransaction
 
 ### Community 274 - "Community 274"
-Cohesion: 0.28
-Nodes (3): PendingTask, PendingTasks, Set
+Cohesion: 0.13
+Nodes (7): PendingTask, PendingTasks, Integer, Override, PacketReceiveEvent, Runnable, Set
 
 ### Community 275 - "Community 275"
-Cohesion: 0.32
-Nodes (6): CaptureFrameV3, ServerPlayNetworkHandlerMixin, Unique, ItemStack, String, Unique
+Cohesion: 0.24
+Nodes (4): PacketPlayerSteerVehicle, ByteArrayOutputStream, Override, String
 
 ### Community 276 - "Community 276"
-Cohesion: 0.22
-Nodes (9): FoliaSchedulerAdapterTest, RecordingEntityScheduler, RecordingRegionScheduler, Plugin, Consumer, Object, Runnable, Test (+1 more)
+Cohesion: 0.20
+Nodes (10): JavaPlugin, FoliaSchedulerAdapterTest, RecordingEntityScheduler, RecordingRegionScheduler, Plugin, Consumer, Object, Runnable (+2 more)
 
 ### Community 277 - "Community 277"
-Cohesion: 0.14
-Nodes (12): PacketPositionListener, PlayerCache, Block, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent, Player, PotionEffectType (+4 more)
-
-### Community 278 - "Community 278"
-Cohesion: 0.29
-Nodes (3): OverflowHandler, JavaPlugin, Override
+Cohesion: 0.17
+Nodes (10): PacketPositionListener, PlayerCache, Block, Override, PacketReceiveEvent, Player, PotionEffectType, String (+2 more)
 
 ### Community 279 - "Community 279"
 Cohesion: 0.29
@@ -1363,88 +1361,84 @@ Cohesion: 0.10
 Nodes (19): ChunkSnapshotSemantics, committed(), empty(), floor(), ChunkSnapshotSemanticsTest, BlockData, Cell, Center (+11 more)
 
 ### Community 282 - "Community 282"
-Cohesion: 0.10
-Nodes (4): Cell, CollisionWindowUpdate, Object, Override
+Cohesion: 0.21
+Nodes (3): Cell, Object, Override
 
 ### Community 283 - "Community 283"
-Cohesion: 0.23
-Nodes (8): PacketSteerVehicleListener, Entity, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent, Player, String, ZeusGateway
-
-### Community 284 - "Community 284"
-Cohesion: 0.32
-Nodes (4): PacketPlayerBlockChangeAck, ByteArrayOutputStream, Override, String
+Cohesion: 0.24
+Nodes (7): PacketServerTeleportListener, WrapperPlayServerPlayerPositionAndLook, OrderedPlayerPacketDispatcher, Override, PacketSendEvent, UUID, ZeusGateway
 
 ### Community 285 - "Community 285"
-Cohesion: 0.15
-Nodes (6): BlockFace, Block, BlockPistonExtendEvent, List, String, Override
+Cohesion: 0.14
+Nodes (7): BlockFace, BlockPistonRetractEvent, Block, BlockPistonExtendEvent, BlockPistonRetractEvent, List, String
 
 ### Community 286 - "Community 286"
-Cohesion: 0.40
-Nodes (3): PacketPlayerDeath, PacketPlayerRespawn, String
+Cohesion: 0.26
+Nodes (7): PacketShulkerBoxActionListener, OrderedWorldPacketDispatcher, Override, PacketSendEvent, String, UUID, ZeusGateway
 
 ### Community 287 - "Community 287"
 Cohesion: 0.22
 Nodes (8): Consumer, Override, PacketEncode, PacketGroup, Predicate, ProxyClient, String, BatchSender
 
-### Community 288 - "Community 288"
-Cohesion: 0.23
-Nodes (6): BeforeEach, PacketPlayerInventoryTransaction, PacketPositionListenerTest, SchedulerAdapter, ByteBuffer, Test
-
 ### Community 289 - "Community 289"
-Cohesion: 0.27
-Nodes (6): Armors, Enchantment, GameMode, ItemStack, List, ServerBoundPlayerCommandActions
+Cohesion: 0.24
+Nodes (8): Armors, Enchantment, GameMode, Item, ItemStack, List, PacketServerConfig, ServerBoundPlayerCommandActions
 
 ### Community 290 - "Community 290"
-Cohesion: 0.31
-Nodes (3): EntityCompat, Entity, Player
-
-### Community 293 - "Community 293"
-Cohesion: 0.24
-Nodes (8): EntityVelocityUpdateS2CPacket, Entity, EntityVelocityUpdateS2CPacket, ItemStack, List, ServerPlayerEntity, Vec3d, World
+Cohesion: 0.22
+Nodes (5): EntityCompat, Entity, Player, OrderedPlayerPacketDispatcher, ZeusGateway
 
 ### Community 294 - "Community 294"
 Cohesion: 0.25
 Nodes (5): AuthoritativeTeleportDedupe, Source, String, MinecraftServer, ResyncTask
 
+### Community 295 - "Community 295"
+Cohesion: 0.18
+Nodes (4): RegionSlice, RegionSlice, Center, List
+
 ### Community 296 - "Community 296"
-Cohesion: 0.25
-Nodes (6): Predicate, TimeUnit, PacketEncode, Predicate, ProxyClient, BatchSender
+Cohesion: 0.15
+Nodes (6): BatchSenderTest, List, PacketCollisionWindow, String, BatchSenderTest, String
 
 ### Community 297 - "Community 297"
 Cohesion: 0.33
 Nodes (4): AtomicInteger, PacketDispatcherSaturationTest, String, Test
 
+### Community 298 - "Community 298"
+Cohesion: 0.20
+Nodes (4): PendingToken, ProducerState, PendingToken, UUID
+
 ### Community 299 - "Community 299"
-Cohesion: 0.29
-Nodes (6): EmptyPacket, ByteArrayOutputStream, List, Override, PacketCollisionWindow, EmptyPacket
+Cohesion: 0.33
+Nodes (3): Player, ZeusGateway, Override
 
 ### Community 300 - "Community 300"
-Cohesion: 0.33
-Nodes (4): PacketPlayerRespawn, ByteArrayOutputStream, Override, String
+Cohesion: 0.27
+Nodes (7): MathUtil, List, Location, Player, RelativeBlock, BlockUtil, Vector
 
 ### Community 301 - "Community 301"
 Cohesion: 0.22
 Nodes (3): PacketServerConfig, ByteArrayOutputStream, Override
 
 ### Community 302 - "Community 302"
-Cohesion: 0.28
-Nodes (4): PacketUpdateAttributes, ByteArrayOutputStream, Override, String
+Cohesion: 0.18
+Nodes (5): PacketUpdateAttributes, ByteArrayOutputStream, Double, Override, String
 
 ### Community 303 - "Community 303"
 Cohesion: 0.31
 Nodes (4): CollisionGenerationAllocatorTest, MemoryStore, Override, String
 
 ### Community 304 - "Community 304"
-Cohesion: 0.29
-Nodes (5): EffectCompat, Map, PotionEffectType, String, SuppressWarnings
+Cohesion: 0.32
+Nodes (5): EffectCompat, PotionEffectType, PotionEffectType, String, SuppressWarnings
 
 ### Community 305 - "Community 305"
 Cohesion: 0.32
 Nodes (4): PacketEntityMove, ByteArrayOutputStream, Override, String
 
 ### Community 306 - "Community 306"
-Cohesion: 0.32
-Nodes (4): PacketPlayerKeepAlive, ByteArrayOutputStream, Override, String
+Cohesion: 0.20
+Nodes (3): PacketShulkerBoxAction, Override, String
 
 ### Community 307 - "Community 307"
 Cohesion: 0.25
@@ -1452,31 +1446,51 @@ Nodes (7): active_policy_hash, audit_actor, audit_source, global_default_mode, p
 
 ### Community 308 - "Community 308"
 Cohesion: 0.38
-Nodes (5): Snapshot, JavaPlugin, Location, PacketServerConfig, Vector
+Nodes (6): Box, List, RelativeBlock, ServerPlayerEntity, BlockUtil, Vec3d
 
 ### Community 309 - "Community 309"
+Cohesion: 0.27
+Nodes (6): PacketPlayerInputListener, WrapperPlayClientPlayerInput, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent, ZeusGateway
+
+### Community 311 - "Community 311"
 Cohesion: 0.33
-Nodes (6): 0x1C -- PacketPlayerSteerVehicle, 0x1D -- PacketPlayerVehicleMove, 0x1E -- PacketServerBoundPlayerCommand, code:block29 ([common header]), code:block30 ([common header]), code:block31 ([common header])
+Nodes (3): Double, Entity, Float
+
+### Community 312 - "Community 312"
+Cohesion: 0.28
+Nodes (5): PacketKeepAliveListener, OrderedPlayerPacketDispatcher, Override, PacketReceiveEvent, ZeusGateway
+
+### Community 314 - "Community 314"
+Cohesion: 0.39
+Nodes (3): BeforeEach, PacketPositionListenerTest, Test
+
+### Community 315 - "Community 315"
+Cohesion: 0.32
+Nodes (4): PacketPlayerBlockChangeAck, ByteArrayOutputStream, Override, String
+
+### Community 316 - "Community 316"
+Cohesion: 0.25
+Nodes (5): Acknowledgement, PendingVelocity, PendingExplosion, PacketPlayerExternalForce, String
 
 ## Knowledge Gaps
-- **2042 isolated node(s):** `schemaVersion`, `wireContract`, `publicationGate`, `requiredPacketIds`, `trusted-input` (+2037 more)
+- **2056 isolated node(s):** `schemaVersion`, `wireContract`, `publicationGate`, `requiredPacketIds`, `trusted-input` (+2051 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **36 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **40 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PacketBaseInfo` connect `Community 150` to `Community 2`, `Community 141`, `Community 269`, `Community 146`, `Community 147`, `Community 149`, `Community 279`, `Community 151`, `Community 152`, `Community 153`, `Community 284`, `Community 156`, `Community 158`, `Community 29`, `Community 32`, `Community 161`, `Community 162`, `Community 163`, `Community 164`, `Community 165`, `Community 166`, `Community 34`, `Community 170`, `Community 300`, `Community 172`, `Community 301`, `Community 302`, `Community 305`, `Community 306`, `Community 181`, `Community 54`, `Community 57`, `Community 58`, `Community 187`, `Community 186`, `Community 61`, `Community 59`, `Community 188`, `Community 196`, `Community 209`, `Community 210`, `Community 119`, `Community 91`, `Community 96`, `Community 100`, `Community 103`, `Community 106`, `Community 107`, `Community 236`, `Community 109`, `Community 247`?**
-  _High betweenness centrality (0.086) - this node is a cross-community bridge._
-- **Why does `LegacyGatewaySession` connect `Community 99` to `Community 195`, `Community 230`, `Community 171`, `Community 140`, `Community 272`, `Community 177`, `Community 180`, `Community 278`, `Community 29`, `Community 286`?**
+- **Why does `PacketBaseInfo` connect `Community 210` to `Community 2`, `Community 141`, `Community 269`, `Community 146`, `Community 147`, `Community 275`, `Community 149`, `Community 150`, `Community 151`, `Community 279`, `Community 152`, `Community 153`, `Community 156`, `Community 29`, `Community 158`, `Community 32`, `Community 161`, `Community 34`, `Community 162`, `Community 164`, `Community 163`, `Community 166`, `Community 165`, `Community 172`, `Community 301`, `Community 302`, `Community 175`, `Community 305`, `Community 178`, `Community 306`, `Community 181`, `Community 54`, `Community 57`, `Community 58`, `Community 315`, `Community 186`, `Community 61`, `Community 59`, `Community 196`, `Community 209`, `Community 91`, `Community 96`, `Community 103`, `Community 106`, `Community 107`, `Community 236`, `Community 109`, `Community 119`, `Community 248`?**
+  _High betweenness centrality (0.094) - this node is a cross-community bridge._
+- **Why does `AtomicLong` connect `Community 180` to `Community 1`, `Community 195`, `Community 167`, `Community 140`, `Community 269`, `Community 270`, `Community 277`, `Community 245`, `Community 183`, `Community 120`, `Community 287`?**
   _High betweenness centrality (0.015) - this node is a cross-community bridge._
-- **Why does `EventListener` connect `Community 24` to `Community 192`, `Community 36`, `Community 104`, `Community 177`, `Community 29`, `Community 211`, `Community 188`, `Community 285`, `Community 31`?**
+- **Why does `PacketCollisionWindow` connect `Community 2` to `Community 1`, `Community 295`, `Community 296`, `Community 109`, `Community 271`, `Community 175`, `Community 273`, `Community 210`, `Community 282`?**
   _High betweenness centrality (0.015) - this node is a cross-community bridge._
 - **What connects `schemaVersion`, `wireContract`, `publicationGate` to the rest of the system?**
-  _2042 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _2056 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.07477288609364081 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08220211161387632 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.09764309764309764 - nodes in this community are weakly interconnected._
-- **Should `Community 4` be split into smaller, more focused modules?**
-  _Cohesion score 0.05537098560354374 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10204081632653061 - nodes in this community are weakly interconnected._
+- **Should `Community 3` be split into smaller, more focused modules?**
+  _Cohesion score 0.1452991452991453 - nodes in this community are weakly interconnected._
