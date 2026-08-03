@@ -46,21 +46,6 @@ class PacketConversionTest {
                 UUID.randomUUID(), UUID.randomUUID(), 0, 64, 0));
     }
 
-    @Test
-    void shulkerBlockActionRequiresVanillaAnimationAndShulkerBlock() {
-        assertTrue(PacketShulkerBoxActionListener.isVanillaShulkerAction(
-                "minecraft:shulker_box", 1));
-        assertTrue(PacketShulkerBoxActionListener.isVanillaShulkerAction(
-                "minecraft:purple_shulker_box", 1));
-        assertEquals(false, PacketShulkerBoxActionListener.isVanillaShulkerAction(
-                "minecraft:chest", 1));
-        assertEquals(false, PacketShulkerBoxActionListener.isVanillaShulkerAction(
-                "other:shulker_box", 1));
-        assertEquals(false, PacketShulkerBoxActionListener.isVanillaShulkerAction(
-                "minecraft:modded_shulker_box", 1));
-        assertEquals(false, PacketShulkerBoxActionListener.isVanillaShulkerAction(
-                "minecraft:shulker_box", 2));
-    }
 
     @Test
     void horseTelemetryRejectsInvalidValues() {
@@ -82,6 +67,13 @@ class PacketConversionTest {
                         org.vennv.utils.ServerBoundPlayerCommandActions.START_RIDING_JUMP,
                         101);
         assertNull(invalid.getHorseJumpCharge());
+    }
+
+    @Test
+    void shulkerBlockActionCaptureUsesAnimationIdOnly() {
+        assertTrue(PacketShulkerBoxActionListener.shouldCaptureAction(1));
+        assertEquals(false, PacketShulkerBoxActionListener.shouldCaptureAction(0));
+        assertEquals(false, PacketShulkerBoxActionListener.shouldCaptureAction(2));
     }
 
     @Test
