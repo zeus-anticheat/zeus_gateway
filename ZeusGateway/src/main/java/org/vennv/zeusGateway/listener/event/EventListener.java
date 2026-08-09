@@ -136,10 +136,14 @@ public class EventListener implements Listener {
         long timestamp = System.currentTimeMillis();
 
         Vector velocity = event.getVelocity();
+        plugin.getLogger().info("[VEL-DBG] FALLBACK onPlayerVelocity uid=" + uid
+                + " vel=" + velocity.getX() + "," + velocity.getY() + "," + velocity.getZ()
+                + " fallbackEnabled=true");
         PacketPlayerVelocity packet = new PacketPlayerVelocity(
                 timestamp, uid, name,
                 velocity.getX(), velocity.getY(), velocity.getZ());
-        PacketQueue.push(packet);
+        boolean pushed = PacketQueue.push(packet);
+        plugin.getLogger().info("[VEL-DBG] FALLBACK push result=" + pushed);
     }
 
     // ─────────────────────────── Player Death ───────────────────────────
@@ -947,9 +951,10 @@ public class EventListener implements Listener {
         if (!(event.getEntity() instanceof Player)) {
             return;
         }
-        if (!isFallbackEnabled(RawCaptureCapability.PLAYER_COMMAND) && event.isGliding()) {
-            return;
-        }
+        // Grim parity: always emit the server-side gliding toggle. The raw
+        // client ENTITY_ACTION only covers START_FLYING_WITH_ELYTRA (space
+        // press); jump-exit / landing toggles are server-side only and would
+        // be missed if we gated on raw PLAYER_COMMAND availability.
         Player player = (Player) event.getEntity();
 
         String uid = player.getUniqueId().toString();

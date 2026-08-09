@@ -4,6 +4,7 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityType;
+import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.packettype.PacketTypeCommon;
 import com.github.retrooper.packetevents.protocol.player.User;
@@ -17,9 +18,13 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSp
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnWeatherEntity;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.vennv.packets.PacketEntitySpawn;
+import org.vennv.packets.PacketPlayerExternalForce;
+import org.vennv.utils.ExternalForceFlags;
+import org.vennv.utils.ExternalForceType;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.provider.PacketQueue;
 
@@ -111,6 +116,34 @@ public final class EntitySpawnListener extends PacketListenerAbstract {
             System.currentTimeMillis(), receiver.toString(), name,
             entityId, entityUuid.toString(), entityType,
             position.getX(), position.getY(), position.getZ(), pitch, yaw));
+
+        // Grim parity (CompensatedFireworks): a spawned firework rocket means
+        // the player (or another entity) is boosting with elytra. Grim tracks
+        // active firework entities and expands prediction uncertainty while
+        // any is alive. Push an ElytraFirework external force so the engine
+        // opens the boost lenience (firework_boost_ticks) — without it, the
+        // rocket thrust shows up as an unexplained dy/dz spike → false flag.
+        if (type == PacketType.Play.Server.SPAWN_ENTITY) {
+            WrapperPlayServerSpawnEntity spawn = new WrapperPlayServerSpawnEntity(event);
+            if (spawn.getEntityType() == EntityTypes.FIREWORK_ROCKET) {
+                Optional<Vector3d> vel = spawn.getVelocity();
+                double vx = vel.map(Vector3d::getX).orElse(0.0);
+                double vy = vel.map(Vector3d::getY).orElse(0.0);
+                double vz = vel.map(Vector3d::getZ).orElse(0.0);
+                double len = Math.sqrt(vx * vx + vy * vy + vz * vz);
+                PacketQueue.push(new PacketPlayerExternalForce(
+                    System.currentTimeMillis(), receiver.toString(), name,
+                    ExternalForceType.ELYTRA_FIREWORK,
+                    position.getX(), position.getY(), position.getZ(),
+                    len > 1.0e-9 ? vx / len : 0.0,
+                    len > 1.0e-9 ? vy / len : 0.0,
+                    len > 1.0e-9 ? vz / len : 0.0,
+                    vx, vy, vz,
+                    Math.max(1.0, len),
+                    (short) 40,
+                    ExternalForceFlags.ENVIRONMENT_BACKED));
+            }
+        }
     }
 
     public static void removePlayer(UUID playerId) {

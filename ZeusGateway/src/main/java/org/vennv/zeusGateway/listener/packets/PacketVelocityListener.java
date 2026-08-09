@@ -62,9 +62,16 @@ final class PacketVelocityListener extends PacketListenerAbstract {
         }
         if (event.getPacketType() != PacketType.Play.Server.ENTITY_VELOCITY) return;
         WrapperPlayServerEntityVelocity wrapper = new WrapperPlayServerEntityVelocity(event);
-        if (wrapper.getEntityId() != user.getEntityId()) return;
+        // Grim parity: compare against the entity id captured from JoinGame
+        // (PacketEntityMetadataListener.getSelfEntityId), NOT user.getEntityId()
+        // which PacketEvents may leave unset/0 for a long window after join —
+        // that silently dropped every knockback until the metadata sync.
+        Integer selfEntityId = PacketEntityMetadataListener.getSelfEntityId(uuid);
+        if (selfEntityId == null || wrapper.getEntityId() != selfEntityId) return;
         Vector3d velocity = wrapper.getVelocity();
         if (velocity == null) return;
+        System.out.println("[VEL-DBG] RAW ENTITY_VELOCITY uid=" + uuid
+                + " vel=" + velocity.getX() + "," + velocity.getY() + "," + velocity.getZ());
         enqueueVelocity(event, user, uuid, new PendingVelocity(
                 nextForceTimestamp(), uuid.toString(), user.getName(),
                 velocity.getX(), velocity.getY(), velocity.getZ(), null));
@@ -85,9 +92,15 @@ final class PacketVelocityListener extends PacketListenerAbstract {
         if (user == null || user.getUUID() == null) return;
         Acknowledgement acknowledgement = remove(user.getUUID(), id);
         if (acknowledgement == null) return;
-        Player player = event.getPlayer();
-        if (player == null) return;
-        dispatcher.submit(player, () -> PacketQueue.push(acknowledgement.toPacket()));
+        System.out.println("[VEL-DBG] ACK received id=" + id + " required=" + acknowledgement.required
+                + " vel=" + acknowledgement.velocity.x + "," + acknowledgement.velocity.y + "," + acknowledgement.velocity.z);
+        // Grim parity: push the velocity directly — no ordered-lane dispatch.
+        // The ordered lane can drop packets when saturated (e.g. during combat
+        // when knockback fires), which silently loses real knockback while
+        // tiny per-tick velocity packets (sent during calm movement) survive.
+        // Velocity carries its own timestamp; ordering against movement is
+        // reconstructed by the simulation from that timestamp.
+        PacketQueue.push(acknowledgement.toPacket());
     }
 
     void clearPlayer(UUID uuid) {

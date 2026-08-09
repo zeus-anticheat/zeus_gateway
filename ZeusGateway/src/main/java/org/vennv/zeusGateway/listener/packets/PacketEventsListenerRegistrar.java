@@ -54,6 +54,7 @@ public final class PacketEventsListenerRegistrar {
         session.register("EntitySpawnListener", () -> new EntitySpawnListener(plugin), null);
         session.register("EntityMoveListener", () -> new EntityMoveListener(plugin), null);
         session.register("EntityDestroyListener", () -> new EntityDestroyListener(plugin), null);
+        session.register("PacketEntityMetadataListener", () -> new PacketEntityMetadataListener(), null);
         session.register("PacketBlockChangeListener", () -> new PacketBlockChangeListener(plugin, worldDispatcher), null);
         session.register("PacketShulkerBoxActionListener", () -> new PacketShulkerBoxActionListener(plugin, worldDispatcher), null);
         session.register("PacketUpdateAttributesListener", () -> new PacketUpdateAttributesListener(plugin), null);
@@ -92,6 +93,7 @@ public final class PacketEventsListenerRegistrar {
             if (velocityListener != null) velocityListener.clearPlayer(uuid);
             PacketPositionListener.removePlayer(uuid);
             EntitySpawnListener.removePlayer(uuid);
+            PacketEntityMetadataListener.removePlayer(uuid);
         }
 
         @Override
@@ -114,6 +116,7 @@ public final class PacketEventsListenerRegistrar {
             capabilities.clear();
             PacketPositionListener.clear();
             EntitySpawnListener.clear();
+            PacketEntityMetadataListener.clear();
         }
 
         private void register(
