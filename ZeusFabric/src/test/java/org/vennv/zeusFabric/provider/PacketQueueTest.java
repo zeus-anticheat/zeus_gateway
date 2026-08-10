@@ -3,6 +3,7 @@ package org.vennv.zeusFabric.provider;
 import org.vennv.PacketEncode;
 import org.vennv.packets.PacketCollisionWindow;
 import org.vennv.packets.PacketCollisionWindow.Cell;
+import org.vennv.packets.PacketMovementStateSnapshot;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ public final class PacketQueueTest {
         collisionWindowReplacementRespectsCapacity();
         collisionWindowOverflowRequiresResync();
         collisionWindowRecoveryPreservesGeneration();
+        collisionAndMovementStateRecoverAsOneGroup();
         removeCollisionWindowsPreservesOtherPackets();
         dequeuedBatchInvalidatedByOverflow();
         oversizedResyncStaysDiscontinuous();
@@ -248,14 +250,38 @@ public final class PacketQueueTest {
                 "equal recovery generation accepted")), "equal generation restored continuity");
         require(PacketQueue.discontinuityRequired(), "equal recovery generation cleared discontinuity");
         List<PacketCollisionWindow> fresh = collisionFragments("u", 6L, 1L, "minecraft:recovery_fresh_");
+        List<PacketMovementStateSnapshot> state = movementStateFragments("u", 6L, 1L);
         require(PacketQueue.recoverFromDiscontinuity(() -> require(
-                PacketQueue.pushCollisionWindow("u", 6L, 1L, fresh), "fresh recovery group rejected")),
+                PacketQueue.pushRecovery("u", 6L, 1L, fresh, state), "fresh recovery group rejected")),
                 "fresh collision recovery failed");
         PacketQueue.Batch recovered = PacketQueue.pollBatch(PacketQueue.capacity(), 1, TimeUnit.MILLISECONDS);
-        require(recovered != null && recovered.packets().equals(new ArrayList<PacketEncode>(fresh)),
+        List<PacketEncode> expected = new ArrayList<>(fresh);
+        expected.addAll(state);
+        require(recovered != null && recovered.packets().equals(expected),
                 "collision recovery did not publish fresh full");
         require(PacketQueue.beginSend(recovered.generation()), "recovered collision generation invalid");
         PacketQueue.endSend();
+    }
+
+    private static void collisionAndMovementStateRecoverAsOneGroup() throws Exception {
+        PacketQueue.clear();
+        List<PacketCollisionWindow> collision = collisionFragments(
+                "u", 30L, 1L, "minecraft:atomic_recovery_");
+        List<PacketMovementStateSnapshot> state = movementStateFragments("u", 30L, 1L);
+
+        require(PacketQueue.pushRecovery("u", 30L, 1L, collision, state),
+                "atomic collision/state recovery rejected");
+        PacketQueue.Batch batch = PacketQueue.pollBatch(1, 1, TimeUnit.MILLISECONDS);
+        List<PacketEncode> expected = new ArrayList<>(collision);
+        expected.addAll(state);
+        require(batch != null && batch.packets().equals(expected),
+                "atomic collision/state recovery split or reordered");
+
+        PacketQueue.clear();
+        require(!PacketQueue.pushRecovery(
+                "u", 30L, 1L, collision, movementStateFragments("u", 30L, 2L)),
+                "mismatched movement-state key accepted");
+        require(PacketQueue.isEmpty(), "invalid recovery partially queued");
     }
 
     private static void removeCollisionWindowsPreservesOtherPackets() throws Exception {
@@ -313,6 +339,19 @@ public final class PacketQueueTest {
         return PacketCollisionWindow.CollisionWindowUpdate.delta(
                 generation, sequence, baseSequence, baseX, 64, 0, centerX, 64, 0, updates)
                 .toFragments(1L, uid, "n");
+    }
+
+    private static List<PacketMovementStateSnapshot> movementStateFragments(
+            String uid,
+            long generation,
+            long sequence) {
+        return PacketMovementStateSnapshot.createFragments(
+                1L,
+                uid,
+                "n",
+                generation,
+                sequence,
+                PacketMovementStateSnapshot.Snapshot.vanilla(true));
     }
 
     private static void dequeuedBatchInvalidatedByOverflow() throws Exception {

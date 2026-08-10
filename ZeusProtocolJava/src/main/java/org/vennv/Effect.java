@@ -2,6 +2,7 @@ package org.vennv;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 
 public final class Effect {
 
@@ -38,5 +39,25 @@ public final class Effect {
 
     public byte getFlags() {
         return flags;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof Effect)) {
+            return false;
+        }
+        Effect effect = (Effect) other;
+        return effectId == effect.effectId
+                && amplifier == effect.amplifier
+                && duration == effect.duration
+                && flags == effect.flags;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(effectId, amplifier, duration, flags);
     }
 }

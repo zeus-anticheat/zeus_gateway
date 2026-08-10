@@ -6,8 +6,19 @@ import org.vennv.PacketId;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 
 public final class PacketUpdateAttributes extends PacketBaseInfo {
+
+    private static final int SOURCE_AWARE_MARKER = 0x7fc0a55a;
+    private static final byte SOURCE_AWARE_SCHEMA_VERSION = 1;
+    private static final int MAX_PROPERTIES = 8;
+    private static final int MAX_MODIFIERS = 64;
+    private static final int MAX_TEXT_BYTES = 256;
 
     // Flag bits — MUST match Rust protocol/src/packets/update_attributes.rs
     private static final byte FLAG_GRAVITY            = 1 << 0;
@@ -28,6 +39,8 @@ public final class PacketUpdateAttributes extends PacketBaseInfo {
     private final Double sneakingSpeed;
     private final Double movementEfficiency;
     private final Double waterMovementEfficiency;
+    private final List<Property> properties;
+    private final boolean fullReplace;
 
     /** Old constructor — all optional attributes default to null. */
     public PacketUpdateAttributes(long timestamp, String uid, String username, float movementSpeed) {
@@ -54,6 +67,39 @@ public final class PacketUpdateAttributes extends PacketBaseInfo {
         this.sneakingSpeed = sneakingSpeed;
         this.movementEfficiency = movementEfficiency;
         this.waterMovementEfficiency = waterMovementEfficiency;
+        this.properties = null;
+        this.fullReplace = false;
+    }
+
+    private PacketUpdateAttributes(
+            long timestamp,
+            String uid,
+            String username,
+            List<Property> properties,
+            boolean fullReplace) {
+        super(timestamp, uid, username);
+        require(properties != null && !properties.isEmpty() && properties.size() <= MAX_PROPERTIES,
+                "attribute property count is invalid");
+        this.movementSpeed = Float.NaN;
+        this.gravity = null;
+        this.jumpStrength = null;
+        this.stepHeight = null;
+        this.scale = null;
+        this.sneakingSpeed = null;
+        this.movementEfficiency = null;
+        this.waterMovementEfficiency = null;
+        this.properties = Collections.unmodifiableList(new ArrayList<Property>(properties));
+        this.fullReplace = fullReplace;
+    }
+
+    public static PacketUpdateAttributes merge(
+            long timestamp, String uid, String username, List<Property> properties) {
+        return new PacketUpdateAttributes(timestamp, uid, username, properties, false);
+    }
+
+    public static PacketUpdateAttributes fullReplace(
+            long timestamp, String uid, String username, List<Property> properties) {
+        return new PacketUpdateAttributes(timestamp, uid, username, properties, true);
     }
 
     @Override
@@ -64,6 +110,10 @@ public final class PacketUpdateAttributes extends PacketBaseInfo {
     @Override
     public void encode(ByteArrayOutputStream out) throws IOException {
         encodePlayerInfo(out);
+        if (properties != null) {
+            encodeProperties(out);
+            return;
+        }
         ByteBufferUtil.putFloat(out, movementSpeed);
 
         // Build flags byte
@@ -85,6 +135,24 @@ public final class PacketUpdateAttributes extends PacketBaseInfo {
         if (sneakingSpeed != null)      ByteBufferUtil.putDouble(out, sneakingSpeed);
         if (movementEfficiency != null) ByteBufferUtil.putDouble(out, movementEfficiency);
         if (waterMovementEfficiency != null) ByteBufferUtil.putDouble(out, waterMovementEfficiency);
+    }
+
+    private void encodeProperties(ByteArrayOutputStream out) throws IOException {
+        ByteBufferUtil.putInt(out, SOURCE_AWARE_MARKER);
+        ByteBufferUtil.putByte(out, SOURCE_AWARE_SCHEMA_VERSION);
+        ByteBufferUtil.putByte(out, fullReplace ? (byte) 1 : (byte) 0);
+        ByteBufferUtil.putByte(out, (byte) properties.size());
+        for (Property property : properties) {
+            ByteBufferUtil.putString(out, property.key);
+            ByteBufferUtil.putDouble(out, property.baseValue);
+            ByteBufferUtil.putShort(out, (short) property.modifiers.size());
+            for (Modifier modifier : property.modifiers) {
+                ByteBufferUtil.putString(out, modifier.stableId);
+                ByteBufferUtil.putString(out, modifier.name);
+                ByteBufferUtil.putDouble(out, modifier.amount);
+                ByteBufferUtil.putByte(out, (byte) modifier.operation.ordinal());
+            }
+        }
     }
 
     // -- Getters ------------------------------------------------------------
@@ -119,5 +187,84 @@ public final class PacketUpdateAttributes extends PacketBaseInfo {
 
     public Double getWaterMovementEfficiency() {
         return waterMovementEfficiency;
+    }
+
+    public enum Operation { ADDITION, MULTIPLY_BASE, MULTIPLY_TOTAL }
+
+    public static final class Modifier {
+        private final String stableId;
+        private final String name;
+        private final double amount;
+        private final Operation operation;
+
+        public Modifier(String stableId, String name, double amount, Operation operation) {
+            require(validText(stableId) && validText(name) && Double.isFinite(amount),
+                    "attribute modifier is invalid");
+            this.stableId = stableId;
+            this.name = name;
+            this.amount = amount;
+            this.operation = Objects.requireNonNull(operation, "operation");
+        }
+
+        public String getStableId() { return stableId; }
+        public String getName() { return name; }
+        public double getAmount() { return amount; }
+        public Operation getOperation() { return operation; }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof Modifier)) return false;
+            Modifier value = (Modifier) other;
+            return Double.compare(amount, value.amount) == 0
+                    && stableId.equals(value.stableId)
+                    && name.equals(value.name)
+                    && operation == value.operation;
+        }
+
+        @Override
+        public int hashCode() { return Objects.hash(stableId, name, amount, operation); }
+    }
+
+    public static final class Property {
+        private final String key;
+        private final double baseValue;
+        private final List<Modifier> modifiers;
+
+        public Property(String key, double baseValue, List<Modifier> modifiers) {
+            require(validText(key) && Double.isFinite(baseValue)
+                            && modifiers != null && modifiers.size() <= MAX_MODIFIERS,
+                    "attribute property is invalid");
+            this.key = key;
+            this.baseValue = baseValue;
+            this.modifiers = Collections.unmodifiableList(new ArrayList<Modifier>(modifiers));
+            for (Modifier modifier : this.modifiers) Objects.requireNonNull(modifier, "modifier");
+        }
+
+        public String getKey() { return key; }
+        public double getBaseValue() { return baseValue; }
+        public List<Modifier> getModifiers() { return modifiers; }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof Property)) return false;
+            Property value = (Property) other;
+            return Double.compare(baseValue, value.baseValue) == 0
+                    && key.equals(value.key)
+                    && modifiers.equals(value.modifiers);
+        }
+
+        @Override
+        public int hashCode() { return Objects.hash(key, baseValue, modifiers); }
+    }
+
+    private static boolean validText(String value) {
+        return value != null && !value.isEmpty()
+                && value.getBytes(StandardCharsets.UTF_8).length <= MAX_TEXT_BYTES;
+    }
+
+    private static void require(boolean condition, String message) {
+        if (!condition) throw new IllegalArgumentException(message);
     }
 }

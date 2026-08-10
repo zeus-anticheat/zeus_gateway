@@ -41,8 +41,11 @@ public final class PacketEventsListenerRegistrar {
         session.register("PacketSwingHandListener", () -> new PacketSwingHandListener(plugin, dispatcher), RawCaptureCapability.SWING_HAND);
         session.register("PacketAttackEntityListener", () -> new PacketAttackEntityListener(plugin, dispatcher), RawCaptureCapability.ATTACK_ENTITY);
         session.register("PacketKeepAliveListener", () -> new PacketKeepAliveListener(plugin, dispatcher), null);
-        session.velocityListener = new PacketVelocityListener(dispatcher);
+        session.velocityListener = new PacketVelocityListener(session.acknowledgements);
         session.register("PacketVelocityListener", () -> session.velocityListener, RawCaptureCapability.VELOCITY);
+        session.register("PacketEffectListener", () -> new PacketEffectListener(session.acknowledgements), RawCaptureCapability.EFFECT);
+        session.abilitiesListener = new PacketAbilitiesListener(session.acknowledgements);
+        session.register("PacketAbilitiesListener", () -> session.abilitiesListener, null);
         session.register("PacketBlockFaceListener", () -> new PacketBlockFaceListener(plugin, dispatcher), RawCaptureCapability.BLOCK_FACE);
         session.register("PacketHeldItemListener", () -> new PacketHeldItemListener(plugin, dispatcher), RawCaptureCapability.HELD_ITEM);
         session.register("PacketClickWindowListener", () -> new PacketClickWindowListener(plugin, dispatcher), RawCaptureCapability.CLICK_WINDOW);
@@ -70,7 +73,9 @@ public final class PacketEventsListenerRegistrar {
         private final EnumSet<RawCaptureCapability> capabilities = EnumSet.noneOf(RawCaptureCapability.class);
         private final OrderedPlayerPacketDispatcher dispatcher;
         private final OrderedWorldPacketDispatcher worldDispatcher;
+        private final ClientAcknowledgementTracker acknowledgements = new ClientAcknowledgementTracker();
         private PacketVelocityListener velocityListener;
+        private PacketAbilitiesListener abilitiesListener;
         private boolean closed;
 
         private Session(ZeusGateway plugin, EventManager manager) {
@@ -90,7 +95,8 @@ public final class PacketEventsListenerRegistrar {
             }
             worldDispatcher.clearPlayer(uuid);
             dispatcher.clearPlayer(uuid);
-            if (velocityListener != null) velocityListener.clearPlayer(uuid);
+            acknowledgements.clearPlayer(uuid);
+            abilitiesListener.clearPlayer(uuid);
             PacketPositionListener.removePlayer(uuid);
             EntitySpawnListener.removePlayer(uuid);
             PacketEntityMetadataListener.removePlayer(uuid);
@@ -110,7 +116,8 @@ public final class PacketEventsListenerRegistrar {
                 }
             }
             handles.clear();
-            if (velocityListener != null) velocityListener.clear();
+            acknowledgements.clear();
+            abilitiesListener.clear();
             worldDispatcher.close();
             dispatcher.close();
             capabilities.clear();

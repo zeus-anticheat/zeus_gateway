@@ -72,7 +72,6 @@ public final class ProxyClient {
     }
 
     public boolean send(PacketEncode packet) {
-        java.util.logging.Logger.getLogger("ZeusGateway").severe("[TRACE] ProxyClient.send: packetClass=" + packet.getClass().getSimpleName());
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
 

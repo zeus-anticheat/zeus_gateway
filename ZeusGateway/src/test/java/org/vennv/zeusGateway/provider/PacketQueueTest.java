@@ -21,6 +21,7 @@ import org.vennv.packets.PacketCollisionWindow;
 import org.vennv.packets.PacketCollisionWindow.Cell;
 import org.vennv.packets.PacketCollisionWindow.CellUpdate;
 import org.vennv.packets.PacketCollisionWindow.CollisionWindowUpdate;
+import org.vennv.packets.PacketMovementStateSnapshot;
 import org.vennv.packets.PacketCollisionWindow.Kind;
 
 class PacketQueueTest {
@@ -158,7 +159,7 @@ class PacketQueueTest {
     }
 
     @Test
-    void discontinuityBlocksUidUntilNewerFullIsQueued() {
+    void discontinuityBlocksUidUntilCollisionAndStateRecoveryAreQueuedTogether() throws Exception {
         List<PacketCollisionWindow> full = fullFragments(
                 "u", 6L, 1L, 1L, "minecraft:blocked_");
         assertTrue(PacketQueue.pushCollisionWindow("u", 6L, 1L, full));
@@ -172,9 +173,49 @@ class PacketQueueTest {
 
         List<PacketCollisionWindow> recovery = fullFragments(
                 "u", 7L, 1L, 1L, "minecraft:recovery_");
-        assertTrue(PacketQueue.pushCollisionWindow("u", 7L, 1L, recovery));
+        List<PacketMovementStateSnapshot> state = movementStateFragments("u", 7L, 1L);
+        assertFalse(PacketQueue.pushCollisionWindow("u", 7L, 1L, recovery));
+        assertFalse(PacketQueue.push(state.get(0)));
+        assertTrue(PacketQueue.pushRecovery(
+                "u", 7L, 1L, recovery, state));
         assertFalse(PacketQueue.consumeDiscontinuity("u"));
         assertTrue(PacketQueue.push(new PlayerPacket("u")));
+
+        List<PacketEncode> expected = new ArrayList<>(recovery);
+        expected.addAll(state);
+        assertEquals(expected, PacketQueue.takeGroup().packets());
+    }
+
+    @Test
+    void metricsTrackDepthHighWaterAndRejectedPackets() {
+        for (int index = 0; index < PacketQueue.capacity(); index++) {
+            assertTrue(PacketQueue.push(new EmptyPacket()));
+        }
+        assertFalse(PacketQueue.pushAll(Arrays.asList(
+                new PlayerPacket("overloaded"), new PlayerPacket("overloaded"))));
+
+        PacketQueue.QueueMetrics metrics = PacketQueue.metricsSnapshot();
+        assertEquals(PacketQueue.capacity(), metrics.currentDepth());
+        assertEquals(PacketQueue.capacity(), metrics.highWaterMark());
+        assertEquals(1L, metrics.rejectedGroups());
+        assertEquals(2L, metrics.rejectedPackets());
+        assertEquals(1, metrics.blockedUidCount());
+        assertEquals(0L, metrics.recoveryCount());
+    }
+
+    @Test
+    void metricsTrackCompletedFullRecovery() {
+        PacketQueue.markDiscontinuity("u");
+        assertEquals(1, PacketQueue.metricsSnapshot().blockedUidCount());
+
+        List<PacketCollisionWindow> recovery = fullFragments(
+                "u", 10L, 1L, 1L, "minecraft:metrics_recovery_");
+        assertTrue(PacketQueue.pushRecovery(
+                "u", 10L, 1L, recovery, movementStateFragments("u", 10L, 1L)));
+
+        PacketQueue.QueueMetrics metrics = PacketQueue.metricsSnapshot();
+        assertEquals(0, metrics.blockedUidCount());
+        assertEquals(1L, metrics.recoveryCount());
     }
 
     private static List<PacketCollisionWindow> fullFragments(
@@ -205,6 +246,19 @@ class PacketQueueTest {
         return CollisionWindowUpdate.delta(
                 generation, sequence, baseSequence,
                 0, 64, 0, 1, 64, 0, cells).toFragments(1L, uid, "n");
+    }
+
+    private static List<PacketMovementStateSnapshot> movementStateFragments(
+            String uid,
+            long generation,
+            long sequence) {
+        return PacketMovementStateSnapshot.createFragments(
+                1L,
+                uid,
+                "n",
+                generation,
+                sequence,
+                PacketMovementStateSnapshot.Snapshot.vanilla(true));
     }
 
     private static final class EmptyPacket implements PacketEncode {

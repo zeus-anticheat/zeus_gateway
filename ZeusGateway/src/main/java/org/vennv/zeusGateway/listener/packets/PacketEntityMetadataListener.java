@@ -110,17 +110,6 @@ public final class PacketEntityMetadataListener extends PacketListenerAbstract {
                 }
             }
         }
-        // DEBUG
-        StringBuilder idxLog = new StringBuilder();
-        for (EntityData<?> data : metadata) {
-            if (data != null) {
-                idxLog.append(data.getIndex()).append(':')
-                      .append(data.getValue()).append(' ').append(data.getValue() == null ? "null" : data.getValue().getClass().getSimpleName()).append(" | ");
-            }
-        }
-        org.bukkit.Bukkit.getLogger().info("[ZeusMetadata] SELF entityId=" + entityId + " gliding=" + gliding
-                + " fields=[" + idxLog + "]");
-
         Boolean last = GLIDING_STATE.get(receiver);
         if (last != null && last == gliding) {
             return; // no change

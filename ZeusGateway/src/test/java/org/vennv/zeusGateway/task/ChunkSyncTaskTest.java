@@ -25,6 +25,7 @@ import org.vennv.PacketEncode;
 import org.vennv.packets.PacketChunkData;
 import org.vennv.packets.PacketCollisionWindow;
 import org.vennv.packets.PacketCollisionWindow.Cell;
+import org.vennv.packets.PacketMovementStateSnapshot;
 import org.vennv.zeusGateway.network.ProxyClient;
 import org.vennv.zeusGateway.provider.PacketQueue;
 
@@ -139,7 +140,7 @@ class ChunkSyncTaskTest {
     }
 
     @Test
-    void commitsBoundedCacheOnlyAfterWholeFragmentGroupQueues() throws IOException {
+    void commitsBoundedCacheOnlyAfterWholeFragmentGroupQueues() throws Exception {
         UUID playerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
         ChunkSyncTask.Center center = new ChunkSyncTask.Center(15, 64, 15);
@@ -152,19 +153,29 @@ class ChunkSyncTaskTest {
                     : Cell.knownBlock("minecraft:stone");
         }
 
-        assertTrue(ChunkSyncTask.publishPrepared(update, 1L, playerId.toString(), "VennDev"));
+        List<PacketMovementStateSnapshot> state = movementStateFragments(
+                playerId.toString(), update.generation(), update.sequence());
+        assertTrue(ChunkSyncTask.publishPrepared(
+                update, 1L, playerId.toString(), "VennDev", state));
         assertTrue(ChunkSyncTask.contains(playerId, worldId, 11, 60, 11));
         assertTrue(ChunkSyncTask.contains(playerId, worldId, 19, 68, 19));
         assertFalse(ChunkSyncTask.contains(playerId, worldId, 20, 68, 19));
 
+        PacketQueue.PacketGroup recovery = PacketQueue.takeGroup();
         int fragmentCount = 0;
-        PacketEncode packet;
-        while ((packet = PacketQueue.poll()) != null) {
+        for (PacketEncode packet : recovery.packets()) {
+            if (packet instanceof PacketMovementStateSnapshot) {
+                PacketMovementStateSnapshot fragment = (PacketMovementStateSnapshot) packet;
+                assertEquals(update.generation(), fragment.getGeneration());
+                assertEquals(update.sequence(), fragment.getSequence());
+                continue;
+            }
             PacketCollisionWindow fragment = (PacketCollisionWindow) packet;
             assertTrue(fragment.encodedDatagramLength() <= 1200);
             fragmentCount++;
         }
         assertTrue(fragmentCount >= 1);
+        assertEquals(fragmentCount + state.size(), recovery.packets().size());
         assertEquals(729, update.cells().length);
     }
 
@@ -316,8 +327,25 @@ class ChunkSyncTaskTest {
         assertNotNull(update);
         Arrays.fill(update.cells(), Cell.knownAir());
         assertTrue(ChunkSyncTask.publishPrepared(
-                update, 1L, playerId.toString(), "VennDev"));
+                update,
+                1L,
+                playerId.toString(),
+                "VennDev",
+                movementStateFragments(playerId.toString(), update.generation(), update.sequence())));
         PacketQueue.clear();
+    }
+
+    private static List<PacketMovementStateSnapshot> movementStateFragments(
+            String uid,
+            long generation,
+            long sequence) {
+        return PacketMovementStateSnapshot.createFragments(
+                1L,
+                uid,
+                "VennDev",
+                generation,
+                sequence,
+                PacketMovementStateSnapshot.Snapshot.vanilla(true));
     }
 
     private static int countCells(Cell[] cells, PacketCollisionWindow.CellType type) {

@@ -59,7 +59,6 @@ public final class BatchSender implements Runnable {
     }
 
     private boolean sendGroup(PacketQueue.PacketGroup group) {
-        java.util.logging.Logger.getLogger("ZeusGateway").severe("[TRACE] sendGroup: uid=" + group.uid() + " packets=" + group.packets().size() + " firstPacketClass=" + group.packets().get(0).getClass().getSimpleName());
         try {
             for (PacketEncode packet : group.packets()) {
                 if (!send.test(packet)) {

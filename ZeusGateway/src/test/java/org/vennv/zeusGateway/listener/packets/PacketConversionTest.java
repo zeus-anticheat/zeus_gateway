@@ -11,6 +11,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.github.retrooper.packetevents.protocol.world.Direction;
+import com.github.retrooper.packetevents.resources.ResourceLocation;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerUpdateAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -23,6 +25,7 @@ import org.vennv.packets.PacketChunkData;
 import org.vennv.packets.PacketPlayerExternalForce;
 import org.vennv.packets.PacketPlayerPosition;
 import org.vennv.packets.PacketPlayerSwingHand;
+import org.vennv.packets.PacketUpdateAttributes;
 import org.vennv.utils.ExternalForceFlags;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.platform.SchedulerAdapter;
@@ -34,6 +37,38 @@ class PacketConversionTest {
     void packetEventsMapsCurrentProtocolNames() {
         assertEquals("26.1", ServerIdentity.clientVersion(775));
         assertEquals("26.2", ServerIdentity.clientVersion(776));
+    }
+
+    @Test
+    void updateAttributesKeepsRawGravityModifierWithoutMovementSpeed() {
+        UUID modifierId = UUID.fromString("12345678-1234-5678-9abc-def012345678");
+        ResourceLocation modifierName = mock(ResourceLocation.class);
+        WrapperPlayServerUpdateAttributes.PropertyModifier modifier =
+                mock(WrapperPlayServerUpdateAttributes.PropertyModifier.class);
+        WrapperPlayServerUpdateAttributes.Property gravity =
+                mock(WrapperPlayServerUpdateAttributes.Property.class);
+        when(modifierName.toString()).thenReturn("plugin:gravity_boost");
+        when(modifier.getName()).thenReturn(modifierName);
+        when(modifier.getUUID()).thenReturn(modifierId);
+        when(modifier.getAmount()).thenReturn(0.25);
+        when(modifier.getOperation()).thenReturn(
+                WrapperPlayServerUpdateAttributes.PropertyModifier.Operation.MULTIPLY_BASE);
+        when(gravity.getKey()).thenReturn("minecraft:gravity");
+        when(gravity.getValue()).thenReturn(0.08);
+        when(gravity.getModifiers()).thenReturn(Collections.singletonList(modifier));
+
+        List<PacketUpdateAttributes.Property> converted =
+                PacketUpdateAttributesListener.convertProperties(Collections.singletonList(gravity));
+
+        assertEquals(1, converted.size());
+        assertEquals("minecraft:gravity", converted.get(0).getKey());
+        assertEquals(0.08, converted.get(0).getBaseValue());
+        assertEquals(1, converted.get(0).getModifiers().size());
+        PacketUpdateAttributes.Modifier raw = converted.get(0).getModifiers().get(0);
+        assertEquals(modifierId.toString(), raw.getStableId());
+        assertEquals("plugin:gravity_boost", raw.getName());
+        assertEquals(0.25, raw.getAmount());
+        assertEquals(PacketUpdateAttributes.Operation.MULTIPLY_BASE, raw.getOperation());
     }
 
     @Test

@@ -101,7 +101,7 @@ public class PacketVehicleMoveListener extends PacketListenerAbstract {
         return flags;
     }
 
-    static HorseTelemetry horseTelemetry(Entity vehicle) {
+    public static HorseTelemetry horseTelemetry(Entity vehicle) {
         if (!(vehicle instanceof AbstractHorse)) return HorseTelemetry.UNKNOWN;
         try {
             Class<?> attributeClass = Class.forName("org.bukkit.attribute.Attribute");
@@ -145,7 +145,7 @@ public class PacketVehicleMoveListener extends PacketListenerAbstract {
         return null;
     }
 
-    static final class HorseTelemetry {
+    public static final class HorseTelemetry {
         static final HorseTelemetry UNKNOWN = new HorseTelemetry(null, null, false, false);
         final Float movementSpeed;
         final Double jumpStrength;
@@ -158,5 +158,10 @@ public class PacketVehicleMoveListener extends PacketListenerAbstract {
             this.saddleKnown = saddleKnown;
             this.saddled = saddled;
         }
+
+        public Float getMovementSpeed() { return movementSpeed; }
+        public Double getJumpStrength() { return jumpStrength; }
+        public boolean isSaddleKnown() { return saddleKnown; }
+        public boolean isSaddled() { return saddled; }
     }
 }

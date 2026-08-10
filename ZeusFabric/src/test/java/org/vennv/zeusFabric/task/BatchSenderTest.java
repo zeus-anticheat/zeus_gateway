@@ -3,6 +3,7 @@ package org.vennv.zeusFabric.task;
 import org.vennv.PacketEncode;
 import org.vennv.packets.PacketCollisionWindow;
 import org.vennv.packets.PacketCollisionWindow.Cell;
+import org.vennv.packets.PacketMovementStateSnapshot;
 import org.vennv.zeusFabric.network.ProxyClient;
 import org.vennv.zeusFabric.provider.PacketQueue;
 
@@ -101,8 +102,9 @@ public final class BatchSenderTest {
         require(PacketQueue.discontinuityRequired(), "mid-group failure did not require resync");
 
         List<PacketCollisionWindow> fresh = collisionFragments(3L, 1L, "minecraft:sender_fresh_");
+        List<PacketMovementStateSnapshot> state = movementStateFragments(3L, 1L);
         require(PacketQueue.recoverFromDiscontinuity(() -> require(
-                PacketQueue.pushCollisionWindow("u", 3L, 1L, fresh), "fresh collision group rejected")),
+                PacketQueue.pushRecovery("u", 3L, 1L, fresh, state), "fresh recovery group rejected")),
                 "fresh collision resync failed");
         List<PacketEncode> sent = new ArrayList<>();
         BatchSender recoveredSender = new BatchSender(packet -> {
@@ -114,7 +116,9 @@ public final class BatchSenderTest {
         recoveredThread.start();
         recoveredThread.join(2_000L);
         require(!recoveredThread.isAlive(), "recovered collision sender did not exit");
-        require(sent.equals(new ArrayList<PacketEncode>(fresh)), "fresh collision group was not fully sent");
+        List<PacketEncode> expected = new ArrayList<>(fresh);
+        expected.addAll(state);
+        require(sent.equals(expected), "fresh collision/state group was not fully sent");
     }
 
     private static List<PacketCollisionWindow> collisionFragments(
@@ -142,6 +146,18 @@ public final class BatchSenderTest {
         return PacketCollisionWindow.CollisionWindowUpdate.delta(
                 generation, sequence, baseSequence, 0, 64, 0, 1, 64, 0, updates)
                 .toFragments(1L, "u", "n");
+    }
+
+    private static List<PacketMovementStateSnapshot> movementStateFragments(
+            long generation,
+            long sequence) {
+        return PacketMovementStateSnapshot.createFragments(
+                1L,
+                "u",
+                "n",
+                generation,
+                sequence,
+                PacketMovementStateSnapshot.Snapshot.vanilla(true));
     }
 
     private static void collisionDatagramSizeBound() throws Exception {

@@ -18,6 +18,7 @@ import org.vennv.packets.PacketCollisionWindow;
 import org.vennv.packets.PacketCollisionWindow.Cell;
 import org.vennv.packets.PacketCollisionWindow.CellUpdate;
 import org.vennv.packets.PacketCollisionWindow.CollisionWindowUpdate;
+import org.vennv.packets.PacketMovementStateSnapshot;
 import org.vennv.zeusGateway.provider.PacketQueue;
 
 class BatchSenderTest {
@@ -118,12 +119,13 @@ class BatchSenderTest {
 
         List<PacketCollisionWindow> recovery = fullFragments(
                 3L, 1L, "minecraft:sender_recovery_");
-        assertTrue(PacketQueue.pushCollisionWindow("u", 3L, 1L, recovery));
+        List<PacketMovementStateSnapshot> state = movementStateFragments(3L, 1L);
+        assertTrue(PacketQueue.pushRecovery("u", 3L, 1L, recovery, state));
         assertTrue(PacketQueue.push(new PlayerPacket("u")));
         List<PacketEncode> sent = new ArrayList<>();
         BatchSender recovered = new BatchSender(packet -> {
             sent.add(packet);
-            if (sent.size() == recovery.size() + 1) Thread.currentThread().interrupt();
+            if (sent.size() == recovery.size() + state.size() + 1) Thread.currentThread().interrupt();
             return true;
         }, 1);
         Thread recoveredThread = new Thread(recovered, "BatchSenderTest-recovery");
@@ -132,6 +134,7 @@ class BatchSenderTest {
 
         assertFalse(recoveredThread.isAlive());
         List<PacketEncode> expected = new ArrayList<>(recovery);
+        expected.addAll(state);
         assertEquals(recovery, sent.subList(0, recovery.size()));
         assertEquals(expected.size() + 1, sent.size());
     }
@@ -161,6 +164,18 @@ class BatchSenderTest {
         return CollisionWindowUpdate.delta(
                 generation, sequence, baseSequence,
                 0, 64, 0, 1, 64, 0, cells).toFragments(1L, "u", "n");
+    }
+
+    private static List<PacketMovementStateSnapshot> movementStateFragments(
+            long generation,
+            long sequence) {
+        return PacketMovementStateSnapshot.createFragments(
+                1L,
+                "u",
+                "n",
+                generation,
+                sequence,
+                PacketMovementStateSnapshot.Snapshot.vanilla(true));
     }
 
     private static final class EmptyPacket implements PacketEncode {

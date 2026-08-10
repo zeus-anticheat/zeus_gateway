@@ -98,51 +98,14 @@ public abstract class ServerCommonNetworkHandlerMixin {
         }
         if (packet instanceof EntityAttributesS2CPacket attributesPacket
                 && attributesPacket.getEntityId() == handler.player.getId()) {
-            Float movementSpeed = null;
-            Double gravity = null, jumpStrength = null, stepHeight = null;
-            Double scale = null, sneakingSpeed = null;
-            Double movementEfficiency = null, waterMovementEfficiency = null;
-
-            for (EntityAttributesS2CPacket.Entry entry : attributesPacket.getEntries()) {
-                double value = entry.base();
-                if (!Double.isFinite(value)) continue;
-                var attr = entry.attribute();
-
-                if (attr.matches(net.minecraft.entity.attribute.EntityAttributes.MOVEMENT_SPEED)
-                        && value > 0.0 && movementSpeed == null) {
-                    movementSpeed = (float) value;
-                } else if (attr.matches(net.minecraft.entity.attribute.EntityAttributes.GRAVITY)
-                        && gravity == null) {
-                    gravity = value;
-                } else if (attr.matches(net.minecraft.entity.attribute.EntityAttributes.JUMP_STRENGTH)
-                        && value >= 0.0 && jumpStrength == null) {
-                    jumpStrength = value;
-                } else if (attr.matches(net.minecraft.entity.attribute.EntityAttributes.STEP_HEIGHT)
-                        && value >= 0.0 && stepHeight == null) {
-                    stepHeight = value;
-                } else if (attr.matches(net.minecraft.entity.attribute.EntityAttributes.SCALE)
-                        && value > 0.0 && scale == null) {
-                    scale = value;
-                } else if (attr.matches(net.minecraft.entity.attribute.EntityAttributes.SNEAKING_SPEED)
-                        && value >= 0.0 && sneakingSpeed == null) {
-                    sneakingSpeed = value;
-                } else if (attr.matches(net.minecraft.entity.attribute.EntityAttributes.MOVEMENT_EFFICIENCY)
-                        && value >= 0.0 && movementEfficiency == null) {
-                    movementEfficiency = value;
-                } else if (attr.matches(net.minecraft.entity.attribute.EntityAttributes.WATER_MOVEMENT_EFFICIENCY)
-                        && value >= 0.0 && waterMovementEfficiency == null) {
-                    waterMovementEfficiency = value;
-                }
-            }
-
-            if (movementSpeed != null) {
-                PacketQueue.push(new PacketUpdateAttributes(
+            List<PacketUpdateAttributes.Property> properties =
+                    PlayerStateSnapshotService.packetAttributeProperties(attributesPacket.getEntries());
+            if (!properties.isEmpty()) {
+                PacketQueue.push(PacketUpdateAttributes.merge(
                     System.currentTimeMillis(),
                     handler.player.getUuidAsString(),
                     handler.player.getName().getString(),
-                    movementSpeed,
-                    gravity, jumpStrength, stepHeight, scale,
-                    sneakingSpeed, movementEfficiency, waterMovementEfficiency
+                    properties
                 ));
             }
         }

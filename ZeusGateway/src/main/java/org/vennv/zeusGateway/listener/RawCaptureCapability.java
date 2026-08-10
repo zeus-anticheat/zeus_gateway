@@ -15,5 +15,6 @@ public enum RawCaptureCapability {
     VEHICLE_MOVE,
     PLAYER_COMMAND,
     PLAYER_INPUT,
-    VELOCITY
+    VELOCITY,
+    EFFECT
 }

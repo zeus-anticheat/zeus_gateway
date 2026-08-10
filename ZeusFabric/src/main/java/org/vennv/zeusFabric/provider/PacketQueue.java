@@ -2,6 +2,7 @@ package org.vennv.zeusFabric.provider;
 
 import org.vennv.PacketEncode;
 import org.vennv.packets.PacketCollisionWindow;
+import org.vennv.packets.PacketMovementStateSnapshot;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -136,6 +137,14 @@ public final class PacketQueue {
                 DROPPED.addAndGet(packets.size());
                 return false;
             }
+            if (COLLISION_RECOVERY_FLOORS.containsKey(uid)) {
+                if (resyncProducer == Thread.currentThread()) {
+                    markDiscontinuityLocked(packets.size());
+                } else {
+                    DROPPED.addAndGet(packets.size());
+                }
+                return false;
+            }
             if (!acceptCollisionLocked(metadata)) {
                 if (resyncProducer == Thread.currentThread()
                         && COLLISION_RECOVERY_FLOORS.containsKey(uid)) {
@@ -166,6 +175,92 @@ public final class PacketQueue {
             if (metadata.kind() == PacketCollisionWindow.Kind.FULL) {
                 COLLISION_RECOVERY_FLOORS.remove(uid);
             }
+            if (resyncProducer == Thread.currentThread()) {
+                resyncPacketCount = packetCount;
+            } else {
+                queuedPackets = packetCount;
+                STATE_LOCK.notifyAll();
+            }
+            return true;
+        }
+    }
+
+    public static boolean pushRecovery(
+            String uid,
+            long generation,
+            long sequence,
+            List<PacketCollisionWindow> collisionFragments,
+            List<PacketMovementStateSnapshot> stateFragments) {
+        if (uid == null || collisionFragments == null || collisionFragments.isEmpty()
+                || !validStateSnapshot(uid, generation, sequence, stateFragments)) {
+            return false;
+        }
+        List<PacketCollisionWindow> collision;
+        CollisionMetadata metadata;
+        try {
+            collision = new ArrayList<>(collisionFragments);
+            for (int index = 0; index < collision.size(); index++) {
+                PacketCollisionWindow packet = collision.get(index);
+                if (packet == null
+                        || !uid.equals(packet.getUid())
+                        || generation != packet.getGeneration()
+                        || sequence != packet.getSequence()
+                        || collision.size() != packet.getFragmentCount()
+                        || index != packet.getFragmentIndex()) {
+                    return false;
+                }
+            }
+            PacketCollisionWindow.CollisionWindowUpdate update =
+                    PacketCollisionWindow.reassemble(collision);
+            if (update.getKind() != PacketCollisionWindow.Kind.FULL) return false;
+            metadata = new CollisionMetadata(
+                    uid,
+                    update.getGeneration(),
+                    update.getSequence(),
+                    update.getKind(),
+                    update.getBaseSequence());
+        } catch (IOException | RuntimeException failure) {
+            return false;
+        }
+
+        List<PacketEncode> packets = new ArrayList<>(collision);
+        packets.addAll(stateFragments);
+        synchronized (STATE_LOCK) {
+            if (resyncProducer != null && resyncProducer != Thread.currentThread()) {
+                markDiscontinuityLocked(packets.size());
+                return false;
+            }
+            if (discontinuityRequired) {
+                DROPPED.addAndGet(packets.size());
+                return false;
+            }
+            if (!acceptCollisionLocked(metadata)) {
+                if (resyncProducer == Thread.currentThread()
+                        && COLLISION_RECOVERY_FLOORS.containsKey(uid)) {
+                    markDiscontinuityLocked(packets.size());
+                } else {
+                    DROPPED.addAndGet(packets.size());
+                }
+                return false;
+            }
+            PacketGroup group = new PacketGroup(PacketQueue.generation, metadata, packets);
+            Collection<PacketGroup> target =
+                    resyncProducer == Thread.currentThread() ? resyncGroups : QUEUE;
+            int packetCount =
+                    resyncProducer == Thread.currentThread() ? resyncPacketCount : queuedPackets;
+            int replaceable = countCollisionPackets(target, uid);
+            if (packetCount - replaceable + group.size() > CAPACITY) {
+                markDiscontinuityLocked(group.size());
+                return false;
+            }
+            if (replaceable > 0) {
+                removeCollisionGroups(target, uid);
+                packetCount -= replaceable;
+            }
+            target.add(group);
+            packetCount += group.size();
+            COLLISION_HIGH_WATER.put(uid, metadata);
+            COLLISION_RECOVERY_FLOORS.remove(uid);
             if (resyncProducer == Thread.currentThread()) {
                 resyncPacketCount = packetCount;
             } else {
@@ -287,6 +382,31 @@ public final class PacketQueue {
                 throw new IllegalStateException("no packet send in flight");
             }
             sendsInFlight--;
+        }
+    }
+
+    private static boolean validStateSnapshot(
+            String uid,
+            long generation,
+            long sequence,
+            List<PacketMovementStateSnapshot> fragments) {
+        if (fragments == null || fragments.isEmpty()) return false;
+        try {
+            for (int index = 0; index < fragments.size(); index++) {
+                PacketMovementStateSnapshot fragment = fragments.get(index);
+                if (fragment == null
+                        || !uid.equals(fragment.getUid())
+                        || generation != fragment.getGeneration()
+                        || sequence != fragment.getSequence()
+                        || fragments.size() != fragment.getFragmentCount()
+                        || index != fragment.getFragmentIndex()) {
+                    return false;
+                }
+            }
+            PacketMovementStateSnapshot.reassemble(fragments);
+            return true;
+        } catch (IOException | RuntimeException failure) {
+            return false;
         }
     }
 

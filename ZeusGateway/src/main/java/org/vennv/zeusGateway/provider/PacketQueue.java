@@ -19,6 +19,7 @@ import org.vennv.PacketEncode;
 import org.vennv.packets.PacketChunkData;
 import org.vennv.packets.PacketCollisionWindow;
 import org.vennv.packets.PacketCollisionWindow.CollisionWindowUpdate;
+import org.vennv.packets.PacketMovementStateSnapshot;
 import org.vennv.packets.PacketCollisionWindow.Kind;
 
 public final class PacketQueue {
@@ -37,6 +38,10 @@ public final class PacketQueue {
     private static int compatibilityIndex;
     private static int queuedPackets;
     private static long droppedPackets;
+    private static int highWaterMark;
+    private static long rejectedGroups;
+    private static long rejectedPackets;
+    private static long recoveryCount;
 
     public static boolean push(PacketEncode packet) {
         return pushAll(Collections.singletonList(Objects.requireNonNull(packet, "packet")));
@@ -53,11 +58,11 @@ public final class PacketQueue {
         LOCK.lock();
         try {
             if (group.uid != null && BLOCKED_UIDS.contains(group.uid)) {
-                droppedPackets += group.size();
+                recordRejectionLocked(group.size());
                 return false;
             }
             if (queuedPackets + group.size() > CAPACITY) {
-                droppedPackets += group.size();
+                recordRejectionLocked(group.size());
                 if (group.uid != null) markDiscontinuityLocked(group.uid);
                 return false;
             }
@@ -77,38 +82,16 @@ public final class PacketQueue {
             long generation,
             long sequence,
             List<PacketCollisionWindow> fragments) {
-        if (uid == null || fragments == null || fragments.isEmpty()) return false;
-        List<PacketCollisionWindow> packets;
-        CollisionWindowUpdate update;
-        try {
-            packets = new ArrayList<>(fragments);
-            update = PacketCollisionWindow.reassemble(packets);
-            for (int index = 0; index < packets.size(); index++) {
-                PacketCollisionWindow packet = packets.get(index);
-                if (!uid.equals(packet.getUid())
-                        || generation != packet.getGeneration()
-                        || sequence != packet.getSequence()
-                        || packets.size() != packet.getFragmentCount()
-                        || index != packet.getFragmentIndex()) {
-                    return false;
-                }
-            }
-            if (generation != update.getGeneration() || sequence != update.getSequence()) return false;
-        } catch (IOException | RuntimeException failure) {
-            return false;
-        }
-
-        CollisionKey key = new CollisionKey(
-                update.getGeneration(), update.getSequence(), update.getKind(), update.getBaseSequence());
-        List<PacketEncode> encoded = new ArrayList<PacketEncode>(packets);
-        PacketGroup group = new PacketGroup(uid, key, encoded);
+        PacketGroup group = collisionGroup(uid, generation, sequence, fragments);
+        if (group == null) return false;
+        CollisionKey key = group.collisionKey;
         LOCK.lock();
         try {
             CollisionKey latest = LATEST_COLLISION_KEYS.get(uid);
             if (latest != null && key.compareVersion(latest) <= 0) return false;
+            if (BLOCKED_UIDS.contains(uid)) return false;
             if (key.kind == Kind.DELTA) {
-                if (BLOCKED_UIDS.contains(uid)
-                        || latest == null
+                if (latest == null
                         || latest.generation != key.generation
                         || latest.sequence != key.baseSequence
                         || !isQueuedCollisionLocked(uid, latest)
@@ -118,24 +101,61 @@ public final class PacketQueue {
             }
 
             int replaceable = key.kind == Kind.FULL ? countCollisionPacketsLocked(uid) : 0;
-            int removable = BLOCKED_UIDS.contains(uid) && key.kind == Kind.FULL
-                    ? countUidPacketsLocked(uid)
-                    : replaceable;
-            if (queuedPackets - removable + group.size() > CAPACITY) {
-                droppedPackets += group.size();
+            if (queuedPackets - replaceable + group.size() > CAPACITY) {
+                recordRejectionLocked(group.size());
                 markDiscontinuityLocked(uid);
                 return false;
             }
-            if (BLOCKED_UIDS.contains(uid) && key.kind == Kind.FULL) {
-                removeUidGroupsLocked(uid);
-            } else if (key.kind == Kind.FULL) {
+            if (key.kind == Kind.FULL) {
                 removeCollisionGroupsLocked(uid);
             }
             enqueueLocked(group);
             LATEST_COLLISION_KEYS.put(uid, key);
-            if (key.kind == Kind.FULL) {
+            return true;
+        } finally {
+            LOCK.unlock();
+        }
+    }
+
+    public static boolean pushRecovery(
+            String uid,
+            long generation,
+            long sequence,
+            List<PacketCollisionWindow> collisionFragments,
+            List<PacketMovementStateSnapshot> statePackets) {
+        PacketGroup collision = collisionGroup(uid, generation, sequence, collisionFragments);
+        if (collision == null || collision.collisionKey.kind != Kind.FULL
+                || !validStateSnapshot(uid, generation, sequence, statePackets)) return false;
+        List<PacketEncode> packets = new ArrayList<>(collision.packets);
+        for (PacketEncode packet : statePackets) {
+            packets.add(Objects.requireNonNull(packet, "state packet"));
+        }
+        PacketGroup recovery = new PacketGroup(uid, collision.collisionKey, packets);
+
+        LOCK.lock();
+        try {
+            boolean blocked = BLOCKED_UIDS.contains(uid);
+            CollisionKey latest = LATEST_COLLISION_KEYS.get(uid);
+            if (latest != null && recovery.collisionKey.compareVersion(latest) <= 0) return false;
+            int removable = blocked
+                    ? countUidPacketsLocked(uid)
+                    : countCollisionPacketsLocked(uid);
+            if (queuedPackets - removable + recovery.size() > CAPACITY) {
+                recordRejectionLocked(recovery.size());
+                markDiscontinuityLocked(uid);
+                return false;
+            }
+            if (blocked) {
+                removeUidGroupsLocked(uid);
+            } else {
+                removeCollisionGroupsLocked(uid);
+            }
+            enqueueLocked(recovery);
+            LATEST_COLLISION_KEYS.put(uid, recovery.collisionKey);
+            if (blocked) {
                 BLOCKED_UIDS.remove(uid);
                 DISCONTINUITIES.remove(uid);
+                recoveryCount = saturatingAdd(recoveryCount, 1L);
             }
             return true;
         } finally {
@@ -189,10 +209,7 @@ public final class PacketQueue {
             while (true) {
                 while (compatibilityGroup != null) STATE_CHANGED.await();
                 PacketGroup group = pollSendableGroupLocked();
-                if (group != null) {
-                    java.util.logging.Logger.getLogger("ZeusGateway").severe("[TRACE] takeGroup: uid=" + group.uid() + " packets=" + group.packets().size() + " hasCollision=" + group.isCollision() + " kind=" + (group.isCollision() ? group.collisionKind() : "none"));
-                    return group;
-                }
+                if (group != null) return group;
                 STATE_CHANGED.await();
             }
         } finally {
@@ -266,6 +283,24 @@ public final class PacketQueue {
         }
     }
 
+    public static QueueMetrics metricsSnapshot() {
+        LOCK.lock();
+        try {
+            int currentDepth = queuedPackets + (compatibilityGroup == null
+                    ? 0 : compatibilityGroup.size() - compatibilityIndex);
+            return new QueueMetrics(
+                    currentDepth,
+                    highWaterMark,
+                    rejectedGroups,
+                    rejectedPackets,
+                    BLOCKED_UIDS.size(),
+                    recoveryCount,
+                    droppedPackets);
+        } finally {
+            LOCK.unlock();
+        }
+    }
+
     public static void removeChunks(String uid) {
         Objects.requireNonNull(uid, "uid");
         LOCK.lock();
@@ -308,6 +343,10 @@ public final class PacketQueue {
             compatibilityIndex = 0;
             queuedPackets = 0;
             droppedPackets = 0;
+            highWaterMark = 0;
+            rejectedGroups = 0;
+            rejectedPackets = 0;
+            recoveryCount = 0;
             STATE_CHANGED.signalAll();
         } finally {
             LOCK.unlock();
@@ -317,7 +356,18 @@ public final class PacketQueue {
     private static void enqueueLocked(PacketGroup group) {
         QUEUE.addLast(group);
         queuedPackets += group.size();
+        highWaterMark = Math.max(highWaterMark, queuedPackets);
         STATE_CHANGED.signalAll();
+    }
+
+    private static void recordRejectionLocked(int packetCount) {
+        droppedPackets = saturatingAdd(droppedPackets, packetCount);
+        rejectedGroups = saturatingAdd(rejectedGroups, 1L);
+        rejectedPackets = saturatingAdd(rejectedPackets, packetCount);
+    }
+
+    private static long saturatingAdd(long current, long increment) {
+        return increment > Long.MAX_VALUE - current ? Long.MAX_VALUE : current + increment;
     }
 
     private static PacketGroup pollSendableGroupLocked() {
@@ -325,7 +375,7 @@ public final class PacketQueue {
             PacketGroup group = QUEUE.removeFirst();
             queuedPackets -= group.size();
             if (group.uid != null && BLOCKED_UIDS.contains(group.uid)) {
-                droppedPackets += group.size();
+                droppedPackets = saturatingAdd(droppedPackets, group.size());
                 continue;
             }
             return group;
@@ -356,6 +406,32 @@ public final class PacketQueue {
             if (uid.equals(group.uid) && key.equals(group.collisionKey)) return true;
         }
         return false;
+    }
+
+    private static PacketGroup collisionGroup(
+            String uid,
+            long generation,
+            long sequence,
+            List<PacketCollisionWindow> fragments) {
+        if (uid == null || fragments == null || fragments.isEmpty()) return null;
+        try {
+            List<PacketCollisionWindow> packets = new ArrayList<>(fragments);
+            CollisionWindowUpdate update = PacketCollisionWindow.reassemble(packets);
+            for (int index = 0; index < packets.size(); index++) {
+                PacketCollisionWindow packet = packets.get(index);
+                if (!uid.equals(packet.getUid())
+                        || generation != packet.getGeneration()
+                        || sequence != packet.getSequence()
+                        || packets.size() != packet.getFragmentCount()
+                        || index != packet.getFragmentIndex()) return null;
+            }
+            if (generation != update.getGeneration() || sequence != update.getSequence()) return null;
+            CollisionKey key = new CollisionKey(
+                    update.getGeneration(), update.getSequence(), update.getKind(), update.getBaseSequence());
+            return new PacketGroup(uid, key, new ArrayList<PacketEncode>(packets));
+        } catch (IOException | RuntimeException failure) {
+            return null;
+        }
     }
 
     private static int countCollisionPacketsLocked(String uid) {
@@ -391,7 +467,7 @@ public final class PacketQueue {
             PacketGroup group = iterator.next();
             if (uid.equals(group.uid)) {
                 queuedPackets -= group.size();
-                droppedPackets += group.size();
+                droppedPackets = saturatingAdd(droppedPackets, group.size());
                 iterator.remove();
             }
         }
@@ -402,6 +478,29 @@ public final class PacketQueue {
         DISCONTINUITIES.add(uid);
         removeCollisionGroupsLocked(uid);
         STATE_CHANGED.signalAll();
+    }
+
+    private static boolean validStateSnapshot(
+            String uid,
+            long generation,
+            long sequence,
+            List<PacketMovementStateSnapshot> fragments) {
+        if (fragments == null || fragments.isEmpty()) return false;
+        try {
+            for (int index = 0; index < fragments.size(); index++) {
+                PacketMovementStateSnapshot fragment = fragments.get(index);
+                if (fragment == null
+                        || !uid.equals(fragment.getUid())
+                        || generation != fragment.getGeneration()
+                        || sequence != fragment.getSequence()
+                        || fragments.size() != fragment.getFragmentCount()
+                        || index != fragment.getFragmentIndex()) return false;
+            }
+            PacketMovementStateSnapshot.reassemble(fragments);
+            return true;
+        } catch (IOException | RuntimeException failure) {
+            return false;
+        }
     }
 
     private static String commonUid(List<PacketEncode> packets) {
@@ -417,6 +516,41 @@ public final class PacketQueue {
             }
         }
         return uid;
+    }
+
+    public static final class QueueMetrics {
+        private final int currentDepth;
+        private final int highWaterMark;
+        private final long rejectedGroups;
+        private final long rejectedPackets;
+        private final int blockedUidCount;
+        private final long recoveryCount;
+        private final long droppedPackets;
+
+        private QueueMetrics(
+                int currentDepth,
+                int highWaterMark,
+                long rejectedGroups,
+                long rejectedPackets,
+                int blockedUidCount,
+                long recoveryCount,
+                long droppedPackets) {
+            this.currentDepth = currentDepth;
+            this.highWaterMark = highWaterMark;
+            this.rejectedGroups = rejectedGroups;
+            this.rejectedPackets = rejectedPackets;
+            this.blockedUidCount = blockedUidCount;
+            this.recoveryCount = recoveryCount;
+            this.droppedPackets = droppedPackets;
+        }
+
+        public int currentDepth() { return currentDepth; }
+        public int highWaterMark() { return highWaterMark; }
+        public long rejectedGroups() { return rejectedGroups; }
+        public long rejectedPackets() { return rejectedPackets; }
+        public int blockedUidCount() { return blockedUidCount; }
+        public long recoveryCount() { return recoveryCount; }
+        public long droppedPackets() { return droppedPackets; }
     }
 
     public static final class PacketGroup {

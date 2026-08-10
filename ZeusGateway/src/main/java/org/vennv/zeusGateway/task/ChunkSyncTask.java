@@ -9,6 +9,7 @@ import org.vennv.packets.PacketCollisionWindow;
 import org.vennv.packets.PacketCollisionWindow.Cell;
 import org.vennv.packets.PacketCollisionWindow.CellUpdate;
 import org.vennv.packets.PacketCollisionWindow.CollisionWindowUpdate;
+import org.vennv.packets.PacketMovementStateSnapshot;
 import org.vennv.zeusGateway.ZeusGateway;
 import org.vennv.zeusGateway.compat.BlockCompat;
 import org.vennv.zeusGateway.platform.ServerVersion;
@@ -115,13 +116,31 @@ public final class ChunkSyncTask {
         String uid = playerId.toString();
         String username = player.getName();
         long timestamp = System.currentTimeMillis();
+        final List<PacketMovementStateSnapshot> stateFragments;
+        try {
+            stateFragments = update.full
+                    ? PlayerStateSnapshotService.movementStateFragments(
+                            timestamp,
+                            uid,
+                            username,
+                            update.generation(),
+                            update.sequence(),
+                            player)
+                    : Collections.<PacketMovementStateSnapshot>emptyList();
+        } catch (RuntimeException | LinkageError failure) {
+            abandon(update);
+            PacketQueue.markDiscontinuity(uid);
+            invalidate(playerId);
+            requestFullResync(plugin, player);
+            return;
+        }
         int minHeight = ServerVersion.isAtLeast(1, 17) ? world.getMinHeight() : 0;
         int maxHeight = world.getMaxHeight();
         List<RegionSlice> regions = splitRegions(center, update.sampleIndices);
         Assembly assembly = new Assembly(
                 regions.size(),
                 () -> {
-                    if (!publishPrepared(update, timestamp, uid, username)
+                    if (!publishPrepared(update, timestamp, uid, username, stateFragments)
                             && update.recoveryRequired) {
                         requestFullResync(plugin, player);
                     }
@@ -326,8 +345,23 @@ public final class ChunkSyncTask {
             long timestamp,
             String uid,
             String username) {
+        return publishPrepared(
+                update,
+                timestamp,
+                uid,
+                username,
+                Collections.<PacketMovementStateSnapshot>emptyList());
+    }
+
+    static boolean publishPrepared(
+            PreparedUpdate update,
+            long timestamp,
+            String uid,
+            String username,
+            List<PacketMovementStateSnapshot> stateFragments) {
         synchronized (STATE_LOCK) {
             if (!isCurrentLocked(update)) return false;
+            if (update.full == stateFragments.isEmpty()) return false;
             for (Map.Entry<Integer, BlockOverride> entry : update.state.pendingOverrides.entrySet()) {
                 update.cells[entry.getKey()] = entry.getValue().cell;
             }
@@ -350,8 +384,15 @@ public final class ChunkSyncTask {
 
             boolean queued;
             try {
-                queued = PacketQueue.pushCollisionWindow(
-                        uid, update.pending.generation, update.sequence, fragments);
+                queued = update.full
+                        ? PacketQueue.pushRecovery(
+                                uid,
+                                update.pending.generation,
+                                update.sequence,
+                                fragments,
+                                stateFragments)
+                        : PacketQueue.pushCollisionWindow(
+                                uid, update.pending.generation, update.sequence, fragments);
             } catch (RuntimeException exception) {
                 abandonLocked(update);
                 throw exception;

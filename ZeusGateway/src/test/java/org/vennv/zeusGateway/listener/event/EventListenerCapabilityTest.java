@@ -36,6 +36,34 @@ class EventListenerCapabilityTest {
     }
 
     @Test
+    void rawEffectCaptureDisablesOnlyBukkitEffectFallback() throws IOException {
+        EventListener listener = new EventListener(EnumSet.of(RawCaptureCapability.EFFECT));
+
+        assertFalse(listener.isFallbackEnabled(RawCaptureCapability.EFFECT));
+        assertTrue(listener.isFallbackEnabled(RawCaptureCapability.VELOCITY));
+        String effectHandler = section(
+                source("listener/event/EventListener.java"),
+                "public void onPotionEffect",
+                "// ──────────────────── Block Place");
+        assertTrue(effectHandler.contains(
+                "if (!isFallbackEnabled(RawCaptureCapability.EFFECT))"));
+    }
+
+    @Test
+    void velocityAndEffectsShareClientAcknowledgementTimeline() throws IOException {
+        String registrar = source("listener/packets/PacketEventsListenerRegistrar.java");
+
+        assertTrue(registrar.contains("new PacketVelocityListener(session.acknowledgements)"));
+        assertTrue(registrar.contains("new PacketEffectListener(session.acknowledgements)"));
+        assertTrue(registrar.contains("new PacketAbilitiesListener(session.acknowledgements)"));
+        assertTrue(registrar.contains("abilitiesListener.clearPlayer(uuid)"));
+        assertTrue(registrar.contains("abilitiesListener.clear()"));
+        assertTrue(registrar.contains("RawCaptureCapability.EFFECT"));
+        assertTrue(registrar.contains("acknowledgements.clearPlayer(uuid)"));
+        assertTrue(registrar.contains("acknowledgements.clear()"));
+    }
+
+    @Test
     void lifecycleAndRecoveryTriggersKeepRequiredOrdering() throws IOException {
         String listener = source("listener/event/EventListener.java");
         assertTrue(listener.contains("@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)\n"
@@ -137,6 +165,22 @@ class EventListenerCapabilityTest {
                 "PacketVehicleMoveListener.vehicleFlags(vehicle)",
                 "chunkSyncTask.onMovement(player, to.getX(), to.getY(), to.getZ())",
                 "PacketQueue.push(packet)");
+    }
+
+    @Test
+    void productionPacketPathsContainNoTemporaryTraceOutput() throws IOException {
+        for (String path : new String[] {
+                "provider/PacketQueue.java",
+                "task/BatchSender.java",
+                "network/ProxyClient.java",
+                "listener/packets/PacketVelocityListener.java",
+                "listener/event/EventListener.java"
+        }) {
+            String java = source(path);
+            assertFalse(java.contains("[TRACE]"), path);
+            assertFalse(java.contains("[VEL-DBG]"), path);
+            assertFalse(java.contains("System.out.println"), path);
+        }
     }
 
     private static String source(String relativePath) throws IOException {

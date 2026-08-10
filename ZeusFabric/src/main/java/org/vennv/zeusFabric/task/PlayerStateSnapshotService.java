@@ -2,10 +2,15 @@ package org.vennv.zeusFabric.task;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.attribute.EntityAttribute;
+import net.minecraft.entity.attribute.EntityAttributeInstance;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.passive.AbstractHorseEntity;
 import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.s2c.play.EntityAttributesS2CPacket;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.screen.ScreenHandler;
@@ -18,8 +23,8 @@ import org.vennv.packets.PacketCollisionWindow;
 import org.vennv.packets.PacketCollisionWindow.Cell;
 import org.vennv.packets.PacketCollisionWindow.CellUpdate;
 import org.vennv.packets.PacketCollisionWindow.CollisionWindowUpdate;
+import org.vennv.packets.PacketMovementStateSnapshot;
 import org.vennv.packets.PacketPlayerArmorsEquipment;
-import org.vennv.packets.PacketPlayerChangeMode;
 import org.vennv.packets.PacketPlayerEffect;
 import org.vennv.packets.PacketPlayerEnchantments;
 import org.vennv.packets.PacketPlayerHeldItem;
@@ -44,8 +49,10 @@ import org.vennv.zeusFabric.utils.MinecraftCompat;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -71,12 +78,12 @@ public final class PlayerStateSnapshotService {
 
     public static void sendFullSnapshot(ServerPlayerEntity player) {
         invalidate(player);
-        sendSnapshot(player, true, PacketPlayerPosition.SOURCE_SNAPSHOT);
+        sendSnapshot(player, true, PacketPlayerPosition.SOURCE_SNAPSHOT, true);
     }
 
     public static void sendResyncSnapshot(ServerPlayerEntity player) {
         clearMutableState(player.getUuidAsString());
-        sendSnapshot(player, true, PacketPlayerPosition.SOURCE_RESYNC);
+        sendSnapshot(player, true, PacketPlayerPosition.SOURCE_RESYNC, false);
     }
 
     public static void sendMutableStateSnapshot(ServerPlayerEntity player) {
@@ -216,26 +223,24 @@ public final class PlayerStateSnapshotService {
         sendCollisionWindow(player, ChunkSnapshotSemantics.Center.floor(x, y, z), false);
     }
 
-    private static void sendSnapshot(ServerPlayerEntity player, boolean forceStableState, byte positionSource) {
+    private static void sendSnapshot(
+            ServerPlayerEntity player,
+            boolean forceStableState,
+            byte positionSource,
+            boolean includeJoin) {
         long timestamp = System.currentTimeMillis();
         String uid = player.getUuidAsString();
         String name = player.getName().getString();
 
-        PacketQueue.push(new PacketPlayerJoin(timestamp, uid, name));
+        if (includeJoin) {
+            PacketQueue.push(new PacketPlayerJoin(timestamp, uid, name));
+        }
         PacketQueue.push(serverConfig(timestamp, uid, name, player));
-        PacketQueue.push(new PacketPlayerChangeMode(
-                timestamp,
-                uid,
-                name,
-                MinecraftCompat.gameModeIndex(player)));
 
         sendPositionAndBlocks(timestamp, uid, name, player, positionSource);
-        sendMovementAttributes(timestamp, uid, name, player);
         sendHeldItem(timestamp, uid, name, player, forceStableState);
         sendArmor(timestamp, uid, name, player, forceStableState);
         sendEnchantments(timestamp, uid, name, player, forceStableState);
-        sendEffects(timestamp, uid, name, player);
-        sendCommands(timestamp, uid, name, player);
         sendOpenInventorySnapshot(timestamp, uid, name, player, forceStableState);
     }
 
@@ -406,9 +411,10 @@ public final class PlayerStateSnapshotService {
                         updates);
             }
 
+            long timestamp = System.currentTimeMillis();
             List<PacketCollisionWindow> fragments;
             try {
-                fragments = update.toFragments(System.currentTimeMillis(), uid, name);
+                fragments = update.toFragments(timestamp, uid, name);
                 for (PacketCollisionWindow fragment : fragments) {
                     if (fragment.encodedDatagramLength() > PacketCollisionWindow.MAX_DATAGRAM_LENGTH) {
                         return false;
@@ -417,14 +423,257 @@ public final class PlayerStateSnapshotService {
             } catch (IllegalArgumentException | IOException exception) {
                 return false;
             }
-            if (!PacketQueue.pushCollisionWindow(
-                    uid, previous.generation(), sequence, fragments)) {
+            boolean queued;
+            if (full) {
+                List<PacketMovementStateSnapshot> stateFragments;
+                try {
+                    stateFragments = PacketMovementStateSnapshot.createFragments(
+                            timestamp,
+                            uid,
+                            name,
+                            previous.generation(),
+                            sequence,
+                            movementStateSnapshot(player));
+                } catch (IllegalArgumentException exception) {
+                    return false;
+                }
+                queued = PacketQueue.pushRecovery(
+                        uid, previous.generation(), sequence, fragments, stateFragments);
+            } else {
+                queued = PacketQueue.pushCollisionWindow(
+                        uid, previous.generation(), sequence, fragments);
+            }
+            if (!queued) {
                 return false;
             }
             COLLISION_STATES.put(uid, new ChunkSnapshotSemantics.State(
                     previous.generation(), sequence, worldIdentity, center, cells));
             return true;
         }
+    }
+
+    static PacketMovementStateSnapshot.Snapshot movementStateSnapshot(
+            ServerPlayerEntity player) {
+        List<PacketUpdateAttributes.Property> properties = movementAttributeProperties(player);
+        Double movementSpeed = readAttr(player, EntityAttributes.MOVEMENT_SPEED);
+        Double gravity = readAttr(player, EntityAttributes.GRAVITY);
+        Double jumpStrength = readAttr(player, EntityAttributes.JUMP_STRENGTH);
+        Double stepHeight = readAttr(player, EntityAttributes.STEP_HEIGHT);
+        Double scale = readAttr(player, EntityAttributes.SCALE);
+        Double sneakingSpeed = readAttr(player, EntityAttributes.SNEAKING_SPEED);
+        Double movementEfficiency = readAttr(player, EntityAttributes.MOVEMENT_EFFICIENCY);
+        Double waterMovementEfficiency = readAttr(player, EntityAttributes.WATER_MOVEMENT_EFFICIENCY);
+        boolean attributesComplete = properties != null
+                && validNonNegative(movementSpeed)
+                && validNonNegative(gravity)
+                && validNonNegative(jumpStrength)
+                && validNonNegative(stepHeight)
+                && validPositive(scale)
+                && validNonNegative(sneakingSpeed)
+                && validNonNegative(movementEfficiency)
+                && validNonNegative(waterMovementEfficiency);
+        PacketMovementStateSnapshot.Attributes attributes =
+                new PacketMovementStateSnapshot.Attributes(
+                        attributesComplete,
+                        validNonNegative(movementSpeed) ? movementSpeed.floatValue() : 0.1f,
+                        validNonNegative(gravity) ? gravity : 0.08,
+                        validNonNegative(jumpStrength) ? jumpStrength : 0.42,
+                        validNonNegative(stepHeight) ? stepHeight : 0.6,
+                        validPositive(scale) ? scale : 1.0,
+                        validNonNegative(sneakingSpeed) ? sneakingSpeed : 0.3,
+                        validNonNegative(movementEfficiency) ? movementEfficiency : 0.0,
+                        validNonNegative(waterMovementEfficiency) ? waterMovementEfficiency : 0.0,
+                        properties == null
+                                ? List.<PacketUpdateAttributes.Property>of()
+                                : properties);
+
+        var abilities = player.getAbilities();
+        float flySpeed = abilities.getFlySpeed();
+        if (!Float.isFinite(flySpeed) || flySpeed < 0.0f || flySpeed > 1.0f) {
+            flySpeed = 0.05f;
+        }
+        boolean canFly = abilities.allowFlying;
+        PacketMovementStateSnapshot.Abilities capturedAbilities =
+                new PacketMovementStateSnapshot.Abilities(
+                        canFly, canFly && abilities.flying, flySpeed);
+
+        boolean usingItem = player.isUsingItem();
+        String useAction = usingItem && !player.getActiveItem().isEmpty()
+                ? player.getActiveItem().getUseAction().name()
+                : "NONE";
+        boolean fishing = player.fishHook != null;
+        PacketMovementStateSnapshot.UseItem useItem =
+                new PacketMovementStateSnapshot.UseItem(
+                        usingItem || fishing,
+                        usingItem && player.isBlocking(),
+                        usingItem && ("EAT".equals(useAction) || "DRINK".equals(useAction)),
+                        usingItem && ("BOW".equals(useAction)
+                                || "CROSSBOW".equals(useAction)
+                                || "SPEAR".equals(useAction)),
+                        fishing);
+
+        return new PacketMovementStateSnapshot.Snapshot(
+                MinecraftCompat.gameModeIndex(player),
+                attributes,
+                capturedAbilities,
+                player.isSprinting(),
+                player.isSneaking(),
+                isSwimming(player),
+                player.isGliding(),
+                useItem,
+                movementVehicle(player.getVehicle()),
+                replacementEffects(player));
+    }
+
+    public static List<PacketUpdateAttributes.Property> packetAttributeProperties(
+            Collection<EntityAttributesS2CPacket.Entry> entries) {
+        Map<String, PacketUpdateAttributes.Property> properties = new LinkedHashMap<>();
+        if (entries == null) return new ArrayList<>();
+        for (EntityAttributesS2CPacket.Entry entry : entries) {
+            if (entry == null) continue;
+            String key = attributeKey(entry.attribute());
+            if (key == null) continue;
+            PacketUpdateAttributes.Property property =
+                    attributeProperty(key, entry.base(), entry.modifiers());
+            if (property != null) properties.put(key, property);
+        }
+        return new ArrayList<>(properties.values());
+    }
+
+    private static List<PacketUpdateAttributes.Property> movementAttributeProperties(
+            ServerPlayerEntity player) {
+        List<PacketUpdateAttributes.Property> properties = new ArrayList<>();
+        if (!addAttributeProperty(properties, player, EntityAttributes.MOVEMENT_SPEED,
+                "minecraft:movement_speed")
+                || !addAttributeProperty(properties, player, EntityAttributes.GRAVITY,
+                        "minecraft:gravity")
+                || !addAttributeProperty(properties, player, EntityAttributes.JUMP_STRENGTH,
+                        "minecraft:jump_strength")
+                || !addAttributeProperty(properties, player, EntityAttributes.STEP_HEIGHT,
+                        "minecraft:step_height")
+                || !addAttributeProperty(properties, player, EntityAttributes.SCALE,
+                        "minecraft:scale")
+                || !addAttributeProperty(properties, player, EntityAttributes.SNEAKING_SPEED,
+                        "minecraft:sneaking_speed")
+                || !addAttributeProperty(properties, player, EntityAttributes.MOVEMENT_EFFICIENCY,
+                        "minecraft:movement_efficiency")
+                || !addAttributeProperty(properties, player, EntityAttributes.WATER_MOVEMENT_EFFICIENCY,
+                        "minecraft:water_movement_efficiency")) {
+            return null;
+        }
+        return properties;
+    }
+
+    private static boolean addAttributeProperty(
+            List<PacketUpdateAttributes.Property> properties,
+            ServerPlayerEntity player,
+            RegistryEntry<EntityAttribute> attribute,
+            String key) {
+        if (!player.getAttributes().hasAttribute(attribute)) return false;
+        double base = player.getAttributeBaseValue(attribute);
+        EntityAttributeInstance instance = player.getAttributes().getCustomInstance(attribute);
+        Collection<EntityAttributeModifier> modifiers =
+                instance == null ? List.of() : instance.getModifiers();
+        PacketUpdateAttributes.Property property = attributeProperty(key, base, modifiers);
+        if (property == null) return false;
+        properties.add(property);
+        return true;
+    }
+
+    private static PacketUpdateAttributes.Property attributeProperty(
+            String key,
+            double base,
+            Collection<EntityAttributeModifier> modifiers) {
+        if (!Double.isFinite(base) || modifiers == null || modifiers.size() > 64) return null;
+        List<PacketUpdateAttributes.Modifier> converted = new ArrayList<>();
+        for (EntityAttributeModifier modifier : modifiers) {
+            if (modifier == null || modifier.id() == null || modifier.operation() == null
+                    || !Double.isFinite(modifier.value())) return null;
+            PacketUpdateAttributes.Operation operation;
+            switch (modifier.operation()) {
+                case ADD_VALUE:
+                    operation = PacketUpdateAttributes.Operation.ADDITION;
+                    break;
+                case ADD_MULTIPLIED_BASE:
+                    operation = PacketUpdateAttributes.Operation.MULTIPLY_BASE;
+                    break;
+                case ADD_MULTIPLIED_TOTAL:
+                    operation = PacketUpdateAttributes.Operation.MULTIPLY_TOTAL;
+                    break;
+                default:
+                    return null;
+            }
+            String id = modifier.id().toString();
+            converted.add(new PacketUpdateAttributes.Modifier(
+                    id, id, modifier.value(), operation));
+        }
+        return new PacketUpdateAttributes.Property(key, base, converted);
+    }
+
+    private static String attributeKey(RegistryEntry<EntityAttribute> attribute) {
+        if (attribute == null) return null;
+        if (attribute.matches(EntityAttributes.MOVEMENT_SPEED)) return "minecraft:movement_speed";
+        if (attribute.matches(EntityAttributes.GRAVITY)) return "minecraft:gravity";
+        if (attribute.matches(EntityAttributes.JUMP_STRENGTH)) return "minecraft:jump_strength";
+        if (attribute.matches(EntityAttributes.STEP_HEIGHT)) return "minecraft:step_height";
+        if (attribute.matches(EntityAttributes.SCALE)) return "minecraft:scale";
+        if (attribute.matches(EntityAttributes.SNEAKING_SPEED)) return "minecraft:sneaking_speed";
+        if (attribute.matches(EntityAttributes.MOVEMENT_EFFICIENCY)) return "minecraft:movement_efficiency";
+        if (attribute.matches(EntityAttributes.WATER_MOVEMENT_EFFICIENCY)) {
+            return "minecraft:water_movement_efficiency";
+        }
+        return null;
+    }
+
+    private static List<Effect> replacementEffects(ServerPlayerEntity player) {
+        List<Effect> effects = new ArrayList<>();
+        for (StatusEffectInstance effect : player.getStatusEffects()) {
+            int id = Byte.toUnsignedInt(effectId(effect));
+            if (id == EffectType.UNDEFINED.getValue()) continue;
+            effects.add(new Effect(
+                    (byte) id,
+                    (byte) effect.getAmplifier(),
+                    effect.getDuration(),
+                    EffectFlags.ADD));
+        }
+        effects.sort(Comparator.comparingInt(effect -> Byte.toUnsignedInt(effect.getEffectId())));
+        return effects;
+    }
+
+    private static PacketMovementStateSnapshot.Vehicle movementVehicle(Entity vehicle) {
+        if (vehicle == null) return null;
+        Double movementSpeed = null;
+        Double jumpStrength = null;
+        Boolean saddled = null;
+        if (vehicle instanceof AbstractHorseEntity horse) {
+            double speed = horse.getAttributeValue(EntityAttributes.MOVEMENT_SPEED);
+            double jump = horse.getAttributeValue(EntityAttributes.JUMP_STRENGTH);
+            if (Double.isFinite(speed) && speed >= 0.0 && speed <= 1024.0) {
+                movementSpeed = speed;
+            }
+            if (Double.isFinite(jump) && jump >= 0.0 && jump <= 32.0) {
+                jumpStrength = jump;
+            }
+            saddled = horse.hasStackEquipped(EquipmentSlot.SADDLE);
+        }
+        int flags = 1;
+        if (vehicle.isTouchingWater()) flags |= 1 << 1;
+        if (vehicle.isOnGround()) flags |= 1 << 2;
+        return new PacketMovementStateSnapshot.Vehicle(
+                Registries.ENTITY_TYPE.getId(vehicle.getType()).toString(),
+                vehicle.getId(),
+                (byte) flags,
+                movementSpeed,
+                jumpStrength,
+                saddled);
+    }
+
+    private static boolean validNonNegative(Double value) {
+        return value != null && Double.isFinite(value) && value >= 0.0 && value <= 1024.0;
+    }
+
+    private static boolean validPositive(Double value) {
+        return value != null && Double.isFinite(value) && value > 0.0 && value <= 1024.0;
     }
 
     private static void sampleCells(
@@ -475,21 +724,10 @@ public final class PlayerStateSnapshotService {
             String uid,
             String name,
             ServerPlayerEntity player) {
-        double movementSpeed = player.getAttributeBaseValue(EntityAttributes.MOVEMENT_SPEED);
-        if (!Double.isFinite(movementSpeed) || movementSpeed <= 0.0) return;
-
-        Double gravity = readAttr(player, EntityAttributes.GRAVITY);
-        Double jumpStrength = readAttr(player, EntityAttributes.JUMP_STRENGTH);
-        Double stepHeight = readAttr(player, EntityAttributes.STEP_HEIGHT);
-        Double scale = readAttr(player, EntityAttributes.SCALE);
-        Double sneakingSpeed = readAttr(player, EntityAttributes.SNEAKING_SPEED);
-        Double movementEfficiency = readAttr(player, EntityAttributes.MOVEMENT_EFFICIENCY);
-        Double waterMovementEfficiency = readAttr(player, EntityAttributes.WATER_MOVEMENT_EFFICIENCY);
-
-        PacketQueue.push(new PacketUpdateAttributes(
-                timestamp, uid, name, (float) movementSpeed,
-                gravity, jumpStrength, stepHeight, scale,
-                sneakingSpeed, movementEfficiency, waterMovementEfficiency));
+        List<PacketUpdateAttributes.Property> properties = movementAttributeProperties(player);
+        if (properties != null && !properties.isEmpty()) {
+            PacketQueue.push(PacketUpdateAttributes.merge(timestamp, uid, name, properties));
+        }
     }
 
     /** Returns null if the attribute is not present or the value is not finite. */

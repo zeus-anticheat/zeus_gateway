@@ -1,6 +1,7 @@
 package org.vennv;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
@@ -11,7 +12,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.vennv.packets.PacketChunkData;
 import org.vennv.packets.PacketCollisionWindow;
+import org.vennv.packets.PacketMovementStateSnapshot;
 import org.vennv.packets.PacketPlayerAttackEntity;
+import org.vennv.packets.PacketPlayerAbilities;
 import org.vennv.packets.PacketPlayerExternalForce;
 import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPhysicsCaptureSample;
@@ -22,6 +25,7 @@ import org.vennv.packets.PacketPlayerPosition;
 import org.vennv.packets.PacketPlayerTeleport;
 import org.vennv.packets.PacketShulkerBoxAction;
 import org.vennv.packets.PacketServerConfig;
+import org.vennv.packets.PacketUpdateAttributes;
 import org.vennv.utils.ExternalForceFlags;
 import org.vennv.utils.ExternalForceType;
 import org.vennv.utils.ItemStack;
@@ -44,6 +48,90 @@ class WireContractGoldenTest {
         assertEquals(0x2F, PacketId.PACKET_PHYSICS_CAPTURE_SAMPLE & 0xff);
         assertEquals(0x30, PacketId.PACKET_COLLISION_WINDOW & 0xff);
         assertEquals(0x31, PacketId.PACKET_SHULKER_BOX_ACTION & 0xff);
+        assertEquals(0x32, PacketId.PACKET_MOVEMENT_STATE_SNAPSHOT & 0xff);
+        assertEquals(0x33, PacketId.PACKET_PLAYER_ABILITIES & 0xff);
+    }
+
+    @Test
+    void serverAbilitiesMatchRustSourceAwareWire() throws Exception {
+        PacketPlayerAbilities packet = PacketPlayerAbilities.server(
+                TIMESTAMP, UID, USERNAME, 11L, true, true, 0.08f);
+
+        assertEquals(
+                "33010203040506070800017500016e00000000000000000b00033da3d70a",
+                hex(packet));
+    }
+
+    @Test
+    void movementStateSnapshotRoundTripsFullReplacementWire() throws Exception {
+        PacketMovementStateSnapshot.Snapshot snapshot = new PacketMovementStateSnapshot.Snapshot(
+                2,
+                new PacketMovementStateSnapshot.Attributes(
+                        true, 0.13f, 0.07, 0.5, 0.75, 1.25, 0.4, 0.2, 0.3,
+                        Arrays.asList(new PacketUpdateAttributes.Property(
+                                "minecraft:movement_speed",
+                                0.1,
+                                Arrays.asList(new PacketUpdateAttributes.Modifier(
+                                        "plugin-item",
+                                        "plugin:item_speed",
+                                        0.3,
+                                        PacketUpdateAttributes.Operation.MULTIPLY_TOTAL))))),
+                new PacketMovementStateSnapshot.Abilities(true, true, 0.08f),
+                true,
+                true,
+                true,
+                true,
+                new PacketMovementStateSnapshot.UseItem(true, true, false, false, false),
+                new PacketMovementStateSnapshot.Vehicle(
+                        "minecraft:horse", 42, (byte) 5, 0.225, 0.7, true),
+                Arrays.asList(new Effect((byte) 8, (byte) 1, 120, (byte) 0)));
+
+        List<PacketMovementStateSnapshot> fragments = PacketMovementStateSnapshot.createFragments(
+                TIMESTAMP, UID, USERNAME, 11, 13, snapshot);
+
+        assertEquals(1, fragments.size());
+        PacketMovementStateSnapshot fragment = fragments.get(0);
+        assertEquals(0x32, fragment.encodeDatagram()[0] & 0xff);
+        assertEquals(
+                "32010203040506070800017500016e0002000000000000000b000000000000000d00000001000000c8"
+                        + "e0cdbb4c00c800000002013e051eb83fb1eb851eb851ec3fe00000000000003fe80000000000003ff4"
+                        + "0000000000003fd999999999999a3fc999999999999a3fd33333333333330100186d696e6563726166"
+                        + "743a6d6f76656d656e745f73706565643fb999999999999a0001000b706c7567696e2d6974656d00"
+                        + "11706c7567696e3a6974656d5f73706565643fd33333333333330201013da3d70a0f0301000f6d696e"
+                        + "6563726166743a686f7273650000002a050f3fcccccccccccccd3fe666666666666600010801000000"
+                        + "7800",
+                hex(fragment));
+        assertTrue(fragment.encodedDatagramLength() <= PacketMovementStateSnapshot.MAX_DATAGRAM_LENGTH);
+        assertEquals(fragment, PacketMovementStateSnapshot.decodeDatagram(fragment.encodeDatagram()));
+        PacketMovementStateSnapshot.Snapshot decoded = PacketMovementStateSnapshot.reassemble(fragments);
+        assertEquals(snapshot, decoded);
+        assertEquals("plugin-item", decoded.getAttributes().getProperties().get(0)
+                .getModifiers().get(0).getStableId());
+        assertThrows(
+                java.io.IOException.class,
+                () -> PacketMovementStateSnapshot.reassemble(Arrays.asList()));
+    }
+
+    @Test
+    void sourceAwareGravityOnlyAttributeUpdateKeepsRawModifierWire() throws Exception {
+        PacketUpdateAttributes packet = PacketUpdateAttributes.merge(
+                TIMESTAMP,
+                UID,
+                USERNAME,
+                Arrays.asList(new PacketUpdateAttributes.Property(
+                        "minecraft:gravity",
+                        0.08,
+                        Arrays.asList(new PacketUpdateAttributes.Modifier(
+                                "plugin-id",
+                                "plugin:gravity_boost",
+                                0.25,
+                                PacketUpdateAttributes.Operation.MULTIPLY_BASE)))));
+
+        assertEquals(
+                "2e010203040506070800017500016e007fc0a55a01000100116d696e6563726166743a67726176697479"
+                        + "3fb47ae147ae147b00010009706c7567696e2d69640014706c7567696e3a677261766974795f626f6f73"
+                        + "743fd000000000000001",
+                hex(packet));
     }
 
     @Test

@@ -136,14 +136,10 @@ public class EventListener implements Listener {
         long timestamp = System.currentTimeMillis();
 
         Vector velocity = event.getVelocity();
-        plugin.getLogger().info("[VEL-DBG] FALLBACK onPlayerVelocity uid=" + uid
-                + " vel=" + velocity.getX() + "," + velocity.getY() + "," + velocity.getZ()
-                + " fallbackEnabled=true");
         PacketPlayerVelocity packet = new PacketPlayerVelocity(
                 timestamp, uid, name,
                 velocity.getX(), velocity.getY(), velocity.getZ());
-        boolean pushed = PacketQueue.push(packet);
-        plugin.getLogger().info("[VEL-DBG] FALLBACK push result=" + pushed);
+        PacketQueue.push(packet);
     }
 
     // ─────────────────────────── Player Death ───────────────────────────
@@ -432,6 +428,9 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPotionEffect(EntityPotionEffectEvent event) {
+        if (!isFallbackEnabled(RawCaptureCapability.EFFECT)) {
+            return;
+        }
         if (!(event.getEntity() instanceof Player)) {
             return;
         }

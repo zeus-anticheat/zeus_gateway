@@ -20,6 +20,8 @@ public final class FabricContractSourceTest {
         require(Byte.toUnsignedInt(PacketId.PACKET_PHYSICS_CAPTURE_SAMPLE) == 0x2F, "capture ID changed");
         require(Byte.toUnsignedInt(PacketId.PACKET_COLLISION_WINDOW) == 0x30, "collision window ID changed");
         require(Byte.toUnsignedInt(PacketId.PACKET_SHULKER_BOX_ACTION) == 0x31, "shulker action ID changed");
+        require(Byte.toUnsignedInt(PacketId.PACKET_MOVEMENT_STATE_SNAPSHOT) == 0x32,
+                "movement-state snapshot ID changed");
         Path source = Path.of("src/main/java/org/vennv/zeusFabric");
         String snapshot = Files.readString(source.resolve("task/PlayerStateSnapshotService.java"));
         String semantics = Files.readString(source.resolve("task/ChunkSnapshotSemantics.java"));
@@ -62,7 +64,15 @@ public final class FabricContractSourceTest {
         require(playMixin.contains("new PacketPlayerInput("), "0x2C raw producer missing");
         require(snapshot.contains("CollisionWindowUpdate.full("), "0x30 full snapshot producer missing");
         require(snapshot.contains("CollisionWindowUpdate.delta("), "0x30 delta producer missing");
-        require(snapshot.contains("PacketQueue.pushCollisionWindow("), "atomic collision queue producer missing");
+        String collisionProducer = section(snapshot,
+                "private static boolean sendCollisionWindow",
+                "private static void sampleCells");
+        require(collisionProducer.contains("PacketQueue.pushRecovery("),
+                "FULL collision/state atomic producer missing");
+        require(collisionProducer.contains("PacketQueue.pushCollisionWindow("),
+                "DELTA collision producer missing");
+        require(collisionProducer.indexOf("full\n") >= 0 || collisionProducer.contains("if (full)"),
+                "FULL/DELTA queue branch missing");
         require(snapshot.contains("PacketQueue.removeCollisionWindows("), "collision invalidation purge missing");
         require(snapshot.contains("world.isChunkLoaded("), "unloaded collision semantics missing");
         require(snapshot.contains("Cell.knownAir()"), "known-air collision semantics missing");
@@ -113,8 +123,14 @@ public final class FabricContractSourceTest {
                 "public static void sendMutableStateSnapshot");
         assertOrder(resyncSnapshot,
                 "clearMutableState(player.getUuidAsString())",
-                "sendSnapshot(player, true, PacketPlayerPosition.SOURCE_RESYNC)");
+                "sendSnapshot(player, true, PacketPlayerPosition.SOURCE_RESYNC, false)");
         require(!resyncSnapshot.contains("invalidate("), "periodic resync must retain current generation");
+        String snapshotBody = section(snapshot,
+                "private static void sendSnapshot",
+                "private static PacketServerConfig serverConfig");
+        require(snapshotBody.contains("includeJoin"), "join-only snapshot gate missing");
+        require(!snapshotBody.contains("sendEffects("), "resync restored ADD-only effect snapshot");
+        require(!snapshotBody.contains("sendCommands("), "resync restored mutable command deltas");
         require(resync.contains("PlayerStateSnapshotService.sendResyncSnapshot(player)"),
                 "periodic forced full resync missing");
         require(!resync.contains("PlayerStateSnapshotService.invalidate("),
@@ -169,16 +185,31 @@ public final class FabricContractSourceTest {
         require(!semantics.contains("PacketChunkData"), "pure collision semantics depend on legacy chunk packets");
         require(!semantics.contains("SENT_CHUNKS"), "pure collision semantics contain sent-chunk state");
         require(!semantics.contains("CHUNK_RADIUS"), "pure collision semantics contain chunk-radius scan");
-        require(snapshot.contains("new PacketUpdateAttributes("), "0x2E snapshot producer missing");
-        require(commonMixin.contains("new PacketUpdateAttributes("), "0x2E authoritative producer missing");
+        require(snapshot.contains("movementAttributeProperties(player)"),
+                "FULL snapshot raw attribute producer missing");
+        require(snapshot.contains("instance.getModifiers()"),
+                "FULL snapshot drops raw attribute modifiers");
+        require(snapshot.contains("entry.modifiers()"),
+                "authoritative attribute packet drops raw modifiers");
+        require(commonMixin.contains("packetAttributeProperties(attributesPacket.getEntries())"),
+                "authoritative attribute packet bypasses shared raw converter");
+        require(commonMixin.contains("PacketUpdateAttributes.merge("),
+                "authoritative source-aware attribute producer missing");
+        require(!commonMixin.contains("if (movementSpeed != null)"),
+                "gravity-only attribute packet still requires movement speed");
         require(!playMixin.contains("CaptureFrameV3"), "capture frame producer restored");
         require(!listeners.contains("/api/physics-capture/status"), "capture status polling restored");
         require(commonMixin.contains("packet instanceof EntityVelocityUpdateS2CPacket"), "0x22 authoritative event gate missing");
         require(commonMixin.contains("velocityPacket.getEntityId() == handler.player.getId()"), "0x22 player gate missing");
         require(!commonMixin.contains("handler.player.getVelocity()"), "0x22 state fallback restored");
         require(playMixin.contains("MovementSemantics.rawPacketInputFlags(flags)"), "raw input trust gate missing");
-        require(snapshot.contains("getAttributeBaseValue(EntityAttributes.MOVEMENT_SPEED)"), "server config effective speed restored");
-        require(!snapshot.contains("getAttributeValue(EntityAttributes.MOVEMENT_SPEED)"), "effective movement speed producer restored");
+        String serverConfig = section(snapshot,
+                "private static PacketServerConfig serverConfig",
+                "private static void sendPositionAndBlocks");
+        require(serverConfig.contains("getAttributeBaseValue(EntityAttributes.MOVEMENT_SPEED)"),
+                "server config effective speed restored");
+        require(!serverConfig.contains("getAttributeValue(EntityAttributes.MOVEMENT_SPEED)"),
+                "effective player movement speed producer restored");
         require(listeners.contains("PollingPolicy.shouldSendKeepAlive(player.age)"), "per-player keepalive clock missing");
         require(!listeners.contains("keepAliveCounter"), "global keepalive counter restored");
         require(!listeners.contains("tickPhysicsCapture("), "physics polling restored");

@@ -4,6 +4,7 @@ import java.util.Arrays;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Boat;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.vennv.Effect;
@@ -16,6 +17,8 @@ import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerJoin;
 import org.vennv.packets.PacketPlayerOpenWindow;
 import org.vennv.packets.PacketPlayerPosition;
+import org.vennv.packets.PacketMovementStateSnapshot;
+import org.vennv.packets.PacketUpdateAttributes;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.packets.PacketServerConfig;
 import org.bukkit.event.inventory.InventoryType;
@@ -30,6 +33,7 @@ import org.vennv.utils.ServerBoundPlayerCommandActions;
 import org.vennv.zeusGateway.compat.AttributeCompat;
 import org.vennv.zeusGateway.compat.EffectCompat;
 import org.vennv.zeusGateway.compat.EntityCompat;
+import org.vennv.zeusGateway.listener.packets.PacketVehicleMoveListener;
 import org.vennv.zeusGateway.platform.ServerCombatSettings;
 import org.vennv.zeusGateway.platform.ServerIdentity;
 import org.vennv.zeusGateway.platform.ServerVersion;
@@ -62,11 +66,11 @@ public final class PlayerStateSnapshotService {
     private PlayerStateSnapshotService() {}
 
     public static void sendFullSnapshot(Player player) {
-        sendSnapshot(player, true);
+        sendSnapshot(player, true, true);
     }
 
     public static void sendResyncSnapshot(Player player) {
-        sendSnapshot(player, false);
+        sendSnapshot(player, false, false);
     }
 
     public static void sendMutableStateSnapshot(Player player) {
@@ -154,27 +158,205 @@ public final class PlayerStateSnapshotService {
         INVENTORY_HASH.remove(uuid);
     }
 
-    private static void sendSnapshot(Player player, boolean forceStableState) {
+    private static void sendSnapshot(
+            Player player,
+            boolean forceStableState,
+            boolean includeJoin) {
         long timestamp = System.currentTimeMillis();
         String uid = player.getUniqueId().toString();
         String name = player.getName();
 
-        PacketQueue.push(new PacketPlayerJoin(
-                timestamp, uid, name, ServerIdentity.serverProtocol()));
+        if (includeJoin) {
+            PacketQueue.push(new PacketPlayerJoin(
+                    timestamp, uid, name, ServerIdentity.serverProtocol()));
+        }
         PacketQueue.push(serverConfig(timestamp, uid, name, player));
-        PacketQueue.push(new PacketPlayerChangeMode(
-                timestamp,
-                uid,
-                name,
-                gameModeToProtocolId(player.getGameMode())));
 
         sendPositionAndBlocks(timestamp, uid, name, player);
         sendHeldItem(timestamp, uid, name, player, forceStableState);
         sendArmor(timestamp, uid, name, player, forceStableState);
         sendEnchantments(timestamp, uid, name, player, forceStableState);
-        sendEffects(timestamp, uid, name, player);
-        sendCommands(timestamp, uid, name, player);
         sendOpenInventorySnapshot(timestamp, uid, name, player, forceStableState);
+    }
+
+    static List<PacketMovementStateSnapshot> movementStateFragments(
+            long timestamp,
+            String uid,
+            String name,
+            long generation,
+            long sequence,
+            Player player) {
+        return PacketMovementStateSnapshot.createFragments(
+                timestamp,
+                uid,
+                name,
+                generation,
+                sequence,
+                movementStateSnapshot(player));
+    }
+
+    static PacketMovementStateSnapshot.Snapshot movementStateSnapshot(Player player) {
+        List<PacketUpdateAttributes.Property> properties = AttributeCompat.getMovementProperties(player);
+        Double movementSpeed = AttributeCompat.getMovementSpeed(player);
+        Double gravity = AttributeCompat.getGravity(player);
+        Double jumpStrength = AttributeCompat.getJumpStrength(player);
+        Double stepHeight = AttributeCompat.getStepHeight(player);
+        Double scale = AttributeCompat.getScale(player);
+        Double sneakingSpeed = AttributeCompat.getSneakingSpeed(player);
+        Double movementEfficiency = AttributeCompat.getMovementEfficiency(player);
+        Double waterMovementEfficiency = AttributeCompat.getWaterMovementEfficiency(player);
+        boolean attributesComplete = properties != null
+                && validNonNegative(movementSpeed)
+                && validNonNegative(gravity)
+                && validNonNegative(jumpStrength)
+                && validNonNegative(stepHeight)
+                && validPositive(scale)
+                && validNonNegative(sneakingSpeed)
+                && validNonNegative(movementEfficiency)
+                && validNonNegative(waterMovementEfficiency);
+        if (!attributesComplete) {
+            java.util.logging.Logger.getLogger("ZeusGateway").warning(
+                    "[ZEUS-SNAP] incomplete attrs properties="
+                            + (properties == null ? "null" : properties.size())
+                            + " speed=" + movementSpeed
+                            + " gravity=" + gravity
+                            + " jump=" + jumpStrength
+                            + " step=" + stepHeight
+                            + " scale=" + scale
+                            + " sneak=" + sneakingSpeed
+                            + " eff=" + movementEfficiency
+                            + " water=" + waterMovementEfficiency);
+        }
+        PacketMovementStateSnapshot.Attributes attributes = new PacketMovementStateSnapshot.Attributes(
+                attributesComplete,
+                validNonNegative(movementSpeed) ? movementSpeed.floatValue() : 0.1f,
+                validNonNegative(gravity) ? gravity : 0.08,
+                validNonNegative(jumpStrength) ? jumpStrength : 0.42,
+                validNonNegative(stepHeight) ? stepHeight : 0.6,
+                validPositive(scale) ? scale : 1.0,
+                validNonNegative(sneakingSpeed) ? sneakingSpeed : 0.3,
+                validNonNegative(movementEfficiency) ? movementEfficiency : 0.0,
+                validNonNegative(waterMovementEfficiency) ? waterMovementEfficiency : 0.0,
+                properties == null
+                        ? java.util.Collections.<PacketUpdateAttributes.Property>emptyList()
+                        : properties);
+
+        boolean canFly = false;
+        boolean flying = false;
+        float flySpeed = 0.05f;
+        try {
+            canFly = player.getAllowFlight();
+            flying = canFly && player.isFlying();
+            float captured = player.getFlySpeed();
+            if (Float.isFinite(captured) && captured >= 0.0f && captured <= 1.0f) {
+                flySpeed = captured;
+            }
+        } catch (RuntimeException | LinkageError ignored) {
+            canFly = false;
+            flying = false;
+        }
+
+        boolean blocking = isBlocking(player);
+        boolean fishing = hasFishHook(player);
+        boolean usingItem = blocking || fishing || isHandRaised(player);
+        org.bukkit.inventory.ItemStack held = mainHand(player);
+        boolean eating = usingItem && held != null && isEdible(held);
+        boolean drawing = usingItem && held != null && isDrawingItem(held);
+        PacketMovementStateSnapshot.UseItem useItem = new PacketMovementStateSnapshot.UseItem(
+                usingItem, blocking, eating, drawing, fishing);
+
+        PacketMovementStateSnapshot.Vehicle vehicle = movementVehicle(player.getVehicle());
+        List<Effect> effects = replacementEffects(player);
+        GameMode mode = player.getGameMode();
+        return new PacketMovementStateSnapshot.Snapshot(
+                gameModeToProtocolId(mode == null ? GameMode.SURVIVAL : mode),
+                attributes,
+                new PacketMovementStateSnapshot.Abilities(canFly, flying, flySpeed),
+                player.isSprinting(),
+                player.isSneaking(),
+                isSwimming(player),
+                isFallFlying(player),
+                useItem,
+                vehicle,
+                effects);
+    }
+
+    private static List<Effect> replacementEffects(Player player) {
+        List<Effect> effects = new ArrayList<>();
+        for (PotionEffect effect : player.getActivePotionEffects()) {
+            if (effect == null || effect.getType() == null) continue;
+            int effectId = EffectType.fromKey(
+                    EffectCompat.getEffectKey(effect.getType())).getValue();
+            if (effectId < 0 || effectId >= 255) continue;
+            effects.add(new Effect(
+                    (byte) effectId,
+                    (byte) effect.getAmplifier(),
+                    effect.getDuration(),
+                    EffectFlags.ADD));
+        }
+        effects.sort(Comparator.comparingInt(effect -> Byte.toUnsignedInt(effect.getEffectId())));
+        return effects;
+    }
+
+    private static PacketMovementStateSnapshot.Vehicle movementVehicle(Entity vehicle) {
+        if (vehicle == null) return null;
+        PacketVehicleMoveListener.HorseTelemetry horse =
+                PacketVehicleMoveListener.horseTelemetry(vehicle);
+        Float speed = horse.getMovementSpeed();
+        return new PacketMovementStateSnapshot.Vehicle(
+                PacketVehicleMoveListener.vehicleType(vehicle),
+                vehicle.getEntityId(),
+                (byte) PacketVehicleMoveListener.vehicleFlags(vehicle),
+                speed == null ? null : speed.doubleValue(),
+                horse.getJumpStrength(),
+                horse.isSaddleKnown() ? Boolean.valueOf(horse.isSaddled()) : null);
+    }
+
+    private static boolean validNonNegative(Double value) {
+        return value != null && Double.isFinite(value) && value >= 0.0 && value <= 1024.0;
+    }
+
+    private static boolean validPositive(Double value) {
+        return value != null && Double.isFinite(value) && value > 0.0 && value <= 1024.0;
+    }
+
+    private static boolean isHandRaised(Player player) {
+        try {
+            return player.isHandRaised();
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isBlocking(Player player) {
+        try {
+            return player.isBlocking();
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    private static boolean hasFishHook(Player player) {
+        try {
+            return player.getClass().getMethod("getFishHook").invoke(player) != null;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isEdible(org.bukkit.inventory.ItemStack item) {
+        try {
+            return item.getType().isEdible();
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isDrawingItem(org.bukkit.inventory.ItemStack item) {
+        String material = item.getType().name();
+        return "BOW".equals(material)
+                || "CROSSBOW".equals(material)
+                || "TRIDENT".equals(material);
     }
 
     static PacketServerConfig serverConfig(long timestamp, String uid, String name, Player player) {
