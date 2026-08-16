@@ -308,6 +308,25 @@ public final class ZeusEventListeners {
                     new PacketPlayerBlockFace(timestamp, uid, name, face)
                 );
 
+                // PacketPlayerBlockRayTrace — bring the Fabric dig path to
+                // parity with the Gateway (Bukkit) path so dig checks
+                // (FarBreak/RotationBreak/GhostHand/Nuker) have block coords.
+                float[] off = directionOffset(direction);
+                PacketQueue.push(
+                    new PacketPlayerBlockRayTrace(
+                        timestamp,
+                        uid,
+                        name,
+                        true,
+                        pos.getX(),
+                        pos.getY(),
+                        pos.getZ(),
+                        pos.getX() + 0.5f + off[0] * 0.5f,
+                        pos.getY() + 0.5f + off[1] * 0.5f,
+                        pos.getZ() + 0.5f + off[2] * 0.5f
+                    )
+                );
+
                 // PacketPlayerSwingHand
                 PacketQueue.push(
                     new PacketPlayerSwingHand(timestamp, uid, name, false)
@@ -316,6 +335,24 @@ public final class ZeusEventListeners {
                 return ActionResult.PASS;
             }
         );
+    }
+
+    /**
+     * Returns the unit offset of a {@link Direction} as (x, y, z).
+     * Null direction is treated as UP (no offset).
+     */
+    private static float[] directionOffset(Direction direction) {
+        if (direction == null) {
+            return new float[] {0f, 0f, 0f};
+        }
+        return switch (direction) {
+            case DOWN -> new float[] {0f, -1f, 0f};
+            case UP -> new float[] {0f, 1f, 0f};
+            case NORTH -> new float[] {0f, 0f, -1f};
+            case SOUTH -> new float[] {0f, 0f, 1f};
+            case WEST -> new float[] {-1f, 0f, 0f};
+            case EAST -> new float[] {1f, 0f, 0f};
+        };
     }
 
     // ──────────────────── Use Block (Place Block) ───────────────────────
