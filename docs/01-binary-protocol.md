@@ -164,6 +164,7 @@ Face values: 0=DOWN, 1=UP, 2=NORTH, 3=SOUTH, 4=WEST, 5=EAST.
 +13   4    f32     hit_x (world-space)
 +17   4    f32     hit_y
 +21   4    f32     hit_z
++25   1    u8      action (0=INTERACT, 1=DIG, 2=PLACE; omitted=INTERACT for legacy senders)
 ```
 
 ### 0x0F -- PacketPlayerBlockChangeAck

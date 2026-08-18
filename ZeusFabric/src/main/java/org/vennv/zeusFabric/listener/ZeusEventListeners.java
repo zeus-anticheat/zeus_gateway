@@ -323,7 +323,8 @@ public final class ZeusEventListeners {
                         pos.getZ(),
                         pos.getX() + 0.5f + off[0] * 0.5f,
                         pos.getY() + 0.5f + off[1] * 0.5f,
-                        pos.getZ() + 0.5f + off[2] * 0.5f
+                        pos.getZ() + 0.5f + off[2] * 0.5f,
+                        PacketPlayerBlockRayTrace.ACTION_DIG
                     )
                 );
 
@@ -391,7 +392,8 @@ public final class ZeusEventListeners {
                     pos.getZ(),
                     (float) hitPos.x,
                     (float) hitPos.y,
-                    (float) hitPos.z
+                    (float) hitPos.z,
+                    PacketPlayerBlockRayTrace.ACTION_INTERACT
                 )
             );
 

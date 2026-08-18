@@ -98,7 +98,8 @@ public final class PacketDebugFormatter {
             message.append(" face=").append(faceName(face.getFace()));
         } else if (packet instanceof PacketPlayerBlockRayTrace) {
             PacketPlayerBlockRayTrace trace = (PacketPlayerBlockRayTrace) packet;
-            message.append(" hit=").append(trace.isHitBlock());
+            message.append(" hit=").append(trace.isHitBlock())
+                    .append(" action=").append(Byte.toUnsignedInt(trace.getAction()));
             if (trace.isHitBlock()) {
                 message.append(" block=").append(trace.getBlockX()).append('/')
                         .append(trace.getBlockY()).append('/').append(trace.getBlockZ())

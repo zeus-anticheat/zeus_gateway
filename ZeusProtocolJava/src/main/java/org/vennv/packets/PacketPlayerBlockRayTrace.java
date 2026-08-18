@@ -9,6 +9,10 @@ import java.io.IOException;
 
 public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
 
+    public static final byte ACTION_INTERACT = 0;
+    public static final byte ACTION_DIG = 1;
+    public static final byte ACTION_PLACE = 2;
+
     private final boolean hitBlock;
     private final int blockX;
     private final int blockY;
@@ -16,11 +20,23 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
     private final float hitX;
     private final float hitY;
     private final float hitZ;
+    private final byte action;
 
+    /** Legacy constructor. Omitted action means generic interaction. */
     public PacketPlayerBlockRayTrace(long timestamp, String uid, String username,
                                      boolean hitBlock, int blockX, int blockY, int blockZ,
                                      float hitX, float hitY, float hitZ) {
+        this(timestamp, uid, username, hitBlock, blockX, blockY, blockZ,
+                hitX, hitY, hitZ, ACTION_INTERACT);
+    }
+
+    public PacketPlayerBlockRayTrace(long timestamp, String uid, String username,
+                                     boolean hitBlock, int blockX, int blockY, int blockZ,
+                                     float hitX, float hitY, float hitZ, byte action) {
         super(timestamp, uid, username);
+        if (action < ACTION_INTERACT || action > ACTION_PLACE) {
+            throw new IllegalArgumentException("invalid block ray trace action: " + action);
+        }
         this.hitBlock = hitBlock;
         this.blockX = blockX;
         this.blockY = blockY;
@@ -28,6 +44,7 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
         this.hitX = hitX;
         this.hitY = hitY;
         this.hitZ = hitZ;
+        this.action = action;
     }
 
     @Override
@@ -45,6 +62,7 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
         ByteBufferUtil.putFloat(out, hitX);
         ByteBufferUtil.putFloat(out, hitY);
         ByteBufferUtil.putFloat(out, hitZ);
+        ByteBufferUtil.putByte(out, action);
     }
 
     public boolean isHitBlock() {
@@ -73,5 +91,9 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
 
     public float getHitZ() {
         return hitZ;
+    }
+
+    public byte getAction() {
+        return action;
     }
 }

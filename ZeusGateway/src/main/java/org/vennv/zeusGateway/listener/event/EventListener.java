@@ -484,12 +484,15 @@ public class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onBlockPlace(BlockPlaceEvent event) {
-        if (!isFallbackEnabled(RawCaptureCapability.PLACE_BLOCK)) {
+        if (!isFallbackEnabled(RawCaptureCapability.PLACE_BLOCK)
+                || event.isCancelled()) {
             return;
         }
 
         Player player = event.getPlayer();
         Block block = event.getBlockPlaced();
+        emitBlockRayTrace(player, event.getBlockAgainst(),
+                PacketPlayerBlockRayTrace.ACTION_PLACE);
         int x = block.getX();
         int y = block.getY();
         int z = block.getZ();
@@ -509,13 +512,14 @@ public class EventListener implements Listener {
                 y,
                 z,
                 blockType,
-                (byte) 0x00));
+                PacketBlockChangeEvent.ACTION_PLACE));
     }
 
     // ─────────────────── Block Break (Bukkit Event) ──────────────────
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onBlockBreak(BlockBreakEvent event) {
-        if (!isFallbackEnabled(RawCaptureCapability.DIGGING_BLOCK)) {
+        if (!isFallbackEnabled(RawCaptureCapability.DIGGING_BLOCK)
+                || event.isCancelled()) {
             return;
         }
 
@@ -539,7 +543,7 @@ public class EventListener implements Listener {
                 y,
                 z,
                 "minecraft:air",
-                (byte) 0x00));
+                PacketBlockChangeEvent.ACTION_BREAK));
     }
 
     // ────────────────────────── Held Item ─────────────────────────────
@@ -702,8 +706,20 @@ public class EventListener implements Listener {
 
     // ────────────────────── Block Ray Trace ───────────────────────────
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerInteractBlockRayTrace(PlayerInteractEvent event) {
+        // PacketBlockFaceListener captures raw digging/placement packets. Keep
+        // this Bukkit path only as a fallback, otherwise one action is emitted
+        // twice and the packet has no reliable action discriminator.
+        boolean fallbackTrace = isFallbackEnabled(RawCaptureCapability.BLOCK_FACE);
+        if (!fallbackTrace
+                && event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        if (event.getAction() != org.bukkit.event.block.Action.LEFT_CLICK_BLOCK
+                && event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
         Player player = event.getPlayer();
         String uid = player.getUniqueId().toString();
         String name = player.getName();
@@ -741,18 +757,14 @@ public class EventListener implements Listener {
             }
         }
 
-        PacketPlayerBlockRayTrace packet = new PacketPlayerBlockRayTrace(
-                timestamp,
-                uid,
-                name,
-                hitBlock,
-                blockX,
-                blockY,
-                blockZ,
-                hitX,
-                hitY,
-                hitZ);
-        PacketQueue.push(packet);
+        if (fallbackTrace) {
+            byte action = event.getAction() == org.bukkit.event.block.Action.LEFT_CLICK_BLOCK
+                    ? PacketPlayerBlockRayTrace.ACTION_DIG
+                    : PacketPlayerBlockRayTrace.ACTION_INTERACT;
+            PacketQueue.push(new PacketPlayerBlockRayTrace(
+                    timestamp, uid, name, hitBlock, blockX, blockY, blockZ,
+                    hitX, hitY, hitZ, action));
+        }
 
         if (hitBlock
                 && event.getAction() == org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK
@@ -1187,6 +1199,38 @@ public class EventListener implements Listener {
     }
 
     // ───────────────────────── Helpers ────────────────────────────────
+
+    private void emitBlockRayTrace(Player player, Block target, byte action) {
+        if (player == null || target == null) {
+            return;
+        }
+        Location blockLocation = target.getLocation();
+        float hitX = (float) blockLocation.getX() + 0.5f;
+        float hitY = (float) blockLocation.getY() + 0.5f;
+        float hitZ = (float) blockLocation.getZ() + 0.5f;
+        try {
+            org.bukkit.util.RayTraceResult result = player.rayTraceBlocks(5.0);
+            if (result != null && result.getHitPosition() != null) {
+                hitX = (float) result.getHitPosition().getX();
+                hitY = (float) result.getHitPosition().getY();
+                hitZ = (float) result.getHitPosition().getZ();
+            }
+        } catch (Exception | NoSuchMethodError ignored) {
+            // Center fallback keeps older Bukkit versions supported.
+        }
+        PacketQueue.push(new PacketPlayerBlockRayTrace(
+                System.currentTimeMillis(),
+                player.getUniqueId().toString(),
+                player.getName(),
+                true,
+                target.getX(),
+                target.getY(),
+                target.getZ(),
+                hitX,
+                hitY,
+                hitZ,
+                action));
+    }
 
     private void emitPistonForces(
             Block base,

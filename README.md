@@ -168,7 +168,7 @@ Each packet is captured through one or more data sources, depending on platform 
 | Effect | — | `EntityPotionEffectEvent` | — |
 | GotDamage | — | `EntityDamageEvent` | — |
 | BlockFace | `BLOCK_DIG` (direction) | `PlayerInteractEvent` | — |
-| BlockRayTrace | — | `PlayerInteractEvent` + rayTrace | — |
+| BlockRayTrace | `PacketBlockFaceListener` (dig/place packets) | `PlayerInteractEvent` + rayTrace fallback | — |
 | BlockChangeAck | — | `PlayerInteractEvent` | — |
 | AttackedByEntity | — | `EntityDamageByEntityEvent` | — |
 | EntityInteraction | — | `PlayerInteractEntityEvent` | — |

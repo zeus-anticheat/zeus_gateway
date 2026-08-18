@@ -9,6 +9,15 @@ import org.vennv.PacketId;
 
 public final class PacketBlockChangeEvent extends PacketBaseInfo {
 
+    public static final byte ACTION_UNKNOWN = 0;
+    public static final byte ACTION_PISTON_PUSH = 1;
+    public static final byte ACTION_PISTON_PULL = 2;
+    public static final byte ACTION_FLUID_FLOW = 3;
+    public static final byte ACTION_REDSTONE = 4;
+    public static final byte ACTION_GRAVITY = 5;
+    public static final byte ACTION_PLACE = 6;
+    public static final byte ACTION_BREAK = 7;
+
     private final int worldX;
     private final int worldY;
     private final int worldZ;
@@ -52,7 +61,8 @@ public final class PacketBlockChangeEvent extends PacketBaseInfo {
         ByteBufferUtil.putShort(out, (short) typeBytes.length);
         ByteBufferUtil.putBytes(out, typeBytes);
 
-        // action: 0=PLACE/BREAK, 1=PISTON_PUSH, 2=PISTON_PULL, 3=FLUID_FLOW, 4=REDSTONE, 5=GRAVITY
+        // action: 0=UNKNOWN, 1=PISTON_PUSH, 2=PISTON_PULL, 3=FLUID_FLOW,
+        // 4=REDSTONE, 5=GRAVITY, 6=PLACE, 7=BREAK
         ByteBufferUtil.putByte(out, action);
     }
 
