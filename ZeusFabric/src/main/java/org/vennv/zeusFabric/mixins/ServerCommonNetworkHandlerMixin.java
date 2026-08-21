@@ -153,7 +153,7 @@ public abstract class ServerCommonNetworkHandlerMixin {
         long timestamp = System.currentTimeMillis();
         String uid = handler.player.getUuidAsString();
         String name = handler.player.getName().getString();
-        if (packet instanceof EntitySpawnS2CPacket spawnPacket && zeus$isCollidable(spawnPacket.getEntityType())) {
+        if (packet instanceof EntitySpawnS2CPacket spawnPacket && zeus$isPushable(handler, spawnPacket)) {
             zeus$collidableEntities.add(spawnPacket.getEntityId());
             PacketQueue.push(new PacketEntitySpawn(
                 timestamp,
@@ -208,8 +208,32 @@ public abstract class ServerCommonNetworkHandlerMixin {
         return null;
     }
 
+    /**
+     * Decides whether an entity can shove the player and therefore needs its
+     * collision box forwarded to Zeus. This uses vanilla {@code Entity#isPushable()}
+     * so every vanilla pushable mob <em>and</em> any custom entity added by
+     * another mod/plugin is covered without maintaining a hardcoded whitelist.
+     *
+     * <p>{@code LivingEntity#isPushable()} is {@code isAlive() && !isSpectator() &&
+     * !isClimbing()}; minecarts and boats override it to always be pushable.
+     */
     @Unique
-    private static boolean zeus$isCollidable(net.minecraft.entity.EntityType<?> entityType) {
+    private static boolean zeus$isPushable(ServerPlayNetworkHandler handler, EntitySpawnS2CPacket spawnPacket) {
+        var world = MinecraftCompat.entityWorld(handler.player);
+        if (world != null) {
+            Entity entity = world.getEntityById(spawnPacket.getEntityId());
+            if (entity != null) {
+                return entity.isPushable();
+            }
+        }
+        // Fallback when the entity is not resolvable at send time. Keep the
+        // historic type whitelist so boats/minecarts/horses still resolve even
+        // if the world lookup races a dimension change.
+        return zeus$isCollidableType(spawnPacket.getEntityType());
+    }
+
+    @Unique
+    private static boolean zeus$isCollidableType(net.minecraft.entity.EntityType<?> entityType) {
         String type = Registries.ENTITY_TYPE.getId(entityType).getPath();
         return type.contains("boat")
             || type.contains("minecart")
