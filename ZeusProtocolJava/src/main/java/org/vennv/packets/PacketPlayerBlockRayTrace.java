@@ -21,6 +21,7 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
     private final float hitY;
     private final float hitZ;
     private final byte action;
+    private final byte sequence;
 
     /** Legacy constructor. Omitted action means generic interaction. */
     public PacketPlayerBlockRayTrace(long timestamp, String uid, String username,
@@ -33,6 +34,13 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
     public PacketPlayerBlockRayTrace(long timestamp, String uid, String username,
                                      boolean hitBlock, int blockX, int blockY, int blockZ,
                                      float hitX, float hitY, float hitZ, byte action) {
+        this(timestamp, uid, username, hitBlock, blockX, blockY, blockZ,
+                hitX, hitY, hitZ, action, (byte) 0);
+    }
+
+    public PacketPlayerBlockRayTrace(long timestamp, String uid, String username,
+                                     boolean hitBlock, int blockX, int blockY, int blockZ,
+                                     float hitX, float hitY, float hitZ, byte action, byte sequence) {
         super(timestamp, uid, username);
         if (action < ACTION_INTERACT || action > ACTION_PLACE) {
             throw new IllegalArgumentException("invalid block ray trace action: " + action);
@@ -45,6 +53,7 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
         this.hitY = hitY;
         this.hitZ = hitZ;
         this.action = action;
+        this.sequence = sequence;
     }
 
     @Override
@@ -63,6 +72,7 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
         ByteBufferUtil.putFloat(out, hitY);
         ByteBufferUtil.putFloat(out, hitZ);
         ByteBufferUtil.putByte(out, action);
+        ByteBufferUtil.putByte(out, sequence);
     }
 
     public boolean isHitBlock() {
@@ -95,5 +105,9 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
 
     public byte getAction() {
         return action;
+    }
+
+    public byte getSequence() {
+        return sequence;
     }
 }

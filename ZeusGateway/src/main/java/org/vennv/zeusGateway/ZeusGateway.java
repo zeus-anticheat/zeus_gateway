@@ -80,6 +80,19 @@ public final class ZeusGateway extends JavaPlugin {
         return packetInputPlayers.contains(uuid);
     }
 
+    public boolean submitOrderedPlayerPacket(org.bukkit.entity.Player player, Runnable task) {
+        if (packetEventsSession == null || player == null || task == null) return false;
+        try {
+            Object submitted = packetEventsSession.getClass()
+                    .getMethod("submitPlayer", org.bukkit.entity.Player.class, Runnable.class)
+                    .invoke(packetEventsSession, player, task);
+            return Boolean.TRUE.equals(submitted);
+        } catch (ReflectiveOperationException | LinkageError error) {
+            getLogger().log(Level.WARNING, "[ZeusGateway] Ordered player packet submit failed.", error);
+            return false;
+        }
+    }
+
     public PacketDebugService getPacketDebugService() {
         return packetDebugService;
     }

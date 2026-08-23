@@ -89,6 +89,10 @@ public final class PacketEventsListenerRegistrar {
             return Collections.unmodifiableSet(EnumSet.copyOf(capabilities));
         }
 
+        public boolean submitPlayer(org.bukkit.entity.Player player, Runnable task) {
+            return dispatcher.submit(player, task);
+        }
+
         public void clearPlayer(UUID uuid) {
             if (uuid == null) {
                 return;

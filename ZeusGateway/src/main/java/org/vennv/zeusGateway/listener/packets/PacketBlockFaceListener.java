@@ -40,6 +40,7 @@ public class PacketBlockFaceListener extends PacketListenerAbstract {
             return;
         }
         Byte face;
+        int sequence = 0;
         PacketPlayerBlockRayTrace trace = null;
         try {
             if (diggingPacket) {
@@ -47,27 +48,28 @@ public class PacketBlockFaceListener extends PacketListenerAbstract {
                 if (!isBlockDigAction(digging.getAction())) {
                     return;
                 }
+                sequence = digging.getSequence();
                 face = validFace(digging.getBlockFaceId());
-                if (digging.getAction() == DiggingAction.START_DIGGING) {
-                    com.github.retrooper.packetevents.util.Vector3i position = digging.getBlockPosition();
-                    if (position != null) {
-                        trace = new PacketPlayerBlockRayTrace(
-                                System.currentTimeMillis(),
-                                uuid.toString(),
-                                name,
-                                true,
-                                position.getX(),
-                                position.getY(),
-                                position.getZ(),
-                                position.getX() + 0.5f,
-                                position.getY() + 0.5f,
-                                position.getZ() + 0.5f,
-                                PacketPlayerBlockRayTrace.ACTION_DIG);
-                    }
+                com.github.retrooper.packetevents.util.Vector3i position = digging.getBlockPosition();
+                if (position != null) {
+                    trace = new PacketPlayerBlockRayTrace(
+                            System.currentTimeMillis(),
+                            uuid.toString(),
+                            name,
+                            digging.getAction() == DiggingAction.START_DIGGING,
+                            position.getX(),
+                            position.getY(),
+                            position.getZ(),
+                            position.getX() + 0.5f,
+                            position.getY() + 0.5f,
+                            position.getZ() + 0.5f,
+                            PacketPlayerBlockRayTrace.ACTION_DIG,
+                            (byte) sequence);
                 }
             } else {
                 WrapperPlayClientPlayerBlockPlacement placement =
                         new WrapperPlayClientPlayerBlockPlacement(event);
+                sequence = placement.getSequence();
                 face = validFace(placement.getFaceId());
                 com.github.retrooper.packetevents.util.Vector3i position = placement.getBlockPosition();
                 com.github.retrooper.packetevents.util.Vector3f cursor = placement.getCursorPosition();
@@ -83,7 +85,8 @@ public class PacketBlockFaceListener extends PacketListenerAbstract {
                             position.getX() + cursor.getX(),
                             position.getY() + cursor.getY(),
                             position.getZ() + cursor.getZ(),
-                            PacketPlayerBlockRayTrace.ACTION_INTERACT);
+                            PacketPlayerBlockRayTrace.ACTION_INTERACT,
+                            (byte) sequence);
                 }
             }
         } catch (RuntimeException ignored) {
@@ -108,7 +111,7 @@ public class PacketBlockFaceListener extends PacketListenerAbstract {
         });
     }
 
-    private static boolean isBlockDigAction(DiggingAction action) {
+    static boolean isBlockDigAction(DiggingAction action) {
         return action == DiggingAction.START_DIGGING
                 || action == DiggingAction.CANCELLED_DIGGING
                 || action == DiggingAction.FINISHED_DIGGING;

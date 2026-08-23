@@ -535,7 +535,7 @@ public class EventListener implements Listener {
         if (!ChunkSyncTask.recordBlockChange(
                 player.getUniqueId(), world.getUID(), x, y, z, "minecraft:air", timestamp)) return;
 
-        PacketQueue.push(new PacketBlockChangeEvent(
+        PacketBlockChangeEvent packet = new PacketBlockChangeEvent(
                 timestamp,
                 uid,
                 name,
@@ -543,7 +543,10 @@ public class EventListener implements Listener {
                 y,
                 z,
                 "minecraft:air",
-                PacketBlockChangeEvent.ACTION_BREAK));
+                PacketBlockChangeEvent.ACTION_BREAK);
+        if (plugin == null || !plugin.submitOrderedPlayerPacket(player, () -> PacketQueue.push(packet))) {
+            PacketQueue.push(packet);
+        }
     }
 
     // ────────────────────────── Held Item ─────────────────────────────

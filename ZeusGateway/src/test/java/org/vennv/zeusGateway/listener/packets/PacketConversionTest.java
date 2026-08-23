@@ -132,6 +132,16 @@ class PacketConversionTest {
     }
 
     @Test
+    void allSequencedDigActionsReachInteractionStream() {
+        assertTrue(PacketBlockFaceListener.isBlockDigAction(
+                com.github.retrooper.packetevents.protocol.player.DiggingAction.START_DIGGING));
+        assertTrue(PacketBlockFaceListener.isBlockDigAction(
+                com.github.retrooper.packetevents.protocol.player.DiggingAction.FINISHED_DIGGING));
+        assertTrue(PacketBlockFaceListener.isBlockDigAction(
+                com.github.retrooper.packetevents.protocol.player.DiggingAction.CANCELLED_DIGGING));
+    }
+
+    @Test
     void modernVelocityAcknowledgementsDoNotUseGrimTransactionNamespace() {
         AtomicInteger counter = new AtomicInteger();
 
