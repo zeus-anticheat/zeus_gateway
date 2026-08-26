@@ -60,7 +60,14 @@ public final class FabricContractSourceTest {
         require(commonMixin.contains("new PacketBlockChangeEvent("), "0x2B authoritative producer missing");
         require(outboundDispatch.contains("BlockEventS2CPacket"), "0x31 shulker block-event capture missing");
         require(commonMixin.contains("new PacketShulkerBoxAction("), "0x31 shulker action producer missing");
-        require(!listeners.contains("new PacketBlockChangeEvent("), "listener 0x2B producer restored");
+        require(listeners.contains("PacketBlockChangeEvent.ACTION_BREAK"),
+                "confirmed player-break producer missing");
+        require(playMixin.contains("method = \"onPlayerAction\""),
+                "raw digging phase hook missing");
+        require(playMixin.contains("DIG_PHASE_START")
+                        && playMixin.contains("DIG_PHASE_FINISH")
+                        && playMixin.contains("DIG_PHASE_CANCEL"),
+                "exact digging phase mapping missing");
         require(playMixin.contains("new PacketPlayerInput("), "0x2C raw producer missing");
         require(snapshot.contains("CollisionWindowUpdate.full("), "0x30 full snapshot producer missing");
         require(snapshot.contains("CollisionWindowUpdate.delta("), "0x30 delta producer missing");

@@ -12,6 +12,10 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
     public static final byte ACTION_INTERACT = 0;
     public static final byte ACTION_DIG = 1;
     public static final byte ACTION_PLACE = 2;
+    public static final byte DIG_PHASE_UNKNOWN = 0;
+    public static final byte DIG_PHASE_START = 1;
+    public static final byte DIG_PHASE_FINISH = 2;
+    public static final byte DIG_PHASE_CANCEL = 3;
 
     private final boolean hitBlock;
     private final int blockX;
@@ -22,28 +26,40 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
     private final float hitZ;
     private final byte action;
     private final byte sequence;
+    private final byte digPhase;
 
     /** Legacy constructor. Omitted action means generic interaction. */
     public PacketPlayerBlockRayTrace(long timestamp, String uid, String username,
                                      boolean hitBlock, int blockX, int blockY, int blockZ,
                                      float hitX, float hitY, float hitZ) {
         this(timestamp, uid, username, hitBlock, blockX, blockY, blockZ,
-                hitX, hitY, hitZ, ACTION_INTERACT);
+                hitX, hitY, hitZ, ACTION_INTERACT, (byte) 0, DIG_PHASE_UNKNOWN);
     }
 
     public PacketPlayerBlockRayTrace(long timestamp, String uid, String username,
                                      boolean hitBlock, int blockX, int blockY, int blockZ,
                                      float hitX, float hitY, float hitZ, byte action) {
         this(timestamp, uid, username, hitBlock, blockX, blockY, blockZ,
-                hitX, hitY, hitZ, action, (byte) 0);
+                hitX, hitY, hitZ, action, (byte) 0, DIG_PHASE_UNKNOWN);
     }
 
     public PacketPlayerBlockRayTrace(long timestamp, String uid, String username,
                                      boolean hitBlock, int blockX, int blockY, int blockZ,
                                      float hitX, float hitY, float hitZ, byte action, byte sequence) {
+        this(timestamp, uid, username, hitBlock, blockX, blockY, blockZ,
+                hitX, hitY, hitZ, action, sequence, DIG_PHASE_UNKNOWN);
+    }
+
+    public PacketPlayerBlockRayTrace(long timestamp, String uid, String username,
+                                     boolean hitBlock, int blockX, int blockY, int blockZ,
+                                     float hitX, float hitY, float hitZ, byte action, byte sequence,
+                                     byte digPhase) {
         super(timestamp, uid, username);
         if (action < ACTION_INTERACT || action > ACTION_PLACE) {
             throw new IllegalArgumentException("invalid block ray trace action: " + action);
+        }
+        if (digPhase < DIG_PHASE_UNKNOWN || digPhase > DIG_PHASE_CANCEL) {
+            throw new IllegalArgumentException("invalid dig phase: " + digPhase);
         }
         this.hitBlock = hitBlock;
         this.blockX = blockX;
@@ -54,6 +70,7 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
         this.hitZ = hitZ;
         this.action = action;
         this.sequence = sequence;
+        this.digPhase = digPhase;
     }
 
     @Override
@@ -73,6 +90,7 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
         ByteBufferUtil.putFloat(out, hitZ);
         ByteBufferUtil.putByte(out, action);
         ByteBufferUtil.putByte(out, sequence);
+        ByteBufferUtil.putByte(out, digPhase);
     }
 
     public boolean isHitBlock() {
@@ -109,5 +127,9 @@ public final class PacketPlayerBlockRayTrace extends PacketBaseInfo {
 
     public byte getSequence() {
         return sequence;
+    }
+
+    public byte getDigPhase() {
+        return digPhase;
     }
 }

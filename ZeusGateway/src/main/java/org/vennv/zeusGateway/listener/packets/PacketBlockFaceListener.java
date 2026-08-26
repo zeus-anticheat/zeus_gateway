@@ -64,7 +64,8 @@ public class PacketBlockFaceListener extends PacketListenerAbstract {
                             position.getY() + 0.5f,
                             position.getZ() + 0.5f,
                             PacketPlayerBlockRayTrace.ACTION_DIG,
-                            (byte) sequence);
+                            (byte) sequence,
+                            digPhase(digging.getAction()));
                 }
             } else {
                 WrapperPlayClientPlayerBlockPlacement placement =
@@ -115,6 +116,19 @@ public class PacketBlockFaceListener extends PacketListenerAbstract {
         return action == DiggingAction.START_DIGGING
                 || action == DiggingAction.CANCELLED_DIGGING
                 || action == DiggingAction.FINISHED_DIGGING;
+    }
+
+    static byte digPhase(DiggingAction action) {
+        if (action == DiggingAction.START_DIGGING) {
+            return PacketPlayerBlockRayTrace.DIG_PHASE_START;
+        }
+        if (action == DiggingAction.FINISHED_DIGGING) {
+            return PacketPlayerBlockRayTrace.DIG_PHASE_FINISH;
+        }
+        if (action == DiggingAction.CANCELLED_DIGGING) {
+            return PacketPlayerBlockRayTrace.DIG_PHASE_CANCEL;
+        }
+        return PacketPlayerBlockRayTrace.DIG_PHASE_UNKNOWN;
     }
 
     static Byte validFace(Integer face) {

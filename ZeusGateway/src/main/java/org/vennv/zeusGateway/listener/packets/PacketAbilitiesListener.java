@@ -4,8 +4,8 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
-import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerAbilities;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPing;
@@ -33,7 +33,8 @@ final class PacketAbilitiesListener extends PacketListenerAbstract {
         User user = event.getUser();
         if (user == null || user.getUUID() == null || user.getName() == null) return;
         WrapperPlayServerPlayerAbilities wrapper = new WrapperPlayServerPlayerAbilities(event);
-        boolean modern = event.getServerVersion().isNewerThanOrEquals(ServerVersion.V_1_17);
+        boolean modern = event.getClientVersion() != null
+                && event.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_17);
         int id = stageServer(
                 user.getUUID(), modern, System.currentTimeMillis(), user.getUUID().toString(),
                 user.getName(), wrapper.isFlightAllowed(),

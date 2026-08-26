@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.List;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
-import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
@@ -289,71 +288,8 @@ public final class ZeusEventListeners {
     // ──────────────────── Attack Block (Digging) ────────────────────────
 
     private static void registerAttackBlock() {
-        AttackBlockCallback.EVENT.register(
-            (player, world, hand, pos, direction) -> {
-                if (
-                    world.isClient() ||
-                    !(player instanceof ServerPlayerEntity serverPlayer)
-                ) {
-                    return ActionResult.PASS;
-                }
-
-                String uid = serverPlayer.getUuidAsString();
-                String name = serverPlayer.getName().getString();
-                long timestamp = System.currentTimeMillis();
-
-                // PacketPlayerBlockFace
-                byte face = mapDirection(direction);
-                PacketQueue.push(
-                    new PacketPlayerBlockFace(timestamp, uid, name, face)
-                );
-
-                // PacketPlayerBlockRayTrace — bring the Fabric dig path to
-                // parity with the Gateway (Bukkit) path so dig checks
-                // (FarBreak/RotationBreak/GhostHand/Nuker) have block coords.
-                float[] off = directionOffset(direction);
-                PacketQueue.push(
-                    new PacketPlayerBlockRayTrace(
-                        timestamp,
-                        uid,
-                        name,
-                        true,
-                        pos.getX(),
-                        pos.getY(),
-                        pos.getZ(),
-                        pos.getX() + 0.5f + off[0] * 0.5f,
-                        pos.getY() + 0.5f + off[1] * 0.5f,
-                        pos.getZ() + 0.5f + off[2] * 0.5f,
-                        PacketPlayerBlockRayTrace.ACTION_DIG
-                    )
-                );
-
-                // PacketPlayerSwingHand
-                PacketQueue.push(
-                    new PacketPlayerSwingHand(timestamp, uid, name, false)
-                );
-
-                return ActionResult.PASS;
-            }
-        );
-    }
-
-    /**
-     * Returns the unit offset of a {@link Direction} as (x, y, z).
-     * Null direction is treated as UP (no offset).
-     */
-    private static float[] directionOffset(Direction direction) {
-        if (direction == null) {
-            return new float[] {0f, 0f, 0f};
-        }
-        return switch (direction) {
-            case DOWN -> new float[] {0f, -1f, 0f};
-            case UP -> new float[] {0f, 1f, 0f};
-            case NORTH -> new float[] {0f, 0f, -1f};
-            case SOUTH -> new float[] {0f, 0f, 1f};
-            case WEST -> new float[] {-1f, 0f, 0f};
-            case EAST -> new float[] {1f, 0f, 0f};
-        };
+        // Raw START/STOP/ABORT and arm animation packets are captured by
+        // ServerPlayNetworkHandler mixins. Callback emission would duplicate them.
     }
 
     // ──────────────────── Use Block (Place Block) ───────────────────────
@@ -500,7 +436,11 @@ public final class ZeusEventListeners {
                 String name = serverPlayer.getName().getString();
                 long timestamp = System.currentTimeMillis();
 
-                // PacketPlayerBlockChangeAck — block has changed
+                PacketQueue.push(new PacketBlockChangeEvent(
+                    timestamp, uid, name,
+                    pos.getX(), pos.getY(), pos.getZ(),
+                    "minecraft:air", PacketBlockChangeEvent.ACTION_BREAK
+                ));
                 PacketQueue.push(
                     new PacketPlayerBlockChangeAck(timestamp, uid, name)
                 );

@@ -352,25 +352,6 @@ public class EventListener implements Listener {
         PacketQueue.push(packet);
     }
 
-    // ─────────────────────── Game Mode Change ─────────────────────────
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
-    public void onGameModeChange(PlayerGameModeChangeEvent event) {
-        Player player = event.getPlayer();
-        String uid = player.getUniqueId().toString();
-        String name = player.getName();
-        long timestamp = System.currentTimeMillis();
-
-        int gamemode = org.vennv.zeusGateway.task.ResyncTask.gameModeToProtocolId(event.getNewGameMode());
-
-        PacketPlayerChangeMode packet = new PacketPlayerChangeMode(
-                timestamp,
-                uid,
-                name,
-                gamemode);
-        PacketQueue.push(packet);
-    }
-
     // ──────────────────────────── Teleport ─────────────────────────────
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -518,8 +499,7 @@ public class EventListener implements Listener {
     // ─────────────────── Block Break (Bukkit Event) ──────────────────
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onBlockBreak(BlockBreakEvent event) {
-        if (!isFallbackEnabled(RawCaptureCapability.DIGGING_BLOCK)
-                || event.isCancelled()) {
+        if (event.isCancelled()) {
             return;
         }
 

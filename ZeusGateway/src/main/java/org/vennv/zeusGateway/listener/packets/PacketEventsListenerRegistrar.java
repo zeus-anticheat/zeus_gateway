@@ -58,6 +58,8 @@ public final class PacketEventsListenerRegistrar {
         session.register("EntityMoveListener", () -> new EntityMoveListener(plugin), null);
         session.register("EntityDestroyListener", () -> new EntityDestroyListener(plugin), null);
         session.register("PacketEntityMetadataListener", () -> new PacketEntityMetadataListener(), null);
+        session.register("PacketGameModeListener", () -> new PacketGameModeListener(
+                session.acknowledgements, dispatcher), null);
         session.register("PacketBlockChangeListener", () -> new PacketBlockChangeListener(plugin, worldDispatcher), null);
         session.register("PacketShulkerBoxActionListener", () -> new PacketShulkerBoxActionListener(plugin, worldDispatcher), null);
         session.register("PacketUpdateAttributesListener", () -> new PacketUpdateAttributesListener(plugin), null);

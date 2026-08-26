@@ -139,6 +139,15 @@ class PacketConversionTest {
                 com.github.retrooper.packetevents.protocol.player.DiggingAction.FINISHED_DIGGING));
         assertTrue(PacketBlockFaceListener.isBlockDigAction(
                 com.github.retrooper.packetevents.protocol.player.DiggingAction.CANCELLED_DIGGING));
+        assertEquals(org.vennv.packets.PacketPlayerBlockRayTrace.DIG_PHASE_START,
+                PacketBlockFaceListener.digPhase(
+                        com.github.retrooper.packetevents.protocol.player.DiggingAction.START_DIGGING));
+        assertEquals(org.vennv.packets.PacketPlayerBlockRayTrace.DIG_PHASE_FINISH,
+                PacketBlockFaceListener.digPhase(
+                        com.github.retrooper.packetevents.protocol.player.DiggingAction.FINISHED_DIGGING));
+        assertEquals(org.vennv.packets.PacketPlayerBlockRayTrace.DIG_PHASE_CANCEL,
+                PacketBlockFaceListener.digPhase(
+                        com.github.retrooper.packetevents.protocol.player.DiggingAction.CANCELLED_DIGGING));
     }
 
     @Test

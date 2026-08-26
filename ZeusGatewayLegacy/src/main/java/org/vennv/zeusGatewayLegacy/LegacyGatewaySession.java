@@ -32,6 +32,8 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerGameModeChangeEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -45,9 +47,11 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 import org.vennv.EntityState;
 import org.vennv.PacketEncode;
+import org.vennv.packets.PacketBlockChangeEvent;
 import org.vennv.packets.PacketPlayerAttackEntity;
 import org.vennv.packets.PacketPlayerDeath;
 import org.vennv.packets.PacketPlayerExternalForce;
+import org.vennv.packets.PacketPlayerHeldItem;
 import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerJoin;
 import org.vennv.packets.PacketPlayerLeave;
@@ -55,6 +59,7 @@ import org.vennv.packets.PacketPlayerPosition;
 import org.vennv.packets.PacketPlayerRespawn;
 import org.vennv.packets.PacketPlayerTeleport;
 import org.vennv.packets.PacketPlayerVelocity;
+import org.vennv.packets.PacketTPSServer;
 import org.vennv.utils.ExternalForceFlags;
 import org.vennv.utils.ExternalForceType;
 
@@ -66,6 +71,9 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
     private LegacyPacketEventsSession packetEventsSession;
     private LegacyCollisionWindowProducer collisionProducer;
     private BukkitTask resyncTask;
+    private BukkitTask tpsTask;
+    private long lastTpsSample;
+    private double emaTps = 20.0;
     private final Set<UUID> crossWorldHandled =
             Collections.newSetFromMap(new ConcurrentHashMap<UUID, Boolean>());
     private boolean closed;
@@ -106,6 +114,14 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
                         }
                     });
             packetEventsSession = LegacyPacketEventsSession.register(this);
+            LegacyPacketQueue.push(null, new PacketTPSServer(20.0));
+            lastTpsSample = System.nanoTime();
+            tpsTask = plugin.getServer().getScheduler().runTaskTimer(plugin, new Runnable() {
+                @Override
+                public void run() {
+                    updateTps();
+                }
+            }, 20L, 20L);
             LegacyPacketQueue.setOverflowHandler(new LegacyPacketQueue.OverflowHandler() {
                 @Override
                 public void onOverflow(final UUID owner, final boolean global) {
@@ -181,6 +197,10 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
             resyncTask.cancel();
             resyncTask = null;
         }
+        if (tpsTask != null) {
+            tpsTask.cancel();
+            tpsTask = null;
+        }
         if (packetEventsSession != null) {
             packetEventsSession.close();
             packetEventsSession = null;
@@ -206,7 +226,29 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
-        resync(event.getPlayer(), true);
+        Player player = event.getPlayer();
+        resync(player, true);
+        if (packetEventsSession != null) packetEventsSession.emitBukkitStateControl(player);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onGameModeChange(PlayerGameModeChangeEvent event) {
+        Player player = event.getPlayer();
+        if (packetEventsSession != null) {
+            packetEventsSession.emitBukkitState(player, event.getNewGameMode());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerItemHeld(PlayerItemHeldEvent event) {
+        Player player = event.getPlayer();
+        if (player == null || !player.isOnline()) return;
+        int slot = event.getNewSlot();
+        if (slot < 0 || slot >= player.getInventory().getSize()) return;
+        // PacketEvents listener is primary when active; Bukkit event is fallback only.
+        if (packetEventsSession != null) return;
+        org.bukkit.inventory.ItemStack itemStack = player.getInventory().getItem(slot);
+        emitHeldItem(player, itemStack, now());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -221,6 +263,7 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
         Player player = event.getPlayer();
         resetLifecycle(player, true);
         pushControl(player.getUniqueId(), respawnPacket(now(), uid(player), player.getName()));
+        if (packetEventsSession != null) packetEventsSession.emitBukkitStateControl(player);
         LegacyCollisionWindowProducer producer = collisionProducer;
         if (producer != null) producer.forceFull(player, event.getRespawnLocation());
     }
@@ -260,6 +303,17 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
         if (producer != null) producer.invalidate(uuid);
     }
 
+    private void updateTps() {
+        if (closed) return;
+        long now = System.nanoTime();
+        double elapsedMs = (now - lastTpsSample) / 1_000_000.0;
+        lastTpsSample = now;
+        if (elapsedMs <= 0.0) elapsedMs = 1000.0;
+        double rawTps = Math.min(20.0, 20_000.0 / elapsedMs);
+        emaTps = 0.2 * rawTps + 0.8 * emaTps;
+        LegacyPacketQueue.push(null, new PacketTPSServer(Math.max(0.0, Math.min(20.0, emaTps))));
+    }
+
     private void resync(Player player, boolean awaitWorld) {
         if (closed || player == null || !player.isOnline()) return;
         UUID owner = player.getUniqueId();
@@ -275,6 +329,8 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
             pushCoalescing(owner, "resync-config", config);
         }
         publishPlayerSnapshot(player, timestamp, false, !awaitWorld);
+        emitMainHandHeldItem(player, timestamp);
+        if (packetEventsSession != null) packetEventsSession.emitBukkitStateControl(player);
         LegacyCollisionWindowProducer producer = collisionProducer;
         if (producer != null) {
             if (awaitWorld) producer.lifecycle(player, player.getLocation());
@@ -341,6 +397,91 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
                 }
             }
         }, 1L);
+    }
+
+    void emitHeldItemSlot(UUID playerId, final int slotIndex, final long timestamp) {
+        final Player player = Bukkit.getPlayer(playerId);
+        if (closed || player == null || !player.isOnline()) return;
+        if (slotIndex < 0 || slotIndex >= player.getInventory().getSize()) return;
+        final org.bukkit.inventory.ItemStack itemStack = player.getInventory().getItem(slotIndex);
+        final org.vennv.utils.Item protocolItem = protocolItem(itemStack);
+        final UUID owner = player.getUniqueId();
+        final String uid = uid(player);
+        final String name = player.getName();
+        LegacyPacketEventsSession current = packetEventsSession;
+        if (current != null) {
+            current.dispatchOrdered(owner, new Runnable() {
+                @Override
+                public void run() {
+                    push(owner, new PacketPlayerHeldItem(timestamp, uid, name, protocolItem));
+                }
+            });
+        } else {
+            push(owner, new PacketPlayerHeldItem(timestamp, uid, name, protocolItem));
+        }
+    }
+
+    void emitMainHandHeldItem(Player player, long timestamp) {
+        if (player == null || !player.isOnline()) return;
+        org.bukkit.inventory.ItemStack held = mainHand(player);
+        emitHeldItem(player, held, timestamp);
+    }
+
+    private void emitHeldItem(Player player, org.bukkit.inventory.ItemStack held, final long timestamp) {
+        if (player == null || !player.isOnline()) return;
+        final org.vennv.utils.Item protocolItem = protocolItem(held);
+        final UUID owner = player.getUniqueId();
+        final String uid = uid(player);
+        final String name = player.getName();
+        LegacyPacketEventsSession current = packetEventsSession;
+        if (current != null) {
+            current.dispatchOrdered(owner, new Runnable() {
+                @Override
+                public void run() {
+                    push(owner, new PacketPlayerHeldItem(timestamp, uid, name, protocolItem));
+                }
+            });
+        } else {
+            push(owner, new PacketPlayerHeldItem(timestamp, uid, name, protocolItem));
+        }
+    }
+
+    static org.bukkit.inventory.ItemStack mainHand(Player player) {
+        if (player == null) return null;
+        try {
+            return player.getInventory().getItemInHand();
+        } catch (NoSuchMethodError ignored) {
+            try {
+                return (org.bukkit.inventory.ItemStack) player.getInventory().getClass()
+                        .getMethod("getItemInMainHand")
+                        .invoke(player.getInventory());
+            } catch (Exception ignoredAgain) {
+                return null;
+            }
+        }
+    }
+
+    static org.vennv.utils.Item protocolItem(org.bukkit.inventory.ItemStack stack) {
+        org.vennv.utils.ItemStack protocolStack = item(stack);
+        if (stack == null || stack.getType() == null || stack.getType().name().equals("AIR")
+                || stack.getAmount() <= 0) {
+            return new org.vennv.utils.Item("", "", protocolStack);
+        }
+        String name = protocolStack.getId();
+        String customName = displayName(stack);
+        return new org.vennv.utils.Item(name, customName, protocolStack);
+    }
+
+    private static String displayName(org.bukkit.inventory.ItemStack item) {
+        try {
+            if (item.hasItemMeta()) {
+                org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+                if (meta != null && meta.hasDisplayName()) {
+                    return meta.getDisplayName();
+                }
+            }
+        } catch (Exception ignored) {}
+        return "";
     }
 
     static PacketPlayerJoin joinPacket(long timestamp, String uid, String name, int protocol) {
@@ -476,8 +617,27 @@ public final class LegacyGatewaySession implements AutoCloseable, Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBlockBreak(BlockBreakEvent event) {
-        changed(event.getBlock());
+    public void onBlockBreak(final BlockBreakEvent event) {
+        final Player player = event.getPlayer();
+        final org.bukkit.block.Block block = event.getBlock();
+        final UUID owner = player.getUniqueId();
+        final long timestamp = now();
+        final PacketBlockChangeEvent packet = new PacketBlockChangeEvent(
+                timestamp, uid(player), player.getName(),
+                block.getX(), block.getY(), block.getZ(),
+                "minecraft:air", PacketBlockChangeEvent.ACTION_BREAK);
+        LegacyPacketEventsSession current = packetEventsSession;
+        if (current != null) {
+            current.dispatchOrdered(owner, new Runnable() {
+                @Override
+                public void run() {
+                    push(owner, packet);
+                }
+            });
+        } else {
+            push(owner, packet);
+        }
+        changed(block);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

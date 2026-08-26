@@ -3,8 +3,8 @@ package org.vennv.zeusGateway.listener.packets;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
-import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.protocol.potion.PotionType;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityEffect;
@@ -59,7 +59,8 @@ final class PacketEffectListener extends PacketListenerAbstract {
             return;
         }
 
-        boolean modern = event.getServerVersion().isNewerThanOrEquals(ServerVersion.V_1_17);
+        boolean modern = event.getClientVersion() != null
+                && event.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_17);
         int id = stage(acknowledgements, uuid, modern, pending);
         if (modern) {
             event.getTasksAfterSend().add(() -> user.writePacket(new WrapperPlayServerPing(id)));

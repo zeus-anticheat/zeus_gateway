@@ -11,14 +11,27 @@ import com.github.retrooper.packetevents.protocol.item.ItemStack;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.packettype.PacketTypeCommon;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
+import com.github.retrooper.packetevents.protocol.player.DiggingAction;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.protocol.world.Location;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
 import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientClickWindow;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientHeldItemChange;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerAbilities;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerDigging;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPong;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientWindowConfirmation;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerFlying;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockAction;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChangeGameState;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerJoinGame;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerAbilities;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPing;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerRespawn;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWindowConfirmation;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockChange;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerMultiBlockChange;
 import java.util.ArrayList;
@@ -43,9 +56,15 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.vennv.packets.PacketBlockChangeEvent;
 import org.vennv.packets.PacketChunkData;
+import org.vennv.packets.PacketPlayerAbilities;
+import org.vennv.packets.PacketPlayerChangeMode;
+import org.vennv.packets.PacketPlayerBlockFace;
+import org.vennv.packets.PacketPlayerBlockRayTrace;
 import org.vennv.packets.PacketPlayerClickWindow;
 import org.vennv.packets.PacketPlayerPosition;
+import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.packets.PacketShulkerBoxAction;
+import org.vennv.utils.ServerBoundPlayerCommandActions;
 
 final class LegacyPacketEventsSession implements AutoCloseable {
     static final int MAX_PENDING = 4096;
@@ -64,6 +83,9 @@ final class LegacyPacketEventsSession implements AutoCloseable {
     private final List<PacketListenerCommon> handles = new ArrayList<PacketListenerCommon>();
     private final ConcurrentHashMap<UUID, MovementState> movement = new ConcurrentHashMap<UUID, MovementState>();
     private final ConcurrentHashMap<UUID, AtomicLong> movementSequences = new ConcurrentHashMap<UUID, AtomicLong>();
+    private final ConcurrentHashMap<UUID, AtomicLong> serverAbilitySequences = new ConcurrentHashMap<UUID, AtomicLong>();
+    private final ConcurrentHashMap<UUID, AtomicLong> clientAbilitySequences = new ConcurrentHashMap<UUID, AtomicLong>();
+    private final StateAcknowledgements acknowledgements = new StateAcknowledgements();
     private final PendingTasks orderedTasks = new PendingTasks(MAX_PENDING);
     private final Set<UUID> discontinuities = Collections.newSetFromMap(new ConcurrentHashMap<UUID, Boolean>());
     private final Set<UUID> worldReady = Collections.newSetFromMap(new ConcurrentHashMap<UUID, Boolean>());
@@ -98,7 +120,11 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         LegacyPacketEventsSession session = new LegacyPacketEventsSession(plugin);
         try {
             session.add(new MovementListener(session));
+            session.add(new StateListener(session));
+            session.add(new EntityActionListener(session));
+            session.add(new DiggingListener(session));
             session.add(new AttackListener(session));
+            session.add(new HeldItemListener(session));
             session.add(new ClickListener(session));
             session.add(new WorldListener(session));
             return session;
@@ -178,6 +204,9 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         }
         movement.remove(uuid);
         movementSequences.remove(uuid);
+        serverAbilitySequences.remove(uuid);
+        clientAbilitySequences.remove(uuid);
+        acknowledgements.clearPlayer(uuid);
         orderedTasks.remove(uuid);
         discontinuities.remove(uuid);
         worldReady.remove(uuid);
@@ -211,6 +240,9 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         }
         movement.clear();
         movementSequences.clear();
+        serverAbilitySequences.clear();
+        clientAbilitySequences.clear();
+        acknowledgements.clear();
         orderedTasks.clear();
         discontinuities.clear();
         worldReady.clear();
@@ -218,6 +250,67 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         worldGenerations.clear();
         failedWorldAt.clear();
         currentWorldGeneration.remove();
+    }
+
+    void emitBukkitState(final Player player) {
+        emitBukkitState(player, player == null ? null : player.getGameMode());
+    }
+
+    void emitBukkitState(final Player player, final org.bukkit.GameMode modeOverride) {
+        if (player == null || player.getUniqueId() == null || player.getName() == null) return;
+        final UUID uuid = player.getUniqueId();
+        dispatchInput(uuid, new Runnable() {
+            @Override
+            public void run() {
+                emitBukkitStateNow(player, modeOverride);
+            }
+        });
+    }
+
+    void emitBukkitStateControl(Player player) {
+        if (player == null || player.getUniqueId() == null || player.getName() == null) return;
+        emitBukkitStateNow(player, player.getGameMode());
+    }
+
+    private void emitBukkitStateNow(Player player, org.bukkit.GameMode modeOverride) {
+        UUID uuid = player.getUniqueId();
+        String name = player.getName();
+        int mode = gameModeId(modeOverride == null ? player.getGameMode() : modeOverride);
+        boolean canFly = player.getAllowFlight();
+        boolean flying = canFly && player.isFlying();
+        float flySpeed = validFlySpeed(player.getFlySpeed());
+        emitMode(uuid, name, mode);
+        emitServerAbilities(uuid, name, canFly, flying, flySpeed);
+    }
+
+    private void emitMode(UUID uuid, String name, int mode) {
+        LegacyPacketQueue.push(uuid, new PacketPlayerChangeMode(
+                System.currentTimeMillis(), uuid.toString(), name, mode));
+    }
+
+    private void emitServerAbilities(
+            UUID uuid, String name, boolean canFly, boolean flying, float flySpeed) {
+        LegacyPacketQueue.push(uuid, PacketPlayerAbilities.server(
+                System.currentTimeMillis(), uuid.toString(), name,
+                next(serverAbilitySequences, uuid), canFly, flying, flySpeed));
+    }
+
+    private static long next(ConcurrentHashMap<UUID, AtomicLong> counters, UUID uuid) {
+        return counters.computeIfAbsent(uuid, ignored -> new AtomicLong()).incrementAndGet();
+    }
+
+    private static int gameModeId(org.bukkit.GameMode mode) {
+        if (mode == null) return 0;
+        switch (mode) {
+            case CREATIVE: return 1;
+            case ADVENTURE: return 2;
+            case SPECTATOR: return 3;
+            default: return 0;
+        }
+    }
+
+    private static float validFlySpeed(float speed) {
+        return Float.isFinite(speed) && speed >= 0.0f && speed <= 1.0f ? speed : 0.05f;
     }
 
     private void add(PacketListenerCommon listener) {
@@ -460,6 +553,18 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         return actionNumber == null ? (short) 0 : actionNumber.shortValue();
     }
 
+    static ServerBoundPlayerCommandActions playerAction(String actionName) {
+        if (actionName == null) return null;
+        if ("START_SNEAKING".equals(actionName)) return ServerBoundPlayerCommandActions.START_SNEAKING;
+        if ("STOP_SNEAKING".equals(actionName)) return ServerBoundPlayerCommandActions.STOP_SNEAKING;
+        if ("START_SPRINTING".equals(actionName)) return ServerBoundPlayerCommandActions.START_SPRINTING;
+        if ("STOP_SPRINTING".equals(actionName)) return ServerBoundPlayerCommandActions.STOP_SPRINTING;
+        if ("START_JUMPING_WITH_HORSE".equals(actionName)) return ServerBoundPlayerCommandActions.START_RIDING_JUMP;
+        if ("STOP_JUMPING_WITH_HORSE".equals(actionName)) return ServerBoundPlayerCommandActions.STOP_RIDING_JUMP;
+        if ("OPEN_HORSE_INVENTORY".equals(actionName)) return ServerBoundPlayerCommandActions.OPEN_INVENTORY;
+        return null;
+    }
+
     private synchronized void emitBlock(
             long timestamp, UUID uuid, String name, int x, int y, int z, WrappedBlockState state) {
         if (!currentWorld(uuid)) throw new IllegalStateException("stale world packet generation");
@@ -695,6 +800,261 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         }
     }
 
+    private static final class StateAcknowledgements {
+        private final AtomicInteger counter = new AtomicInteger();
+        private final ConcurrentHashMap<UUID, java.util.LinkedHashMap<Integer, Runnable>> pending =
+                new ConcurrentHashMap<UUID, java.util.LinkedHashMap<Integer, Runnable>>();
+
+        int stage(UUID uuid, boolean modern, Runnable task) {
+            int id = nextId(modern);
+            java.util.LinkedHashMap<Integer, Runnable> queue = pending.computeIfAbsent(
+                    uuid, ignored -> new java.util.LinkedHashMap<Integer, Runnable>());
+            synchronized (queue) {
+                queue.put(id, task);
+            }
+            return id;
+        }
+
+        void acknowledge(UUID uuid, int id) {
+            java.util.LinkedHashMap<Integer, Runnable> queue = pending.get(uuid);
+            if (queue == null) return;
+            java.util.List<Runnable> ready = new ArrayList<Runnable>();
+            synchronized (queue) {
+                if (!queue.containsKey(id)) return;
+                Iterator<java.util.Map.Entry<Integer, Runnable>> iterator = queue.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    java.util.Map.Entry<Integer, Runnable> entry = iterator.next();
+                    ready.add(entry.getValue());
+                    iterator.remove();
+                    if (entry.getKey().intValue() == id) break;
+                }
+                if (queue.isEmpty()) pending.remove(uuid, queue);
+            }
+            for (Runnable task : ready) task.run();
+        }
+
+        void clearPlayer(UUID uuid) {
+            pending.remove(uuid);
+        }
+
+        void clear() {
+            pending.clear();
+        }
+
+        private int nextId(boolean modern) {
+            if (modern) {
+                int id;
+                do {
+                    id = Integer.MIN_VALUE | (counter.incrementAndGet() & Integer.MAX_VALUE);
+                } while (id == (short) id);
+                return id;
+            }
+            int id;
+            do {
+                id = -(counter.incrementAndGet() & 0x7fff);
+            } while (id == 0);
+            return id;
+        }
+    }
+
+    /** Client-visible mode and ability state, normalized by PacketEvents for every protocol. */
+    private static final class StateListener extends PacketListenerAbstract {
+        private final LegacyPacketEventsSession session;
+
+        private StateListener(LegacyPacketEventsSession session) {
+            super(PacketListenerPriority.HIGH);
+            this.session = session;
+        }
+
+        @Override
+        public void onPacketSend(PacketSendEvent event) {
+            if (session.closed || event.isCancelled()) return;
+            User user = event.getUser();
+            if (user == null || user.getUUID() == null || user.getName() == null) return;
+            final UUID uuid = user.getUUID();
+            final String name = user.getName();
+            final long timestamp = System.currentTimeMillis();
+            if (event.getPacketType() == PacketType.Play.Server.PLAYER_ABILITIES) {
+                WrapperPlayServerPlayerAbilities abilities = new WrapperPlayServerPlayerAbilities(event);
+                final long sequence = next(session.serverAbilitySequences, uuid);
+                final PacketPlayerAbilities packet = PacketPlayerAbilities.server(
+                        timestamp, uuid.toString(), name, sequence,
+                        abilities.isFlightAllowed(),
+                        abilities.isFlying() && abilities.isFlightAllowed(),
+                        validFlySpeed(abilities.getFlySpeed()));
+                boolean modern = event.getClientVersion() != null
+                        && event.getClientVersion().isNewerThanOrEquals(
+                                com.github.retrooper.packetevents.protocol.player.ClientVersion.V_1_17);
+                int id = session.acknowledgements.stage(uuid, modern,
+                        () -> session.dispatchInput(uuid, () -> LegacyPacketQueue.push(uuid, packet)));
+                if (modern) {
+                    event.getTasksAfterSend().add(() -> user.writePacket(new WrapperPlayServerPing(id)));
+                } else {
+                    event.getTasksAfterSend().add(() -> user.writePacket(
+                            new WrapperPlayServerWindowConfirmation(0, (short) id, false)));
+                }
+                return;
+            }
+            final Integer mode;
+            if (event.getPacketType() == PacketType.Play.Server.JOIN_GAME) {
+                mode = modeId(new WrapperPlayServerJoinGame(event).getGameMode());
+            } else if (event.getPacketType() == PacketType.Play.Server.RESPAWN) {
+                mode = modeId(new WrapperPlayServerRespawn(event).getGameMode());
+            } else if (event.getPacketType() == PacketType.Play.Server.CHANGE_GAME_STATE) {
+                WrapperPlayServerChangeGameState state = new WrapperPlayServerChangeGameState(event);
+                if (state.getReason() != WrapperPlayServerChangeGameState.Reason.CHANGE_GAME_MODE) return;
+                mode = modeId(com.github.retrooper.packetevents.protocol.player.GameMode.getById(
+                        (int) state.getValue()));
+            } else {
+                return;
+            }
+            final int gamemode = mode == null ? 0 : mode;
+            Runnable emit = () -> session.dispatchInput(uuid, () -> session.emitMode(uuid, name, gamemode));
+            if (event.getPacketType() == PacketType.Play.Server.JOIN_GAME) {
+                emit.run();
+            } else {
+                boolean modern = event.getClientVersion() != null
+                        && event.getClientVersion().isNewerThanOrEquals(
+                                com.github.retrooper.packetevents.protocol.player.ClientVersion.V_1_17);
+                int id = session.acknowledgements.stage(uuid, modern, emit);
+                if (modern) {
+                    event.getTasksAfterSend().add(() -> user.writePacket(new WrapperPlayServerPing(id)));
+                } else {
+                    event.getTasksAfterSend().add(() -> user.writePacket(
+                            new WrapperPlayServerWindowConfirmation(0, (short) id, false)));
+                }
+            }
+        }
+
+        @Override
+        public void onPacketReceive(PacketReceiveEvent event) {
+            if (session.closed) return;
+            User user = event.getUser();
+            if (user == null || user.getUUID() == null) return;
+            if (event.getPacketType() == PacketType.Play.Client.PONG) {
+                session.acknowledgements.acknowledge(
+                        user.getUUID(), new WrapperPlayClientPong(event).getId());
+                return;
+            }
+            if (event.getPacketType() == PacketType.Play.Client.WINDOW_CONFIRMATION) {
+                session.acknowledgements.acknowledge(
+                        user.getUUID(), new WrapperPlayClientWindowConfirmation(event).getActionId());
+                return;
+            }
+            if (event.isCancelled()
+                    || event.getPacketType() != PacketType.Play.Client.PLAYER_ABILITIES) return;
+            if (user.getName() == null) return;
+            WrapperPlayClientPlayerAbilities abilities = new WrapperPlayClientPlayerAbilities(event);
+            UUID uuid = user.getUUID();
+            long sequence = next(session.clientAbilitySequences, uuid);
+            final String name = user.getName();
+            final boolean flying = abilities.isFlying();
+            session.dispatchInput(uuid, () -> LegacyPacketQueue.push(uuid, PacketPlayerAbilities.client(
+                    System.currentTimeMillis(), uuid.toString(), name, sequence, flying)));
+        }
+
+        private static long next(ConcurrentHashMap<UUID, AtomicLong> counters, UUID uuid) {
+            return counters.computeIfAbsent(uuid, ignored -> new AtomicLong()).incrementAndGet();
+        }
+
+        private static int modeId(com.github.retrooper.packetevents.protocol.player.GameMode mode) {
+            return mode == null ? 0 : mode.getId();
+        }
+
+        private static float validFlySpeed(float speed) {
+            return Float.isFinite(speed) && speed >= 0.0f && speed <= 1.0f ? speed : 0.05f;
+        }
+    }
+
+    /**
+     * 1.8 clients have no PLAYER_INPUT packet. Entity actions remain authoritative
+     * for sprint/sneak state and must stay ordered with following movement packets.
+     */
+    private static final class EntityActionListener extends PacketListenerAbstract {
+        private final LegacyPacketEventsSession session;
+
+        private EntityActionListener(LegacyPacketEventsSession session) {
+            super(PacketListenerPriority.LOWEST);
+            this.session = session;
+        }
+
+        @Override
+        public void onPacketReceive(PacketReceiveEvent event) {
+            if (session.closed || event.getPacketType() != PacketType.Play.Client.ENTITY_ACTION) return;
+            User user = event.getUser();
+            if (user == null || user.getUUID() == null || user.getName() == null) return;
+            WrapperPlayClientEntityAction wrapper = new WrapperPlayClientEntityAction(event);
+            ServerBoundPlayerCommandActions action = playerAction(
+                    wrapper.getAction() == null ? null : wrapper.getAction().name());
+            if (action == null) return;
+            final UUID uuid = user.getUUID();
+            final String name = user.getName();
+            final long timestamp = System.currentTimeMillis();
+            final Integer horseJumpCharge = action == ServerBoundPlayerCommandActions.START_RIDING_JUMP
+                    && wrapper.getJumpBoost() >= 0 && wrapper.getJumpBoost() <= 100
+                    ? Integer.valueOf(wrapper.getJumpBoost()) : null;
+            session.dispatchInput(uuid, new Runnable() {
+                @Override
+                public void run() {
+                    LegacyPacketQueue.push(uuid, new PacketServerBoundPlayerCommand(
+                            timestamp, uuid.toString(), name, action, horseJumpCharge));
+                }
+            });
+        }
+    }
+
+    static boolean isBlockDigAction(DiggingAction action) {
+        return action == DiggingAction.START_DIGGING
+                || action == DiggingAction.FINISHED_DIGGING
+                || action == DiggingAction.CANCELLED_DIGGING;
+    }
+
+    static byte digPhase(DiggingAction action) {
+        if (action == DiggingAction.START_DIGGING) return PacketPlayerBlockRayTrace.DIG_PHASE_START;
+        if (action == DiggingAction.FINISHED_DIGGING) return PacketPlayerBlockRayTrace.DIG_PHASE_FINISH;
+        if (action == DiggingAction.CANCELLED_DIGGING) return PacketPlayerBlockRayTrace.DIG_PHASE_CANCEL;
+        return PacketPlayerBlockRayTrace.DIG_PHASE_UNKNOWN;
+    }
+
+    private static final class DiggingListener extends PacketListenerAbstract {
+        private final LegacyPacketEventsSession session;
+
+        private DiggingListener(LegacyPacketEventsSession session) {
+            super(PacketListenerPriority.LOWEST);
+            this.session = session;
+        }
+
+        @Override
+        public void onPacketReceive(PacketReceiveEvent event) {
+            if (session.closed || event.getPacketType() != PacketType.Play.Client.PLAYER_DIGGING) return;
+            User user = event.getUser();
+            if (user == null || user.getUUID() == null || user.getName() == null) return;
+            WrapperPlayClientPlayerDigging packet = new WrapperPlayClientPlayerDigging(event);
+            final DiggingAction action = packet.getAction();
+            final Vector3i position = packet.getBlockPosition();
+            Integer face = packet.getBlockFaceId();
+            if (!isBlockDigAction(action) || position == null || face == null || face < 0 || face > 5) return;
+            final UUID uuid = user.getUUID();
+            final String name = user.getName();
+            final long timestamp = System.currentTimeMillis();
+            final byte blockFace = face.byteValue();
+            final byte sequence = (byte) packet.getSequence();
+            session.dispatchInput(uuid, new Runnable() {
+                @Override
+                public void run() {
+                    LegacyPacketQueue.push(uuid, new PacketPlayerBlockRayTrace(
+                            timestamp, uuid.toString(), name,
+                            action == DiggingAction.START_DIGGING,
+                            position.getX(), position.getY(), position.getZ(),
+                            position.getX() + 0.5f, position.getY() + 0.5f, position.getZ() + 0.5f,
+                            PacketPlayerBlockRayTrace.ACTION_DIG, sequence, digPhase(action)));
+                    LegacyPacketQueue.push(uuid, new PacketPlayerBlockFace(
+                            timestamp, uuid.toString(), name, blockFace));
+                }
+            });
+        }
+    }
+
     private static final class AttackListener extends PacketListenerAbstract {
         private final LegacyPacketEventsSession session;
 
@@ -717,6 +1077,34 @@ final class LegacyPacketEventsSession implements AutoCloseable {
                 @Override
                 public void run() {
                     session.plugin.emitRawAttack(uuid, entityId, timestamp);
+                }
+            });
+        }
+    }
+
+    private static final class HeldItemListener extends PacketListenerAbstract {
+        private final LegacyPacketEventsSession session;
+
+        private HeldItemListener(LegacyPacketEventsSession session) {
+            super(PacketListenerPriority.LOWEST);
+            this.session = session;
+        }
+
+        @Override
+        public void onPacketReceive(PacketReceiveEvent event) {
+            if (session.closed || event.getPacketType() != PacketType.Play.Client.HELD_ITEM_CHANGE) return;
+            User user = event.getUser();
+            if (user == null || user.getUUID() == null) return;
+            WrapperPlayClientHeldItemChange packet = new WrapperPlayClientHeldItemChange(event);
+            int slot = packet.getSlot();
+            if (slot < 0 || slot > 8) return;
+            final UUID uuid = user.getUUID();
+            final long timestamp = System.currentTimeMillis();
+            final int slotIndex = slot;
+            session.dispatchInput(uuid, new Runnable() {
+                @Override
+                public void run() {
+                    session.plugin.emitHeldItemSlot(uuid, slotIndex, timestamp);
                 }
             });
         }

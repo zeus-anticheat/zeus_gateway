@@ -20,8 +20,10 @@ import org.vennv.PacketId;
 import org.vennv.packets.PacketBlockChangeEvent;
 import org.vennv.packets.PacketChunkData;
 import org.vennv.packets.PacketPlayerAttackEntity;
+import org.vennv.packets.PacketPlayerBlockRayTrace;
 import org.vennv.packets.PacketPlayerClickWindow;
 import org.vennv.packets.PacketPlayerDeath;
+import org.vennv.packets.PacketPlayerHeldItem;
 import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerJoin;
 import org.vennv.packets.PacketPlayerRespawn;
@@ -29,6 +31,7 @@ import org.vennv.packets.PacketPlayerTeleport;
 import org.vennv.packets.PacketShulkerBoxAction;
 import org.vennv.packets.PacketServerConfig;
 import org.vennv.utils.ItemStack;
+import org.vennv.utils.ServerBoundPlayerCommandActions;
 
 final class LegacyPacketEventsSessionSelfTest {
     private static final String UID = "00000000-0000-0000-0000-000000000000";
@@ -198,6 +201,33 @@ final class LegacyPacketEventsSessionSelfTest {
     }
 
     @Test
+    void heldItemProtocolMappingHandlesEmptyAndNamedStacks() {
+        org.vennv.utils.Item empty = LegacyGatewaySession.protocolItem(null);
+        assertEquals("", empty.getName());
+        assertEquals("", empty.getCustomName());
+        assertTrue(empty.getItemStack().isEmpty());
+
+        PacketPlayerHeldItem packet = new PacketPlayerHeldItem(
+                1L, UID, NAME, empty);
+        assertEquals(PacketId.PACKET_PLAYER_HELD_ITEM, packet.packetId());
+    }
+
+    @Test
+    void legacyDiggingActionsKeepExactPhase() {
+        assertTrue(LegacyPacketEventsSession.isBlockDigAction(
+                com.github.retrooper.packetevents.protocol.player.DiggingAction.START_DIGGING));
+        assertEquals(PacketPlayerBlockRayTrace.DIG_PHASE_START,
+                LegacyPacketEventsSession.digPhase(
+                        com.github.retrooper.packetevents.protocol.player.DiggingAction.START_DIGGING));
+        assertEquals(PacketPlayerBlockRayTrace.DIG_PHASE_FINISH,
+                LegacyPacketEventsSession.digPhase(
+                        com.github.retrooper.packetevents.protocol.player.DiggingAction.FINISHED_DIGGING));
+        assertEquals(PacketPlayerBlockRayTrace.DIG_PHASE_CANCEL,
+                LegacyPacketEventsSession.digPhase(
+                        com.github.retrooper.packetevents.protocol.player.DiggingAction.CANCELLED_DIGGING));
+    }
+
+    @Test
     void legacyServerVersionsMapToExactProtocols() {
         assertEquals(47, LegacyServerIdentity.serverProtocol("1.8.8"));
         assertEquals(107, LegacyServerIdentity.serverProtocol("1.9"));
@@ -297,6 +327,22 @@ final class LegacyPacketEventsSessionSelfTest {
     void missingActionNumberFallsBackWithoutDroppingClick() {
         assertEquals(37, LegacyPacketEventsSession.transactionId(Integer.valueOf(37)));
         assertEquals(0, LegacyPacketEventsSession.transactionId(null));
+    }
+
+    @Test
+    void legacyEntityActionsPreserveSprintAndSneakState() {
+        assertEquals(ServerBoundPlayerCommandActions.START_SPRINTING,
+                LegacyPacketEventsSession.playerAction("START_SPRINTING"));
+        assertEquals(ServerBoundPlayerCommandActions.STOP_SPRINTING,
+                LegacyPacketEventsSession.playerAction("STOP_SPRINTING"));
+        assertEquals(ServerBoundPlayerCommandActions.START_SNEAKING,
+                LegacyPacketEventsSession.playerAction("START_SNEAKING"));
+        assertEquals(ServerBoundPlayerCommandActions.STOP_SNEAKING,
+                LegacyPacketEventsSession.playerAction("STOP_SNEAKING"));
+        assertEquals(ServerBoundPlayerCommandActions.START_RIDING_JUMP,
+                LegacyPacketEventsSession.playerAction("START_JUMPING_WITH_HORSE"));
+        assertEquals(null, LegacyPacketEventsSession.playerAction("START_FLYING_WITH_ELYTRA"));
+        assertEquals(null, LegacyPacketEventsSession.playerAction(null));
     }
 
     @Test

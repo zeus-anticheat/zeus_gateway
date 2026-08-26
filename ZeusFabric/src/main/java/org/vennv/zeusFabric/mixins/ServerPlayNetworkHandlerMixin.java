@@ -10,6 +10,8 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.vennv.packets.PacketPlayerBlockFace;
+import org.vennv.packets.PacketPlayerBlockRayTrace;
 import org.vennv.packets.PacketPlayerInput;
 import org.vennv.packets.PacketPlayerPosition;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
@@ -156,6 +158,37 @@ public abstract class ServerPlayNetworkHandlerMixin {
                 ? ServerBoundPlayerCommandActions.START_SNEAKING
                 : ServerBoundPlayerCommandActions.STOP_SNEAKING
         ));
+    }
+
+    @Inject(method = "onPlayerAction", at = @At("HEAD"))
+    private void zeus$onPlayerAction(PlayerActionC2SPacket packet, CallbackInfo ci) {
+        if (!zeus$isServerThread() || this.player == null) return;
+        byte phase = switch (packet.getAction()) {
+            case START_DESTROY_BLOCK -> PacketPlayerBlockRayTrace.DIG_PHASE_START;
+            case STOP_DESTROY_BLOCK -> PacketPlayerBlockRayTrace.DIG_PHASE_FINISH;
+            case ABORT_DESTROY_BLOCK -> PacketPlayerBlockRayTrace.DIG_PHASE_CANCEL;
+            default -> PacketPlayerBlockRayTrace.DIG_PHASE_UNKNOWN;
+        };
+        if (phase == PacketPlayerBlockRayTrace.DIG_PHASE_UNKNOWN) return;
+        var pos = packet.getPos();
+        var direction = packet.getDirection();
+        long timestamp = System.currentTimeMillis();
+        String uid = player.getUuidAsString();
+        String name = player.getName().getString();
+        PacketQueue.push(new PacketPlayerBlockRayTrace(
+            timestamp, uid, name, phase == PacketPlayerBlockRayTrace.DIG_PHASE_START,
+            pos.getX(), pos.getY(), pos.getZ(),
+            pos.getX() + 0.5f, pos.getY() + 0.5f, pos.getZ() + 0.5f,
+            PacketPlayerBlockRayTrace.ACTION_DIG, (byte) 0, phase));
+        byte face = switch (direction) {
+            case DOWN -> 0;
+            case UP -> 1;
+            case NORTH -> 2;
+            case SOUTH -> 3;
+            case WEST -> 4;
+            case EAST -> 5;
+        };
+        PacketQueue.push(new PacketPlayerBlockFace(timestamp, uid, name, face));
     }
 
     @Inject(method = "onUpdateSelectedSlot", at = @At("TAIL"))

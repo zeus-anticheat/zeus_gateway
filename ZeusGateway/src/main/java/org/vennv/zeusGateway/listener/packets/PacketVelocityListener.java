@@ -4,8 +4,8 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
-import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Vector3d;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPong;
@@ -97,7 +97,8 @@ final class PacketVelocityListener extends PacketListenerAbstract {
 
     private void enqueueVelocity(
             PacketSendEvent event, User user, UUID uuid, PendingVelocity pending) {
-        boolean modern = event.getServerVersion().isNewerThanOrEquals(ServerVersion.V_1_17);
+        boolean modern = event.getClientVersion() != null
+                && event.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_17);
         int beforeId = acknowledgements.stage(uuid, modern,
                 () -> PacketQueue.push(new Acknowledgement(pending, false).toPacket()));
         int afterId = acknowledgements.stage(uuid, modern,
