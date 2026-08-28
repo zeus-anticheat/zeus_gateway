@@ -16,6 +16,7 @@ import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.protocol.world.Location;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
 import com.github.retrooper.packetevents.util.Vector3i;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientAnimation;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientClickWindow;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientHeldItemChange;
@@ -62,6 +63,7 @@ import org.vennv.packets.PacketPlayerBlockFace;
 import org.vennv.packets.PacketPlayerBlockRayTrace;
 import org.vennv.packets.PacketPlayerClickWindow;
 import org.vennv.packets.PacketPlayerPosition;
+import org.vennv.packets.PacketPlayerSwingHand;
 import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.packets.PacketShulkerBoxAction;
 import org.vennv.utils.ServerBoundPlayerCommandActions;
@@ -120,6 +122,7 @@ final class LegacyPacketEventsSession implements AutoCloseable {
         LegacyPacketEventsSession session = new LegacyPacketEventsSession(plugin);
         try {
             session.add(new MovementListener(session));
+            session.add(new SwingListener(session));
             session.add(new StateListener(session));
             session.add(new EntityActionListener(session));
             session.add(new DiggingListener(session));
@@ -1077,6 +1080,39 @@ final class LegacyPacketEventsSession implements AutoCloseable {
                 @Override
                 public void run() {
                     session.plugin.emitRawAttack(uuid, entityId, timestamp);
+                }
+            });
+        }
+    }
+
+    /** Capture client ANIMATION in the same ordered input lane as digging/attacks.
+     * Grim evaluates swing order from the raw client packet, never from Bukkit
+     * BlockBreakEvent (which is a later server-side callback).
+     */
+    private static final class SwingListener extends PacketListenerAbstract {
+        private final LegacyPacketEventsSession session;
+
+        private SwingListener(LegacyPacketEventsSession session) {
+            super(PacketListenerPriority.LOWEST);
+            this.session = session;
+        }
+
+        @Override
+        public void onPacketReceive(PacketReceiveEvent event) {
+            if (session.closed || event.getPacketType() != PacketType.Play.Client.ANIMATION) return;
+            User user = event.getUser();
+            if (user == null || user.getUUID() == null || user.getName() == null) return;
+            final UUID uuid = user.getUUID();
+            final String name = user.getName();
+            final long timestamp = System.currentTimeMillis();
+            // ANIMATION has no useful gameplay state beyond its ordered arrival;
+            // preserve cancelled status exactly as received.
+            final boolean cancelled = event.isCancelled();
+            session.dispatchInput(uuid, new Runnable() {
+                @Override
+                public void run() {
+                    LegacyPacketQueue.push(uuid, new PacketPlayerSwingHand(
+                            timestamp, uuid.toString(), name, cancelled));
                 }
             });
         }

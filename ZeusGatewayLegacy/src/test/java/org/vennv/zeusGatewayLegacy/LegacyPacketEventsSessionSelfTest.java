@@ -147,7 +147,7 @@ final class LegacyPacketEventsSessionSelfTest {
     void criticalPacketsExposeRequiredWireIdsAndProtocol() {
         PacketPlayerJoin join = LegacyGatewaySession.joinPacket(1L, UID, NAME, 404);
         PacketServerConfig config = new PacketServerConfig(
-                1L, UID, NAME, 3.0f, 10.0f, (byte) 0, 0.1f);
+                1L, UID, NAME, 0.1f);
         PacketChunkData chunk = new PacketChunkData(
                 1L, UID, NAME, 0, 0, true,
                 Collections.<PacketChunkData.BlockData>emptyList());

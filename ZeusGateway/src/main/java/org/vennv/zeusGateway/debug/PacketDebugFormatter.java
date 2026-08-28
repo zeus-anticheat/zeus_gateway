@@ -183,10 +183,7 @@ public final class PacketDebugFormatter {
                 message.append(",+").append(enchantments.getEnchantments().size() - 3);
             }
         } else if (packet instanceof PacketServerConfig) {
-            PacketServerConfig config = (PacketServerConfig) packet;
-            message.append(String.format(Locale.ROOT, " reach=%.2f cooldown=%.2f maxCps=%d",
-                    config.getServerReach(), config.getAttackCooldownTicks(),
-                    Byte.toUnsignedInt(config.getMaxCps())));
+            message.append(" identity");
         } else if (packet instanceof PacketBlockChangeEvent) {
             PacketBlockChangeEvent bc = (PacketBlockChangeEvent) packet;
             message.append(" block_change=").append(bc.getBlockType());

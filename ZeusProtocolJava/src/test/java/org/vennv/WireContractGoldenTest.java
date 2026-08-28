@@ -355,10 +355,10 @@ class WireContractGoldenTest {
     @Test
     void serverConfigPublishesIdentityOnlyV1Extension() throws Exception {
         assertEquals(
-                "25010203040506070800017500016e004040000041200000003dcccccd0102ff0004312e3231"
+                "25010203040506070800017500016e003dcccccd0102ff0004312e3231"
                         + "0005706170657200057061706572000776616e696c6c6102ff0004312e32310000000767617465776179",
                 hex(new PacketServerConfig(
-                        TIMESTAMP, UID, USERNAME, 3.0f, 10.0f, (byte) 0, 0.1f,
+                        TIMESTAMP, UID, USERNAME, 0.1f,
                         767, "1.21", "paper", "paper", "vanilla", 767, "1.21",
                         "", "gateway")));
     }

@@ -7,9 +7,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.vennv.packets.PacketServerConfig;
 
 final class LegacyServerIdentity {
-    private static float serverReach = 3.0f;
-    private static float attackCooldownOverride = -1.0f;
-    private static byte maxCps;
     private static String platform = "unknown";
     private static String physicsFingerprint = "unattested";
 
@@ -21,10 +18,6 @@ final class LegacyServerIdentity {
                 System.getenv("ZEUS_PLATFORM"), plugin.getConfig().getString("identity.platform", "auto")));
         physicsFingerprint = physicsFingerprint(System.getenv("ZEUS_PHYSICS_FINGERPRINT"),
                 plugin.getConfig().getString("identity.physics-fingerprint", "unattested"));
-        float configuredReach = (float) plugin.getConfig().getDouble("server-combat.reach-override", 0.0);
-        serverReach = configuredReach > 0.0f ? configuredReach : 3.0f;
-        attackCooldownOverride = (float) plugin.getConfig().getDouble("server-combat.cooldown-override", -1.0);
-        maxCps = (byte) plugin.getConfig().getInt("server-combat.max-cps", 0);
     }
 
     static PacketServerConfig serverConfig(Player player, long timestamp) {
@@ -37,9 +30,10 @@ final class LegacyServerIdentity {
         } catch (Throwable ignored) {
             movementSpeed = 0.1f;
         }
-        float cooldown = cooldownTicks(protocol, attackCooldownOverride);
+        // Combat reach, cooldown, and CPS are resolved from live player
+        // attributes/core policy; never publish legacy fallback settings.
         return new PacketServerConfig(timestamp, player.getUniqueId().toString(), player.getName(),
-                serverReach, cooldown, maxCps, movementSpeed, protocol, version,
+                movementSpeed, protocol, version,
                 serverBrand(), platform, physicsFingerprint, clientProtocol,
                 clientVersion(clientProtocol), "", "legacy");
     }

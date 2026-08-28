@@ -9,8 +9,6 @@ import org.vennv.zeusGateway.listener.event.EventListener;
 import org.vennv.zeusGateway.network.ProxyClient;
 import org.vennv.zeusGateway.platform.PlatformDetector;
 import org.vennv.zeusGateway.platform.PlatformType;
-import org.vennv.zeusGateway.platform.ServerCombatSettings;
-import org.vennv.zeusGateway.platform.ServerVersion;
 import org.vennv.zeusGateway.provider.PacketQueue;
 import org.vennv.zeusGateway.task.BatchSender;
 import org.vennv.zeusGateway.task.ChunkSyncTask;
@@ -37,28 +35,6 @@ public class ZeusLoader {
     private void initConfig() {
         this.plugin.saveDefaultConfig();
 
-        // ── Server combat settings for adaptive detection ──
-        org.bukkit.configuration.file.FileConfiguration cfg = this.plugin.getConfig();
-        float reachOverride = (float) cfg.getDouble("server-combat.reach-override", 0);
-        float cooldownOverride = (float) cfg.getDouble("server-combat.cooldown-override", -1);
-        byte maxCps = (byte) cfg.getInt("server-combat.max-cps", 0);
-
-        // Auto-detect reach (vanilla base is always 3.0; per-player attribute overrides
-        // are already sent via PacketPlayerEnchantments)
-        float serverReach = reachOverride > 0 ? reachOverride : 3.0f;
-
-        // Auto-detect cooldown from MC version
-        float cooldownTicks;
-        if (cooldownOverride >= 0) {
-            cooldownTicks = cooldownOverride;
-        } else {
-            // MC 1.9+ has 10-tick attack cooldown, 1.8 has none
-            cooldownTicks = ServerVersion.isAtLeast(1, 9) ? 10.0f : 0.0f;
-        }
-
-        ServerCombatSettings.init(serverReach, cooldownTicks, maxCps);
-        plugin.getLogger().info("[ZeusGateway] Server combat settings: reach=" + serverReach
-                + " cooldown=" + cooldownTicks + " maxCps=" + maxCps);
     }
 
     private void initProxy() {

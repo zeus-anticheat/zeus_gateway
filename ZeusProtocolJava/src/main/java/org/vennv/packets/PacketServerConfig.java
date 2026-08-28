@@ -13,15 +13,9 @@ import java.io.IOException;
  *
  * Wire format:
  *   PacketBase (packetId + timestamp + uid + username)
- *   server_reach          (f32) — base melee reach in blocks (vanilla = 3.0)
- *   attack_cooldown_ticks (f32) — cooldown ticks (1.9+ = 10.0, 1.8 = 0.0)
- *   max_cps               (u8)  — server max CPS limit (0 = unlimited)
  */
 public final class PacketServerConfig extends PacketBaseInfo {
 
-    private final float serverReach;
-    private final float attackCooldownTicks;
-    private final byte maxCps;
     private final float movementSpeed;
     private final int serverProtocol;
     private final String serverVersion;
@@ -34,12 +28,8 @@ public final class PacketServerConfig extends PacketBaseInfo {
     private final String identitySource;
 
     public PacketServerConfig(long timestamp, String uid, String username,
-                              float serverReach, float attackCooldownTicks, byte maxCps,
                               float movementSpeed) {
         super(timestamp, uid, username);
-        this.serverReach = serverReach;
-        this.attackCooldownTicks = attackCooldownTicks;
-        this.maxCps = maxCps;
         this.movementSpeed = movementSpeed;
         this.serverProtocol = 0;
         this.serverVersion = null;
@@ -55,15 +45,11 @@ public final class PacketServerConfig extends PacketBaseInfo {
     /** Extended constructor used by adapters to publish identity before the
      * first movement prediction.  The trailing wire extension is optional. */
     public PacketServerConfig(long timestamp, String uid, String username,
-                              float serverReach, float attackCooldownTicks, byte maxCps,
                               float movementSpeed, int serverProtocol, String serverVersion,
                               String serverBrand, String platform, String modPluginFingerprint,
                               int clientProtocol, String clientVersion,
                               String translationBehaviorFingerprint, String identitySource) {
         super(timestamp, uid, username);
-        this.serverReach = serverReach;
-        this.attackCooldownTicks = attackCooldownTicks;
-        this.maxCps = maxCps;
         this.movementSpeed = movementSpeed;
         this.serverProtocol = serverProtocol;
         this.serverVersion = serverVersion;
@@ -84,9 +70,6 @@ public final class PacketServerConfig extends PacketBaseInfo {
     @Override
     public void encode(ByteArrayOutputStream out) throws IOException {
         encodePlayerInfo(out);
-        ByteBufferUtil.putFloat(out, serverReach);
-        ByteBufferUtil.putFloat(out, attackCooldownTicks);
-        ByteBufferUtil.putByte(out, maxCps);
         ByteBufferUtil.putFloat(out, movementSpeed);
         if (serverVersion != null) {
             ByteBufferUtil.putByte(out, (byte) 1);
@@ -100,18 +83,6 @@ public final class PacketServerConfig extends PacketBaseInfo {
             ByteBufferUtil.putString(out, translationBehaviorFingerprint == null ? "" : translationBehaviorFingerprint);
             ByteBufferUtil.putString(out, identitySource == null ? "unknown" : identitySource);
         }
-    }
-
-    public float getServerReach() {
-        return serverReach;
-    }
-
-    public float getAttackCooldownTicks() {
-        return attackCooldownTicks;
-    }
-
-    public byte getMaxCps() {
-        return maxCps;
     }
 
     public float getMovementSpeed() {

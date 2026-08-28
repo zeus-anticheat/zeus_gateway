@@ -41,7 +41,6 @@ import org.vennv.utils.EffectType;
 import org.vennv.utils.Enchantment;
 import org.vennv.utils.Item;
 import org.vennv.utils.ServerBoundPlayerCommandActions;
-import org.vennv.zeusFabric.ServerCombatSettings;
 import org.vennv.zeusFabric.provider.PacketQueue;
 import org.vennv.zeusFabric.utils.BlockUtil;
 import org.vennv.zeusFabric.utils.ItemUtil;
@@ -249,22 +248,7 @@ public final class PlayerStateSnapshotService {
             String uid,
             String name,
             ServerPlayerEntity player) {
-        float reach = ServerCombatSettings.getServerReach();
-        float cooldown = ServerCombatSettings.getAttackCooldownTicks();
 
-        if (player.getAttributes().hasAttribute(EntityAttributes.ATTACK_SPEED)) {
-            double attackSpeed = player.getAttributeValue(EntityAttributes.ATTACK_SPEED);
-            if (attackSpeed > 0.0) {
-                cooldown = (float) (20.0 / attackSpeed);
-            }
-        }
-
-        if (player.getAttributes().hasAttribute(EntityAttributes.ENTITY_INTERACTION_RANGE)) {
-            double interactionRange = player.getAttributeValue(EntityAttributes.ENTITY_INTERACTION_RANGE);
-            if (interactionRange > 0.0) {
-                reach = (float) interactionRange;
-            }
-        }
 
         float movementSpeed = 0.1f;
         if (player.getAttributes().hasAttribute(EntityAttributes.MOVEMENT_SPEED)) {
@@ -280,9 +264,6 @@ public final class PlayerStateSnapshotService {
                 timestamp,
                 uid,
                 name,
-                reach,
-                cooldown,
-                ServerCombatSettings.getMaxCps(),
                 movementSpeed,
                 protocol,
                 org.vennv.zeusFabric.ZeusFabricMod.getServer().getVersion(),
@@ -975,7 +956,7 @@ public final class PlayerStateSnapshotService {
                 return (float) value;
             }
         }
-        return ServerCombatSettings.getServerReach();
+        return 3.0f;
     }
 
     private static double knockbackResistance(ServerPlayerEntity player) {

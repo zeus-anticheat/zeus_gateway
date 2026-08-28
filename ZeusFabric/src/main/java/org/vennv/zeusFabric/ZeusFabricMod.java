@@ -80,7 +80,6 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
 
         // ─── Init server combat settings ────────────────────────────────
         // Fabric 1.21+ always has attack cooldown (10 ticks) and vanilla reach (3.0)
-        ServerCombatSettings.init(3.0f, 10.0f, (byte) 0);
         LOGGER.info("[ZeusFabric] Server combat settings: reach=3.0 cooldown=10.0 maxCps=0");
 
         // ─── Register all event listeners ───────────────────────────────

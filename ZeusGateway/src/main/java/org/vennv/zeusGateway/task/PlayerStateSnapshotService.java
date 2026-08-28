@@ -34,7 +34,6 @@ import org.vennv.zeusGateway.compat.AttributeCompat;
 import org.vennv.zeusGateway.compat.EffectCompat;
 import org.vennv.zeusGateway.compat.EntityCompat;
 import org.vennv.zeusGateway.listener.packets.PacketVehicleMoveListener;
-import org.vennv.zeusGateway.platform.ServerCombatSettings;
 import org.vennv.zeusGateway.platform.ServerIdentity;
 import org.vennv.zeusGateway.platform.ServerVersion;
 import org.vennv.zeusGateway.provider.PacketQueue;
@@ -100,7 +99,7 @@ public final class PlayerStateSnapshotService {
         boolean queued = PacketQueue.pushAll(Arrays.asList(
                 new PacketPlayerHeldItem(timestamp, uid, name, protocolItem),
                 new PacketPlayerEnchantments(
-                        timestamp, uid, name, enchantments, ServerCombatSettings.getServerReach()),
+                        timestamp, uid, name, enchantments, 3.0f),
                 new PacketServerBoundPlayerCommand(
                         timestamp, uid, name, ServerBoundPlayerCommandActions.START_RIPTIDE)));
         Logger.getLogger("ZeusGateway").info(
@@ -360,18 +359,6 @@ public final class PlayerStateSnapshotService {
     }
 
     static PacketServerConfig serverConfig(long timestamp, String uid, String name, Player player) {
-        float reach = ServerCombatSettings.getServerReach();
-        float cooldown = ServerCombatSettings.getAttackCooldownTicks();
-
-        Double attackSpeed = AttributeCompat.getAttackSpeed(player);
-        if (attackSpeed != null && attackSpeed > 0.0) {
-            cooldown = (float) (20.0 / attackSpeed);
-        }
-
-        Double interactionRange = AttributeCompat.getInteractionRange(player);
-        if (interactionRange != null && interactionRange > 0.0) {
-            reach = interactionRange.floatValue();
-        }
 
         // Read current movement speed attribute (includes Soul Speed, Speed potion, etc.)
         float movementSpeed = 0.1f; // Vanilla default
@@ -384,9 +371,6 @@ public final class PlayerStateSnapshotService {
                 timestamp,
                 uid,
                 name,
-                reach,
-                cooldown,
-                ServerCombatSettings.getMaxCps(),
                 movementSpeed,
                 ServerIdentity.serverProtocol(),
                 ServerIdentity.serverVersion(),
@@ -474,7 +458,7 @@ public final class PlayerStateSnapshotService {
             String name,
             Player player,
             boolean force) {
-        float range = ServerCombatSettings.getServerReach();
+        float range = 3.0f;
         Double interactionRange = AttributeCompat.getInteractionRange(player);
         if (interactionRange != null && interactionRange > 0.0) {
             range = interactionRange.floatValue();
