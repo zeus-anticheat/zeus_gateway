@@ -46,7 +46,12 @@ public class PacketKeepAliveListener extends PacketListenerAbstract {
         }
         long timestamp = System.currentTimeMillis();
         dispatcher.submit(player, () -> {
-            int ping = player.getPing();
+            int ping;
+            try {
+                ping = com.github.retrooper.packetevents.PacketEvents.getAPI().getPlayerManager().getPing(player);
+            } catch (Exception | LinkageError ignored) {
+                ping = 0;
+            }
             if (ping < 0) {
                 return;
             }

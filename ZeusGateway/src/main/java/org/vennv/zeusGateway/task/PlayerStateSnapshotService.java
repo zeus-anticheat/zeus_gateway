@@ -204,8 +204,7 @@ public final class PlayerStateSnapshotService {
         Double sneakingSpeed = AttributeCompat.getSneakingSpeed(player);
         Double movementEfficiency = AttributeCompat.getMovementEfficiency(player);
         Double waterMovementEfficiency = AttributeCompat.getWaterMovementEfficiency(player);
-        boolean attributesComplete = properties != null
-                && validNonNegative(movementSpeed)
+        boolean attributesComplete = validNonNegative(movementSpeed)
                 && validNonNegative(gravity)
                 && validNonNegative(jumpStrength)
                 && validNonNegative(stepHeight)
@@ -213,19 +212,6 @@ public final class PlayerStateSnapshotService {
                 && validNonNegative(sneakingSpeed)
                 && validNonNegative(movementEfficiency)
                 && validNonNegative(waterMovementEfficiency);
-        if (!attributesComplete) {
-            java.util.logging.Logger.getLogger("ZeusGateway").warning(
-                    "[ZEUS-SNAP] incomplete attrs properties="
-                            + (properties == null ? "null" : properties.size())
-                            + " speed=" + movementSpeed
-                            + " gravity=" + gravity
-                            + " jump=" + jumpStrength
-                            + " step=" + stepHeight
-                            + " scale=" + scale
-                            + " sneak=" + sneakingSpeed
-                            + " eff=" + movementEfficiency
-                            + " water=" + waterMovementEfficiency);
-        }
         PacketMovementStateSnapshot.Attributes attributes = new PacketMovementStateSnapshot.Attributes(
                 attributesComplete,
                 validNonNegative(movementSpeed) ? movementSpeed.floatValue() : 0.1f,

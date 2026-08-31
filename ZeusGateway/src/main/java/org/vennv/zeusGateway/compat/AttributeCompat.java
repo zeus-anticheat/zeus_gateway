@@ -43,24 +43,24 @@ public class AttributeCompat {
 
     public static List<PacketUpdateAttributes.Property> getMovementProperties(Player player) {
         List<PacketUpdateAttributes.Property> properties = new ArrayList<>();
-        if (!addProperty(properties, player, "minecraft:movement_speed",
-                "MOVEMENT_SPEED", "GENERIC_MOVEMENT_SPEED")
-                || !addProperty(properties, player, "minecraft:gravity",
-                        "GRAVITY", "GENERIC_GRAVITY")
-                || !addProperty(properties, player, "minecraft:jump_strength",
-                        "JUMP_STRENGTH", "GENERIC_JUMP_STRENGTH")
-                || !addProperty(properties, player, "minecraft:step_height",
-                        "STEP_HEIGHT", "GENERIC_STEP_HEIGHT")
-                || !addProperty(properties, player, "minecraft:scale",
-                        "SCALE", "GENERIC_SCALE")
-                || !addProperty(properties, player, "minecraft:sneaking_speed",
-                        "SNEAKING_SPEED", "GENERIC_SNEAKING_SPEED")
-                || !addProperty(properties, player, "minecraft:movement_efficiency",
-                        "MOVEMENT_EFFICIENCY", "GENERIC_MOVEMENT_EFFICIENCY")
-                || !addProperty(properties, player, "minecraft:water_movement_efficiency",
-                        "WATER_MOVEMENT_EFFICIENCY", "GENERIC_WATER_MOVEMENT_EFFICIENCY")) {
-            return null;
-        }
+        // Movement speed is available on all modern versions (1.9+)
+        addProperty(properties, player, "minecraft:movement_speed",
+                "MOVEMENT_SPEED", "GENERIC_MOVEMENT_SPEED");
+        // 1.20.5+ / 1.21+ optional attributes: add if present, do not abort if missing
+        addProperty(properties, player, "minecraft:gravity",
+                "GRAVITY", "GENERIC_GRAVITY");
+        addProperty(properties, player, "minecraft:jump_strength",
+                "JUMP_STRENGTH", "GENERIC_JUMP_STRENGTH");
+        addProperty(properties, player, "minecraft:step_height",
+                "STEP_HEIGHT", "GENERIC_STEP_HEIGHT");
+        addProperty(properties, player, "minecraft:scale",
+                "SCALE", "GENERIC_SCALE");
+        addProperty(properties, player, "minecraft:sneaking_speed",
+                "SNEAKING_SPEED", "GENERIC_SNEAKING_SPEED");
+        addProperty(properties, player, "minecraft:movement_efficiency",
+                "MOVEMENT_EFFICIENCY", "GENERIC_MOVEMENT_EFFICIENCY");
+        addProperty(properties, player, "minecraft:water_movement_efficiency",
+                "WATER_MOVEMENT_EFFICIENCY", "GENERIC_WATER_MOVEMENT_EFFICIENCY");
         return Collections.unmodifiableList(properties);
     }
 
@@ -266,31 +266,38 @@ public class AttributeCompat {
     }
 
     public static Double getGravity(Player player) {
-        return readAttributeOptional(player, "GRAVITY", "GENERIC_GRAVITY");
+        Double val = readAttributeOptional(player, "GRAVITY", "GENERIC_GRAVITY");
+        return val != null ? val : 0.08;
     }
 
     public static Double getJumpStrength(Player player) {
-        return readAttributeOptional(player, "JUMP_STRENGTH", "GENERIC_JUMP_STRENGTH");
+        Double val = readAttributeOptional(player, "JUMP_STRENGTH", "GENERIC_JUMP_STRENGTH");
+        return val != null ? val : 0.42;
     }
 
     public static Double getStepHeight(Player player) {
-        return readAttributeOptional(player, "STEP_HEIGHT", "GENERIC_STEP_HEIGHT");
+        Double val = readAttributeOptional(player, "STEP_HEIGHT", "GENERIC_STEP_HEIGHT");
+        return val != null ? val : 0.6;
     }
 
     public static Double getScale(Player player) {
-        return readAttributeOptional(player, "SCALE", "GENERIC_SCALE");
+        Double val = readAttributeOptional(player, "SCALE", "GENERIC_SCALE");
+        return val != null ? val : 1.0;
     }
 
     public static Double getSneakingSpeed(Player player) {
-        return readAttributeOptional(player, "SNEAKING_SPEED", "GENERIC_SNEAKING_SPEED");
+        Double val = readAttributeOptional(player, "SNEAKING_SPEED", "GENERIC_SNEAKING_SPEED");
+        return val != null ? val : 0.3;
     }
 
     public static Double getMovementEfficiency(Player player) {
-        return readAttributeOptional(player, "MOVEMENT_EFFICIENCY", "GENERIC_MOVEMENT_EFFICIENCY");
+        Double val = readAttributeOptional(player, "MOVEMENT_EFFICIENCY", "GENERIC_MOVEMENT_EFFICIENCY");
+        return val != null ? val : 0.0;
     }
 
     public static Double getWaterMovementEfficiency(Player player) {
-        return readAttributeOptional(player, "WATER_MOVEMENT_EFFICIENCY", "GENERIC_WATER_MOVEMENT_EFFICIENCY");
+        Double val = readAttributeOptional(player, "WATER_MOVEMENT_EFFICIENCY", "GENERIC_WATER_MOVEMENT_EFFICIENCY");
+        return val != null ? val : 0.0;
     }
 
     /** Try primary name first, then fallback name. */

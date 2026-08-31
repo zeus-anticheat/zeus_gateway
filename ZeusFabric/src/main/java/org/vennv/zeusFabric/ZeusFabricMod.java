@@ -19,6 +19,9 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Zeus Anti-Cheat data collector mod for Fabric servers.
@@ -38,6 +41,7 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
     private ProxyClient proxyClient;
     private BatchSender batchSender;
     private Thread batchThread;
+    private ScheduledExecutorService heartbeatExecutor;
 
     // ── Config fields ──
     private String proxyHost = "127.0.0.1";
@@ -111,6 +115,24 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
         batchThread.setDaemon(true);
         batchThread.start();
         LOGGER.info("[ZeusFabric] Batch sender thread started (batch-size={}).", batchSize);
+
+        // ── Immediate initial handshake ──
+        PacketQueue.push(new org.vennv.packets.PacketTPSServer(20.0));
+
+        // ── Periodic heartbeat independent of game loop ──
+        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "ZeusFabric-Heartbeat");
+            t.setDaemon(true);
+            return t;
+        });
+        heartbeatExecutor.scheduleAtFixedRate(() -> {
+            try {
+                PacketQueue.push(new org.vennv.packets.PacketTPSServer(Math.max(5.0, Math.min(20.0, emaTps))));
+            } catch (Throwable t) {
+                LOGGER.debug("[ZeusFabric] Heartbeat push failed", t);
+            }
+        }, 1, 1, TimeUnit.SECONDS);
+        LOGGER.info("[ZeusFabric] Heartbeat scheduler started (1s interval).");
     }
 
     private void onServerStarted(MinecraftServer minecraftServer) {
@@ -122,6 +144,11 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
 
     private void onServerStopping(MinecraftServer minecraftServer) {
         LOGGER.info("[ZeusFabric] Server stopping – shutting down Zeus...");
+
+        if (heartbeatExecutor != null) {
+            heartbeatExecutor.shutdownNow();
+            heartbeatExecutor = null;
+        }
 
         if (batchSender != null) {
             batchSender.stop();
@@ -195,9 +222,6 @@ public final class ZeusFabricMod implements DedicatedServerModInitializer {
 
         double rawTps = Math.min(20.0, 1000.0 / tickTimeMs);
         emaTps = 0.2 * rawTps + 0.8 * emaTps;
-        double tps = Math.max(5.0, Math.min(20.0, emaTps));
-
-        PacketQueue.push(new org.vennv.packets.PacketTPSServer(tps));
     }
 
     // ──────────────────────── Config loading ───────────────────────────
