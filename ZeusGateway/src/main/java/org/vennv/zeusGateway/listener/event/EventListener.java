@@ -945,7 +945,7 @@ public class EventListener implements Listener {
         if (!(event.getEntity() instanceof Player)) {
             return;
         }
-        // Grim parity: always emit the server-side gliding toggle. The raw
+        // Protocol parity: always emit the server-side gliding toggle. The raw
         // client ENTITY_ACTION only covers START_FLYING_WITH_ELYTRA (space
         // press); jump-exit / landing toggles are server-side only and would
         // be missed if we gated on raw PLAYER_COMMAND availability.

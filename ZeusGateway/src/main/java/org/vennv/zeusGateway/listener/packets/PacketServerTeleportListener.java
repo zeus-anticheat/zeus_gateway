@@ -21,8 +21,7 @@ import org.vennv.zeusGateway.provider.PacketQueue;
  * reporting movement from its old position until it processes the teleport, then
  * echoes the teleport destination back as a position-and-look packet. Without
  * this capture the engine sees that echo as a large player-authored displacement
- * and false-flags it. Mirrors Grim's {@code PacketServerTeleport} feeding
- * {@code SetbackTeleportUtil.pendingTeleports}.
+ * and false-flags it. Matches standard authoritative teleport queueing.
  */
 public final class PacketServerTeleportListener extends PacketListenerAbstract {
 

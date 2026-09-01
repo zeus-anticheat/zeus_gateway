@@ -97,10 +97,6 @@
             <url>https://libraries.minecraft.net</url>
         </repository>
         <repository>
-            <id>grim-snapshots</id>
-            <url>https://repo.grim.ac/snapshots</url>
-        </repository>
-        <repository>
             <id>codemc-releases</id>
             <url>https://repo.codemc.io/repository/maven-releases/</url>
         </repository>

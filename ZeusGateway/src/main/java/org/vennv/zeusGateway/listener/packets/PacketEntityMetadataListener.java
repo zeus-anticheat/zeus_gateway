@@ -17,15 +17,15 @@ import org.vennv.utils.ServerBoundPlayerCommandActions;
 import org.vennv.zeusGateway.provider.PacketQueue;
 
 /**
- * Grim parity (PacketSelfMetadataListener + PacketPlayerRespawn): the client
+ * Metadata parity: the client
  * flips its isGliding flag via the server->client SetEntityMetadata packet
  * (entity flags byte, index 0, bit 0x80 on 1.9+). We mirror that by watching
  * ENTITY_METADATA packets addressed to the player's own entity id and emit
  * START_FALL_FLYING / STOP_FALL_FLYING whenever the gliding bit changes.
  *
- * The player's own entity id is taken from the JoinGame packet (Grim stores
+ * The player's own entity id is taken from the JoinGame packet (stores
  * player.entityID = joinGame.getEntityId(), NOT PacketEvents' user.getEntityId()),
- * so we track it exactly like Grim does.
+ * so we track it directly.
  *
  * This covers toggles Bukkit's EntityToggleGlideEvent does NOT see: opening
  * elytra from a jump (server-side state on 1.15+, no client packet) and —
@@ -35,11 +35,11 @@ import org.vennv.zeusGateway.provider.PacketQueue;
  */
 public final class PacketEntityMetadataListener extends PacketListenerAbstract {
 
-    /** Player entity id per receiver-player, captured from JoinGame (Grim parity). */
+    /** Player entity id per receiver-player, captured from JoinGame. */
     private static final Map<UUID, Integer> SELF_ENTITY_IDS = new ConcurrentHashMap<>();
 
     /**
-     * Grim parity: the player's own entity id comes from the JoinGame packet,
+     * The player's own entity id comes from the JoinGame packet,
      * NOT from PacketEvents' user.getEntityId() (which may be unset/0 for a
      * long window after join). Shared with PacketVelocityListener so knockback
      * filtering works from the very first tick.
@@ -88,7 +88,7 @@ public final class PacketEntityMetadataListener extends PacketListenerAbstract {
         if (metadata == null) return;
 
         boolean gliding = false;
-        // Grim parity (PacketSelfMetadataListener): the gliding bit (index 0,
+        // Pose parity: the gliding bit (index 0,
         // bit 0x80) is only sent ONCE when the player starts gliding, then the
         // server stops resending it. The EntityPose (index 6, FALL_FLYING) is
         // stable for the whole flight — use it as the authoritative source and

@@ -1086,7 +1086,7 @@ final class LegacyPacketEventsSession implements AutoCloseable {
     }
 
     /** Capture client ANIMATION in the same ordered input lane as digging/attacks.
-     * Grim evaluates swing order from the raw client packet, never from Bukkit
+     * Evaluates swing order from the raw client packet, never from Bukkit
      * BlockBreakEvent (which is a later server-side callback).
      */
     private static final class SwingListener extends PacketListenerAbstract {

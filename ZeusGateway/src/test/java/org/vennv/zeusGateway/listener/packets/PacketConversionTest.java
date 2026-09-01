@@ -151,7 +151,7 @@ class PacketConversionTest {
     }
 
     @Test
-    void modernVelocityAcknowledgementsDoNotUseGrimTransactionNamespace() {
+    void modernVelocityAcknowledgementsDoNotUseShortTransactionNamespace() {
         AtomicInteger counter = new AtomicInteger();
 
         for (int i = 0; i < 1024; i++) {

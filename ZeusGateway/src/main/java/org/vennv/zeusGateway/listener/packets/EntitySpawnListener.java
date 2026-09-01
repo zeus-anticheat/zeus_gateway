@@ -117,12 +117,12 @@ public final class EntitySpawnListener extends PacketListenerAbstract {
             entityId, entityUuid.toString(), entityType,
             position.getX(), position.getY(), position.getZ(), pitch, yaw));
 
-        // Grim parity (CompensatedFireworks): a spawned firework rocket means
-        // the player (or another entity) is boosting with elytra. Grim tracks
-        // active firework entities and expands prediction uncertainty while
+        // Elytra boost tracking: a spawned firework rocket means
+        // the player (or another entity) is boosting with elytra. We track
+        // active firework entities and expand boost state while
         // any is alive. Push an ElytraFirework external force so the engine
         // opens the boost lenience (firework_boost_ticks) — without it, the
-        // rocket thrust shows up as an unexplained dy/dz spike → false flag.
+        // rocket thrust shows up as an unexplained dy/dz spike.
         if (type == PacketType.Play.Server.SPAWN_ENTITY) {
             WrapperPlayServerSpawnEntity spawn = new WrapperPlayServerSpawnEntity(event);
             if (spawn.getEntityType() == EntityTypes.FIREWORK_ROCKET) {

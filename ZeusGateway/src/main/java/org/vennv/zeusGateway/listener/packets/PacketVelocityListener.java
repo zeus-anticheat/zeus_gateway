@@ -40,7 +40,7 @@ final class PacketVelocityListener extends PacketListenerAbstract {
         UUID uuid = user.getUUID();
 
         if (event.getPacketType() == PacketType.Play.Server.EXPLOSION) {
-            // Grim handles this packet directly: its knockback vector is exact
+            // Handles this packet directly: its knockback vector is exact
             // per-recipient explosion impulse. Do not infer force from item use,
             // projectile spawn, or a later entity-velocity packet.
             WrapperPlayServerExplosion explosion = new WrapperPlayServerExplosion(event);
@@ -58,7 +58,7 @@ final class PacketVelocityListener extends PacketListenerAbstract {
         }
         if (event.getPacketType() != PacketType.Play.Server.ENTITY_VELOCITY) return;
         WrapperPlayServerEntityVelocity wrapper = new WrapperPlayServerEntityVelocity(event);
-        // Grim parity: compare against the entity id captured from JoinGame
+        // Protocol parity: compare against the entity id captured from JoinGame
         // (PacketEntityMetadataListener.getSelfEntityId), NOT user.getEntityId()
         // which PacketEvents may leave unset/0 for a long window after join —
         // that silently dropped every knockback until the metadata sync.
