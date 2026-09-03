@@ -53,4 +53,8 @@ final class MinecraftVersionAccess {
     public static List<Integer> clickModifiedSlotIds(ClickSlotC2SPacket packet) {
         return new ArrayList<>(packet.getModifiedStacks().keySet());
     }
+
+    public static boolean isHorseSaddled(Entity vehicle) {
+        return vehicle instanceof net.minecraft.entity.passive.AbstractHorseEntity horse && horse.isSaddled();
+    }
 }

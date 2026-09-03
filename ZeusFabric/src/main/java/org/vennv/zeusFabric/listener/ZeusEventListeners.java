@@ -844,7 +844,7 @@ public final class ZeusEventListeners {
     }
 
     private static boolean horseSaddled(Entity vehicle) {
-        return vehicle instanceof AbstractHorseEntity horse && horse.hasStackEquipped(EquipmentSlot.SADDLE);
+        return MinecraftCompat.isHorseSaddled(vehicle);
     }
 
     // ─────────────────── Screen Handler ─────────────────────────────────

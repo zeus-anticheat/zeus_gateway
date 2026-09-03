@@ -65,4 +65,8 @@ public final class MinecraftCompat {
     public static List<Integer> clickModifiedSlotIds(ClickSlotC2SPacket packet) {
         return MinecraftVersionAccess.clickModifiedSlotIds(packet);
     }
+
+    public static boolean isHorseSaddled(Entity vehicle) {
+        return MinecraftVersionAccess.isHorseSaddled(vehicle);
+    }
 }

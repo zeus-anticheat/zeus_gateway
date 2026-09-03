@@ -635,7 +635,7 @@ public final class PlayerStateSnapshotService {
             if (Double.isFinite(jump) && jump >= 0.0 && jump <= 32.0) {
                 jumpStrength = jump;
             }
-            saddled = horse.hasStackEquipped(EquipmentSlot.SADDLE);
+            saddled = MinecraftCompat.isHorseSaddled(vehicle);
         }
         int flags = 1;
         if (vehicle.isTouchingWater()) flags |= 1 << 1;
