@@ -2,6 +2,7 @@ package org.vennv.zeusFabric.mixins;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.common.CommonPongC2SPacket;
 import net.minecraft.network.packet.s2c.play.BlockEventS2CPacket;
 import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.BundleS2CPacket;
@@ -46,6 +47,13 @@ import java.util.Set;
 @Mixin(ServerCommonNetworkHandler.class)
 public abstract class ServerCommonNetworkHandlerMixin {
     @Unique private final Set<Integer> zeus$collidableEntities = new HashSet<>();
+
+    @Inject(method = "onPong", at = @At("HEAD"))
+    private void zeus$onPong(CommonPongC2SPacket packet, CallbackInfo ci) {
+        if ((Object) this instanceof ServerPlayNetworkHandler playHandler && playHandler.player != null) {
+            ZeusEventListeners.onCommonPong(playHandler.player, packet.getParameter());
+        }
+    }
 
     @Inject(method = "sendPacket", at = @At("HEAD"))
     private void zeus$onSendPacket(Packet<?> packet, CallbackInfo ci) {

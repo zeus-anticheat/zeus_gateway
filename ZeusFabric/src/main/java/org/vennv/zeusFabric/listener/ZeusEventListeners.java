@@ -21,6 +21,7 @@ import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.passive.AbstractHorseEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.network.packet.s2c.common.CommonPingS2CPacket;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
@@ -134,11 +135,15 @@ public final class ZeusEventListeners {
         new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
-     * Last measured RTT per player (ms), updated when waitingForKeepAlive
-     * transitions from true → false.
+     * Last measured RTT per player (ms), updated when CommonPong is received.
      */
     private static final java.util.Map<String, Long> MEASURED_RTT =
         new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static final java.util.Map<String, java.util.Map<Integer, Long>> PENDING_PINGS =
+        new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.atomic.AtomicInteger PING_COUNTER =
+        new java.util.concurrent.atomic.AtomicInteger();
 
     // ─────────────────────────────────────────────────────────────────────
     //  Registration entry point
@@ -606,34 +611,44 @@ public final class ZeusEventListeners {
         String name,
         long timestamp
     ) {
-        ServerCommonNetworkHandlerAccessor handler =
-            (ServerCommonNetworkHandlerAccessor) player.networkHandler;
-        boolean waiting = handler.zeus$isWaitingForKeepAlive();
-        long sentTime = handler.zeus$getLastKeepAliveTime();
-        Boolean wasWaiting = LAST_WAITING_STATE.get(uid);
-        if (waiting && (wasWaiting == null || !wasWaiting)) {
-            KA_SENT_TIME.put(uid, sentTime);
-        } else if (!waiting && Boolean.TRUE.equals(wasWaiting)) {
-            Long recordedSentTime = KA_SENT_TIME.get(uid);
-            if (recordedSentTime != null) {
-                long measuredRtt = Util.getMeasuringTimeMs() - recordedSentTime;
-                if (measuredRtt >= 0 && measuredRtt < 30_000) {
-                    MEASURED_RTT.put(uid, measuredRtt);
-                }
-            }
-        }
-        LAST_WAITING_STATE.put(uid, waiting);
-
-        // ── Send KeepAlive packet every 20 ticks (1 second) ──
+        // ── Send Netty Ping packet every 20 ticks (1 second) ──
         if (!PollingPolicy.shouldSendKeepAlive(player.age)) {
             return;
         }
 
-        int serverPing = player.networkHandler.getLatency();
-        long measuredPing = MEASURED_RTT.getOrDefault(uid, (long) serverPing);
+        int id = 0x40000000 | (PING_COUNTER.incrementAndGet() & 0x3fffffff);
+        PENDING_PINGS.computeIfAbsent(uid, ignored -> new java.util.concurrent.ConcurrentHashMap<>())
+                .put(id, System.nanoTime());
+        player.networkHandler.sendPacket(new CommonPingS2CPacket(id));
 
-        // Send the independently measured RTT (or server ping as fallback)
-        PacketQueue.push(new PacketPlayerKeepAlive(timestamp, uid, name, measuredPing));
+        // Initial fallback if no pong has been received yet
+        if (!MEASURED_RTT.containsKey(uid)) {
+            int serverPing = player.networkHandler.getLatency();
+            PacketQueue.push(new PacketPlayerKeepAlive(timestamp, uid, name, (long) serverPing));
+        }
+    }
+
+    public static void onCommonPong(ServerPlayerEntity player, int id) {
+        if (player == null) {
+            return;
+        }
+        String uid = player.getUuidAsString();
+        java.util.Map<Integer, Long> pending = PENDING_PINGS.get(uid);
+        if (pending == null) {
+            return;
+        }
+        Long sendNano = pending.remove(id);
+        if (sendNano == null) {
+            return;
+        }
+        long rttMs = Math.max(0L, (System.nanoTime() - sendNano) / 1_000_000L);
+        MEASURED_RTT.put(uid, rttMs);
+        PacketQueue.push(new PacketPlayerKeepAlive(
+            System.currentTimeMillis(),
+            uid,
+            player.getName().getString(),
+            rttMs
+        ));
     }
 
     // ─────────────────────── Game Mode ──────────────────────────────────
@@ -992,6 +1007,7 @@ public final class ZeusEventListeners {
         LAST_WAITING_STATE.remove(uid);
         KA_SENT_TIME.remove(uid);
         MEASURED_RTT.remove(uid);
+        PENDING_PINGS.remove(uid);
     }
 
     /**

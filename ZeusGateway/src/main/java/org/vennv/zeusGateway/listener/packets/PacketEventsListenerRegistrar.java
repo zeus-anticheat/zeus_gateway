@@ -40,7 +40,8 @@ public final class PacketEventsListenerRegistrar {
         session.register("PacketServerTeleportListener", () -> new PacketServerTeleportListener(plugin, dispatcher), null);
         session.register("PacketSwingHandListener", () -> new PacketSwingHandListener(plugin, dispatcher), RawCaptureCapability.SWING_HAND);
         session.register("PacketAttackEntityListener", () -> new PacketAttackEntityListener(plugin, dispatcher), RawCaptureCapability.ATTACK_ENTITY);
-        session.register("PacketKeepAliveListener", () -> new PacketKeepAliveListener(plugin, dispatcher), null);
+        session.keepAliveListener = new PacketKeepAliveListener(plugin, dispatcher);
+        session.register("PacketKeepAliveListener", () -> session.keepAliveListener, null);
         session.velocityListener = new PacketVelocityListener(session.acknowledgements);
         session.register("PacketVelocityListener", () -> session.velocityListener, RawCaptureCapability.VELOCITY);
         session.register("PacketEffectListener", () -> new PacketEffectListener(session.acknowledgements), RawCaptureCapability.EFFECT);
@@ -78,6 +79,7 @@ public final class PacketEventsListenerRegistrar {
         private final ClientAcknowledgementTracker acknowledgements = new ClientAcknowledgementTracker();
         private PacketVelocityListener velocityListener;
         private PacketAbilitiesListener abilitiesListener;
+        private PacketKeepAliveListener keepAliveListener;
         private boolean closed;
 
         private Session(ZeusGateway plugin, EventManager manager) {
@@ -103,6 +105,9 @@ public final class PacketEventsListenerRegistrar {
             dispatcher.clearPlayer(uuid);
             acknowledgements.clearPlayer(uuid);
             abilitiesListener.clearPlayer(uuid);
+            if (keepAliveListener != null) {
+                keepAliveListener.clearPlayer(uuid);
+            }
             PacketPositionListener.removePlayer(uuid);
             EntitySpawnListener.removePlayer(uuid);
             PacketEntityMetadataListener.removePlayer(uuid);
@@ -124,6 +129,9 @@ public final class PacketEventsListenerRegistrar {
             handles.clear();
             acknowledgements.clear();
             abilitiesListener.clear();
+            if (keepAliveListener != null) {
+                keepAliveListener.clear();
+            }
             worldDispatcher.close();
             dispatcher.close();
             capabilities.clear();
