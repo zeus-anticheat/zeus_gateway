@@ -722,9 +722,8 @@ public final class ZeusEventListeners {
             for (Effect oldEff : lastEffects) {
                 if (oldEff.getEffectId() == newEff.getEffectId()) {
                     found = true;
-                    // Because duration ticks down naturally, we only consider it 'modified' if there's a large jump (e.g. effect was renewed). 
-                    // A jump of > 5 ticks means it was reassigned or the amplifier changed.
-                    if (oldEff.getAmplifier() != newEff.getAmplifier() || Math.abs(oldEff.getDuration() - newEff.getDuration()) > 5) {
+                    // Because duration ticks down naturally, only consider it 'modified' if duration increased (effect renewed) or amplifier changed.
+                    if (oldEff.getAmplifier() != newEff.getAmplifier() || newEff.getDuration() > oldEff.getDuration()) {
                         modified = true;
                     }
                     break;
