@@ -18,6 +18,10 @@ import org.vennv.packets.PacketServerBoundPlayerCommand;
 import org.vennv.packets.PacketPlayerClickWindow;
 import org.vennv.packets.PacketPlayerInventoryTransaction;
 import org.vennv.packets.PacketPlayerSwingHand;
+import org.vennv.packets.PacketPlayerAbilities;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.vennv.utils.ServerBoundPlayerCommandActions;
 import org.vennv.zeusFabric.ZeusFabricMod;
 import org.vennv.zeusFabric.provider.MovementSemantics;
@@ -192,6 +196,8 @@ public abstract class ServerPlayNetworkHandlerMixin {
         PacketQueue.push(new PacketPlayerBlockFace(timestamp, uid, name, face));
     }
 
+    private static final Map<String, AtomicLong> CLIENT_ABILITY_SEQ = new ConcurrentHashMap<>();
+
     @Inject(method = "onHandSwing", at = @At("HEAD"))
     private void zeus$onHandSwing(HandSwingC2SPacket packet, CallbackInfo ci) {
         if (!zeus$isServerThread() || this.player == null) return;
@@ -199,6 +205,16 @@ public abstract class ServerPlayNetworkHandlerMixin {
         String name = player.getName().getString();
         long timestamp = System.currentTimeMillis();
         PacketQueue.push(new PacketPlayerSwingHand(timestamp, uid, name, false));
+    }
+
+    @Inject(method = "onUpdatePlayerAbilities", at = @At("HEAD"))
+    private void zeus$onUpdatePlayerAbilities(UpdatePlayerAbilitiesC2SPacket packet, CallbackInfo ci) {
+        if (!zeus$isServerThread() || this.player == null) return;
+        String uid = player.getUuidAsString();
+        String name = player.getName().getString();
+        long timestamp = System.currentTimeMillis();
+        long seq = CLIENT_ABILITY_SEQ.computeIfAbsent(uid, k -> new AtomicLong(0)).incrementAndGet();
+        PacketQueue.push(PacketPlayerAbilities.client(timestamp, uid, name, seq, packet.isFlying()));
     }
 
     @Inject(method = "onUpdateSelectedSlot", at = @At("TAIL"))

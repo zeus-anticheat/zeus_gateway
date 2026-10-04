@@ -97,6 +97,14 @@ public final class ZeusEventListeners {
         new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
+     * Tracks previous abilities per player (allowFlying:flying:flySpeed).
+     */
+    private static final java.util.Map<String, String> LAST_ABILITIES =
+        new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<String, java.util.concurrent.atomic.AtomicLong> SERVER_ABILITY_SEQ =
+        new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
      * Tracks previous effects list per player.
      */
     private static final java.util.Map<String, List<Effect>> LAST_EFFECTS =
@@ -593,6 +601,9 @@ public final class ZeusEventListeners {
         // ── Game Mode ──
         tickGameMode(player, uid, name, timestamp);
 
+        // ── Abilities ──
+        tickAbilities(player, uid, name, timestamp);
+
         // ── Potion Effects ──
         tickEffects(player, uid, name, timestamp);
 
@@ -670,6 +681,32 @@ public final class ZeusEventListeners {
         PacketQueue.push(
             new PacketPlayerChangeMode(timestamp, uid, name, currentMode)
         );
+    }
+
+    // ─────────────────────── Player Abilities ────────────────────────────
+
+    private static void tickAbilities(
+        ServerPlayerEntity player,
+        String uid,
+        String name,
+        long timestamp
+    ) {
+        var abilities = player.getAbilities();
+        boolean allowFlying = abilities.allowFlying;
+        boolean flying = abilities.flying;
+        float flySpeed = abilities.getFlySpeed();
+        String currentKey = allowFlying + ":" + flying + ":" + flySpeed;
+        String lastKey = LAST_ABILITIES.get(uid);
+
+        if (lastKey != null && lastKey.equals(currentKey)) {
+            return;
+        }
+
+        LAST_ABILITIES.put(uid, currentKey);
+        long seq = SERVER_ABILITY_SEQ.computeIfAbsent(uid, k -> new java.util.concurrent.atomic.AtomicLong(0)).incrementAndGet();
+        PacketQueue.push(PacketPlayerAbilities.server(
+            timestamp, uid, name, seq, allowFlying, flying, flySpeed
+        ));
     }
 
     // ─────────────────────── Effects ────────────────────────────────────
@@ -998,6 +1035,8 @@ public final class ZeusEventListeners {
 
     private static void clearTracking(String uid) {
         LAST_GAMEMODE.remove(uid);
+        LAST_ABILITIES.remove(uid);
+        SERVER_ABILITY_SEQ.remove(uid);
         LAST_EFFECTS.remove(uid);
         LAST_IN_VEHICLE.remove(uid);
         LAST_IN_BOAT.remove(uid);
